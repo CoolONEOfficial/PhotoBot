@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "hello",
+    name: "photobot",
     platforms: [
        .macOS(.v10_15)
     ],
