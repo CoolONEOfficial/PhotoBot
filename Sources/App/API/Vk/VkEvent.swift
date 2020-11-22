@@ -9,25 +9,14 @@ import Foundation
 import Vapor
 
 struct VkEvent: Content {
-    enum EventType: String, Content {
-        case confirmation
-        case message_new
-    }
-    var type: EventType
+//    enum `Type`: String, Content {
+//        case confirmation
+//        case message_new
+//    }
+    var type: String?
     
     struct Object: Content {
-        struct Message: Content {
-            let date: Int64
-            let from_id: Int64
-            let id: Int64
-            let peer_id: Int64
-            let text: String
-            let conversation_message_id: Int64
-            let important: Bool
-            let random_id: Int64
-        }
-
-        let message: Message?
+        let message: VkMessage?
     }
     var object: Object?
 }

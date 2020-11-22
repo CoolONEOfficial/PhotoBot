@@ -14,26 +14,23 @@ func routes(_ app: Application) throws {
             headers: req.headers,
             body: "ok"
         )
-        let event = try! req.content.decode(VkEvent.self)
-        switch event.type {
-        case .confirmation:
-            if let key = Environment.get("VK_CONFIRM_KEY") {
-                okResp.body = .init(string: key)
-            }
-            return okResp
-        case .message_new:
-            guard let message = event.object?.message else {
-                debugPrint("not parsed vk handle!")
-                return okResp
-            }
+        if let event = try? req.content.decode(VkEvent.self),
+           let message = event.object?.message {
 
             req.client.post(.vkMessage(message)).whenFailure { err in
                 debugPrint("failed to reply \(err)")
             }
 
             return okResp
+        } else {
+            if let key = Environment.get("VK_CONFIRM_KEY") {
+                debugPrint("cannot parse event, return VK_CONFIRM_KEY")
+                okResp.body = .init(string: key)
+            } else {
+                debugPrint("cannot parse event")
+            }
+            return okResp
         }
-        
     }
 
     try app.register(collection: TodoController())

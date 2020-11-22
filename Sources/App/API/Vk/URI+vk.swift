@@ -12,7 +12,7 @@ extension URI {
         case sendMessage = "messages.send"
     }
     
-    private static func vkMethod(method: Method, args: [String: String]) -> URI {
+    private static func vkMethod(method: Method, args: [String: String?]) -> URI {
         var components = URLComponents()
         components.scheme = "https"
         components.host = "api.vk.com"
@@ -25,7 +25,7 @@ extension URI {
         return .init(string: components.string!)
     }
 
-    static func vkMessage(_ message: VkEvent.Object.Message) -> URI {
+    static func vkMessage(_ message: VkMessage) -> URI {
         vkMethod(
             method: .sendMessage,
             args: [
@@ -37,7 +37,7 @@ extension URI {
     }
 }
 
-private extension Dictionary where Key == String, Value == String {
+private extension Dictionary where Key == String, Value == String? {
     var queryItems: [URLQueryItem] {
         enumerated().map { .init(
             name: $0.element.key,
