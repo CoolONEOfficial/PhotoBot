@@ -173,6 +173,24 @@
         }
       },
       {
+        "package": "Telegrammer",
+        "repositoryURL": "https://github.com/givip/Telegrammer.git",
+        "state": {
+          "branch": "develop",
+          "revision": "24e70f1fc4c7191ea68ef3a1f9fc509410841347",
+          "version": null
+        }
+      },
+      {
+        "package": "telegrammer-vapor-middleware",
+        "repositoryURL": "https://github.com/givip/telegrammer-vapor-middleware.git",
+        "state": {
+          "branch": "develop",
+          "revision": "21d38558717183b63b03018ba18c23b2ee2815b2",
+          "version": null
+        }
+      },
+      {
         "package": "vapor",
         "repositoryURL": "https://github.com/vapor/vapor.git",
         "state": {
