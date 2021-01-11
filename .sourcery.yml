@@ -1,0 +1,7 @@
+sources:
+    - Sources/App/
+    - Tests/
+templates:
+    - Templates/
+output:
+    Sources/App/Generated/

@@ -11,8 +11,8 @@ let package = Package(
         .package(url: "https://github.com/vapor/vapor.git", from: "4.35.0"),
         .package(url: "https://github.com/vapor/fluent.git", from: "4.0.0"),
         .package(url: "https://github.com/vapor/fluent-postgres-driver.git", from: "2.0.0"),
-        .package(url: "https://github.com/givip/Telegrammer.git", .branch("develop")),
-        .package(url: "https://github.com/givip/telegrammer-vapor-middleware.git", .branch("develop"))
+        .package(path: "../Botter"),
+        .package(url: "https://github.com/SvenTiigi/ValidatedPropertyKit.git", from: "0.0.4"),
     ],
     targets: [
         .target(
@@ -21,8 +21,8 @@ let package = Package(
                 .product(name: "Fluent", package: "fluent"),
                 .product(name: "FluentPostgresDriver", package: "fluent-postgres-driver"),
                 .product(name: "Vapor", package: "vapor"),
-                .product(name: "Telegrammer", package: "Telegrammer"),
-                .product(name: "TelegrammerMiddleware", package: "telegrammer-vapor-middleware")
+                .product(name: "Botter", package: "Botter"),
+                .product(name: "ValidatedPropertyKit", package: "ValidatedPropertyKit"),
             ],
             swiftSettings: [
                 // Enable better optimizations when building in Release configuration. Despite the use of

@@ -7,5 +7,5 @@ func routes(_ app: Application) throws {
         return "Photo bot working.."
     }
 
-    try app.register(collection: TodoController())
+    try app.register(collection: UserController())
 }

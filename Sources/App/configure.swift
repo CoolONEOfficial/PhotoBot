@@ -8,7 +8,7 @@ import VkontakterMiddleware
 import Botter
 
 extension Application {
-    static var databaseURL = URL(string: Environment.get("DATABASE_URL")!)!
+    static var databaseURL: URL = URL(string: Environment.get("DATABASE_URL")!)!
     static var tgToken = Environment.get("TELEGRAM_BOT_TOKEN")!
     static var vkToken = Environment.get("VK_GROUP_TOKEN")!
     static var vkGroupId: UInt64? = {
@@ -18,7 +18,7 @@ extension Application {
         }
         return nil
     }()
-    static var serverName: String? = Environment.get("VK_NEW_SERVER_NAME")
+    static var vkServerName: String? = Environment.get("VK_NEW_SERVER_NAME")
     static var vkWebhooksUrl: String = Environment.get("WEBHOOKS_VK_URL")!
     static var tgWebhooksUrl: String = Environment.get("WEBHOOKS_TG_URL")!
     static var tgWebhooksPort: Int = Int(Environment.get("WEBHOOKS_TG_PORT")!)!
@@ -26,12 +26,11 @@ extension Application {
 
 // configures your application
 public func configure(_ app: Application) throws {
-    //try configurePostgres(app)
-    //try configureTelegram(app)
-    //try configureVk(app)
-    try configureBotter(app)
-
-    //Todo(title: "Publish new article tomorrow").save(on: app.db)
+    try configurePostgres(app)
+    //try configureEchoTg(app)
+    //try configureEchoVk(app)
+    //try configureEchoBotter(app)
+    try configurePhotoBot(app)
     
     // register routes
     try routes(app)
@@ -40,63 +39,90 @@ public func configure(_ app: Application) throws {
 private func configurePostgres(_ app: Application) throws {
     app.databases.use(try .postgres(url: Application.databaseURL), as: .psql)
 
-    app.migrations.add(CreateTodo())
+    app.migrations.add(CreateNodes())
+    app.migrations.add(CreateUsers())
     if app.environment == .development {
         try app.autoMigrate().wait()
     }
 
+    if try NodeModel.query(on: app.db).count().wait() == 0 {
+        let testNodeId = try createNode(app, NodeModel(
+            name: "Test node",
+            messages: [
+                .init(message: "Test message here."),
+                .init(message: "And other message.")
+            ]
+        ))
+        
+        let welcomeNodeId = try createNode(app, NodeModel(
+            name: "Welcome node",
+            messages: [
+                .init(message: "Welcome to bot, $USER!", keyboard: .init(oneTime: false, buttons: [[
+                    .init(text: "To test node", action: .callback, data: NavigationPayload.toNode(testNodeId))
+                ]], inline: true))
+            ],
+            entryPoint: .welcome
+        ))
+        
+        let welcomeGuestNodeId = try createNode(app, NodeModel(
+            name: "Welcome guest node",
+            messages: [
+                .init(message: "Welcome to bot, newcomer! Please send your name.")
+            ],
+            entryPoint: .welcome_guest,
+            action: .init(.set_name, success:.moveToNode(id: welcomeNodeId), failure: "Wrong name, please try again.")
+        ))
+        
+        try createNode(app, NodeModel(
+            systemic: true,
+            name: "Change node text",
+            messages: [ .init(message: "Send me new text") ],
+            action: .init(.message_edit, success: .pop, failure: "Wrong text, please try again.")
+        ))
+        
+    }
 }
 
-//private func configureVk(_ app: Application) throws {
-//    var settings: Vkontakter.Bot.Settings = .init(token: Application.vkToken, debugMode: !app.environment.isRelease)
-//    settings.webhooksConfig = .init(ip: "0.0.0.0", url: Application.webhooksUrl, port: Application.webhooksPort, groupId: Application.vkGroupId)
-//    let bot = try VkEchoBot(path: "vk", settings: settings)
-//    try bot.setWebhooks(Application.serverName).whenFailure { err in
-//        debugPrint("ERROR: \(err)")
-//    }
-//
-//    app.middleware.use(bot)
-//
-//    let wh = Webhooks(bot: bot.bot, dispatcher: bot.dispatcher)
-//    try wh.start()
-//}
+@discardableResult
+private func createNode(_ app: Application, _ node: NodeModel) throws -> UUID {
+    try node.save(on: app.db).map { node.id! }.wait()
+}
 
-private func configureBotter(_ app: Application) throws {
+func tgSettings(_ app: Application) -> Telegrammer.Bot.Settings {
     var tgSettings = Telegrammer.Bot.Settings(token: Application.tgToken, debugMode: !app.environment.isRelease)
     tgSettings.webhooksConfig = .init(ip: "0.0.0.0", baseUrl: Application.tgWebhooksUrl, port: Application.tgWebhooksPort)
-
-    var vkSettings: Vkontakter.Bot.Settings = .init(token: Application.vkToken, debugMode: !app.environment.isRelease)
-    vkSettings.webhooksConfig = .init(ip: "0.0.0.0", baseUrl: Application.vkWebhooksUrl, groupId: Application.vkGroupId)
-
-    let settings: Botter.Bot.Settings = .init(
-        vk: vkSettings,
-        tg: tgSettings
-    )
-//    settings.webhooksConfig = .init(ip: "0.0.0.0", url: Application.webhooksUrl, port: Application.webhooksPort, groupId: Application.vkGroupId)
-    let bot = try EchoBot(settings: settings)
-    try bot.setWebhooks(Application.serverName, app.eventLoopGroup.next()).whenFailure { err in
-        debugPrint("ERROR on set wh: \(err.localizedDescription)")
-    }
-
-    app.middleware.use(bot)
-
-    let wh = Botter.Webhooks(bot: bot.bot, dispatcher: bot.dispatcher)
-    try wh.start().whenFailure { err in
-        debugPrint("ERROR on start wh: \(err.localizedDescription)")
-    }
-    
-//    let wh = Telegrammer.Webhooks(bot: bot.bot.tg!, dispatcher: bot.dispatcher.tg!)
-//    try wh.start()
+    return tgSettings
 }
 
-private func configureTelegram(_ app: Application) throws {
-    var settings: Telegrammer.Bot.Settings = .init(token: Application.tgToken, debugMode: !app.environment.isRelease)
-    settings.webhooksConfig = .init(ip: "0.0.0.0", url: Application.tgWebhooksUrl + "/tg", port: Application.tgWebhooksPort)
-    let bot = try TgEchoBot(path: "tg", settings: settings) // change to tg
-    try bot.setWebhooks()
+func vkSettings(_ app: Application) -> Vkontakter.Bot.Settings {
+    var vkSettings: Vkontakter.Bot.Settings = .init(token: Application.vkToken, debugMode: !app.environment.isRelease)
+    vkSettings.webhooksConfig = .init(ip: "0.0.0.0", baseUrl: Application.vkWebhooksUrl, groupId: Application.vkGroupId)
+    return vkSettings
+}
 
-    app.middleware.use(bot)
+func botterSettings(_ app: Application) -> Botter.Bot.Settings {
+    .init(
+        vk: vkSettings(app),
+        tg: tgSettings(app)
+    )
+}
 
-    let wh = Webhooks(bot: bot.bot, dispatcher: bot.dispatcher)
-    try wh.start()
+private func configureEchoVk(_ app: Application) throws {
+    let bot = try VkEchoBot(settings: vkSettings(app))
+    try bot.updater.startWebhooks(serverName: Application.vkServerName).wait()
+}
+
+private func configureEchoBotter(_ app: Application) throws {
+    let bot = try EchoBot(settings: botterSettings(app), app: app)
+    try bot.updater.startWebhooks(vkServerName: Application.vkServerName).wait()
+}
+
+private func configureEchoTg(_ app: Application) throws {
+    let bot = try TgEchoBot(settings: tgSettings(app))
+    try bot.updater.startWebhooks().wait()
+}
+
+private func configurePhotoBot(_ app: Application) throws {
+    let bot = try PhotoBot(settings: botterSettings(app), app: app)
+    try bot.updater.startWebhooks(vkServerName: Application.vkServerName).wait()
 }
