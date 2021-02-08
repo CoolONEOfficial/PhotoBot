@@ -23,27 +23,27 @@ final class NodeModel: Model, Content {
     var name: String
     
     @Field(key: "messages")
-    var messages: [Bot.SendMessageParams]
+    var messagesGroup: SendMessageGroup
     
     @OptionalField(key: "entry_point")
     var entryPoint: Node.EntryPoint?
     
     @OptionalField(key: "action")
-    var action: ActionPayload?
+    var action: NodeAction?
 
     init() { }
 
-    init(id: UUID? = nil, systemic: Bool = false, name: String, messages: [Bot.SendMessageParams], entryPoint: Node.EntryPoint? = nil, action: ActionPayload? = nil) {
+    init(id: UUID? = nil, systemic: Bool = false, name: String, messagesGroup: SendMessageGroup, entryPoint: Node.EntryPoint? = nil, action: NodeAction? = nil) {
         self.id = id
         self.systemic = systemic
         self.name = name
-        self.messages = messages
+        self.messagesGroup = messagesGroup
         self.entryPoint = entryPoint
         self.action = action
     }
     
     public static func find(
-        _ action: ActionPayload.`Type`,
+        _ action: NodeAction.`Type`,
         on database: Database
     ) -> Future<NodeModel> {
         query(on: database).filter(.sql(raw: "action->>\'type\'"), .equal, .enumCase(action.rawValue)).first()

@@ -1,4 +1,5 @@
 import Vapor
+import AnyCodable
 <%
 func capitalizedName(for variable: Variable) -> String {
     return "\(String(variable.name.first!).capitalized)\(String(variable.name.dropFirst()))"

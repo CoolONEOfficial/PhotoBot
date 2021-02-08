@@ -23,7 +23,7 @@ final class UserModel: Model, Content {
     var node: NodeModel?
     
     @OptionalField(key: "node_payload")
-    var nodePayload: DecodableString?
+    var nodePayload: NodePayload?
     
     @ID(custom: "vk_id")
     var vkId: Int64?
@@ -47,16 +47,16 @@ final class UserModel: Model, Content {
         self.history = history
     }
     
-    convenience init<T: Replyable>(from replyable: T) throws {
+    convenience init<T: PlatformReplyable>(from replyable: T) throws {
         switch replyable.platform {
         case .tg:
-            try self.init(tgId: replyable.fromId)
+            try self.init(tgId: replyable.userId)
         case .vk:
-            try self.init(vkId: replyable.fromId)
+            try self.init(vkId: replyable.userId)
         }
     }
     
-    public static func findOrCreate<T: Replyable>(
+    public static func findOrCreate<T: PlatformReplyable>(
         _ replyable: T,
         on database: Database,
         app: Application
@@ -71,11 +71,11 @@ final class UserModel: Model, Content {
         }
     }
     
-    public static func find<T: Replyable>(
+    public static func find<T: PlatformReplyable>(
         _ replyable: T,
         on database: Database
     ) -> Future<UserModel?> {
-        let id = replyable.fromId!
+        let id = replyable.userId!
         switch replyable.platform {
         case .tg:
             return query(on: database)

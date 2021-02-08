@@ -15,13 +15,12 @@ class Node {
     
     var id: UUID?
     
-    var systemic: Bool?
+    let systemic: Bool
     
-    @Validated(.isLetters && .greater(1) && .less(25))
+    @Validated(.greater(1))
     var name: String?
-    
-    @Validated(.nonEmpty)
-    var messages: [Bot.SendMessageParams]?
+
+    var messagesGroup: SendMessageGroup
     
     enum EntryPoint: String, Codable {
         case welcome
@@ -30,15 +29,15 @@ class Node {
 
     var entryPoint: EntryPoint?
 
-    var action: ActionPayload?
+    var action: NodeAction?
 
     var toModel: NodeModel? {
-        guard let name = name, let systemic = systemic, let messages = messages else { return nil }
+        guard let name = name else { return nil }
         let model = self.model ?? .init()
         
         model.systemic = systemic
         model.name = name
-        model.messages = messages
+        model.messagesGroup = messagesGroup
         model.entryPoint = entryPoint
         model.action = action
         return model
@@ -46,32 +45,32 @@ class Node {
     
     private let model: NodeModel?
 
-    init(systemic: Bool = false, name: String? = nil, messages: [Bot.SendMessageParams] = [], entryPoint: Node.EntryPoint? = nil, action: ActionPayload? = nil) {
+    init(systemic: Bool = false, name: String? = nil, messagesGroup: SendMessageGroup = [], entryPoint: Node.EntryPoint? = nil, action: NodeAction? = nil) {
         self.model = nil
         self.id = nil
         self.systemic = systemic
-        self.messages = messages
+        self.messagesGroup = messagesGroup
         self.entryPoint = entryPoint
         self.action = action
         self.name = name
     }
 
-    required init(from model: NodeModel) throws {
+    required init(from model: NodeModel) throws { // model
         self.model = model
         self.id = try model.requireID()
         systemic = model.systemic
-        name = model.name
-        messages = model.messages
+        messagesGroup = model.messagesGroup
         entryPoint = model.entryPoint
         action = model.action
+        self.name = model.name
     }
     
     var isValid: Bool {
-        _name.isValid && _messages.isValid
+        _name.isValid
     }
     
     public static func find(
-        _ action: ActionPayload.`Type`,
+        _ action: NodeAction.`Type`,
         on database: Database
     ) -> Future<Node> {
         NodeModel.find(action, on: database).flatMapThrowing { try $0.toMyType() }
@@ -84,17 +83,27 @@ class Node {
         NodeModel.find(entryPoint, on: database).flatMapThrowing { try! $0.toMyType() }
     }
     
-    var editableMessages: [Bot.SendMessageParams]? {
-        if let systemic = systemic, !systemic, var messages = messages {
-            for (index, var params) in messages.enumerated() {
-                if params.keyboard == nil {
-                    params.keyboard = .init(oneTime: false, buttons: [], inline: true)
+    func editableMessages(_ user: User) -> [SendMessage]? {
+        if case var .array(messages) = messagesGroup {
+            if !systemic, user.isValid {
+                for (index, params) in messages.enumerated() {
+                    params.keyboard.buttons.insert([
+                        try! Button(
+                            text: "Edit text",
+                            action: .callback,
+                            eventPayload: .editText(messageId: index)
+                        ),
+                        try! Button(
+                            text: "Add node",
+                            action: .callback,
+                            eventPayload: .createNode(type: .node)
+                        )
+                    ], at: 0)
+                    messages[index] = params
                 }
-                params.keyboard?.buttons.insert([ try! Button(text: "Edit text", action: .callback, data: EditPayload(type: .edit_text, messageId: index)) ], at: 0)
-                messages[index] = params
             }
             return messages
         }
-        return messages
+        return nil
     }
 }

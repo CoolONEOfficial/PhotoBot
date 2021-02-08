@@ -55,19 +55,20 @@ class EchoBot {
         
         //try bot.sendMessage(params: .init(peerId: message.fromId!, message: "Starting send message"), platform: message.platform, eventLoop: app.eventLoopGroup.next())
         
-        let jpgLink = "https://upload.wikimedia.org/wikipedia/en/a/a9/Example.jpg"
-        let jpgData = try Data(contentsOf: URL(string: jpgLink)!)
-        let txtLink = "https://www.w3.org/TR/PNG/iso_8859-1.txt"
-        let txtData = try Data(contentsOf: URL(string: txtLink)!)
+//        let jpgLink = "https://upload.wikimedia.org/wikipedia/en/a/a9/Example.jpg"
+//        let jpgData = try Data(contentsOf: URL(string: jpgLink)!)
+//        let txtLink = "https://www.w3.org/TR/PNG/iso_8859-1.txt"
+//        let txtData = try Data(contentsOf: URL(string: txtLink)!)
 
-        let params: Botter.Bot.SendMessageParams = .init(peerId: message.fromId!, message: "that is doc", attachments: [
-//            .init(type: .document, content: .file(.init(data: txtData, filename: "txttest.txt"))),
-//            .init(type: .document, content: .file(.init(data: txtData, filename: "txttest.txt")))
-            //.init(type: .photo, content: .file(.init(data: jpgData, filename: "jpgg.jpg"))),
-            .init(type: .photo, content: .file(.init(data: jpgData, filename: "jpgg.jpg")))
-        ])
+        let params: Botter.Bot.SendMessageParams = .init(to: message, text: "that is doc")
 
-        try bot.sendMessage(params: params, platform: message.platform, app: app)
+//        if let prevMessage = prevMessage {
+//            try bot.editMessage(prevMessage, params: .init(message: "Other text"), app: app)
+//        }
+        
+        try bot.sendMessage(params: params, platform: message.platform, app: app)?.flatMap { message in
+            try! self.bot.editMessage(message, params: .init(message: "Other text"), app: self.app)!
+        }
     }
     
     func handleEvent(_ update: Botter.Update, _ context: Botter.BotContext?) throws {
@@ -87,16 +88,14 @@ class EchoBot {
     func handleCommand(_ update: Botter.Update, _ context: Botter.BotContext?) throws {
         guard case let .message(message) = update.content, let text = message.text, let context = context else { return }
         
-        let textButton: Botter.Button = try .init(text: "Test", action: .text)
+        let textButton: Botter.Button = .init(text: "Test", action: .text)
         
         let params = Botter.Bot.SendMessageParams(
-            peerId: message.fromId!,
-            message: text,
-            keyboard: .init(
-                oneTime: true,
-                buttons: [ [ textButton ] ],
-                inline: false
-            ), attachments: nil
+            chatId: message.chatId,
+            userId: message.fromId,
+            text: text,
+            keyboard: .init([ [ textButton ] ]),
+            attachments: nil
         )
         
         try bot.sendMessage(params: params, platform: update.platform, app: app)!.whenComplete { res in

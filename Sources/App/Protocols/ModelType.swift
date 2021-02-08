@@ -20,7 +20,9 @@ extension ModelType where _TypedModel._ModelType == Self {
         _ id: Self._TypedModel.IDValue,
         on database: Database
     ) -> Future<Self> {
-        _TypedModel.find(id, on: database).flatMapThrowing { try $0!.toMyType() }
+        _TypedModel.find(id, on: database).map {
+            try! $0!.toMyType()
+        }
     }
 }
 

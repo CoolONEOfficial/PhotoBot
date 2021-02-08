@@ -13,7 +13,7 @@ struct CreateNodes: Migration {
             .id()
             .field("systemic", .bool, .required)
             .field("name", .string, .required)
-            .field("messages", .array(of: .json), .required)
+            .field("messages", .json, .required)
             .field("entry_point", .string)
             .field("action", .json)
             .unique(on: "entry_point")

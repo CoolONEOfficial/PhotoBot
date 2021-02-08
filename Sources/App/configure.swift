@@ -44,49 +44,70 @@ private func configurePostgres(_ app: Application) throws {
     if app.environment == .development {
         try app.autoMigrate().wait()
     }
-
+    
+    //print("Drop all tables? (y or n)") TODO: drop tables on restart
+    
+//    if let name = readLine(), name.contains("y") {
+//        print("Dropping tables...")
+//
+//        try app.db.execute(enum: <#T##DatabaseEnum#>)(query: DatabaseQuery(schema: "DROP TABLE nodes, users, _fluent_migrations CASCADE"), onOutput: {_ in}).wait()
+//        fatalError()
+//    } else {
+//        print("Ok, just start with previous db state")
+//    }
+    
     if try NodeModel.query(on: app.db).count().wait() == 0 {
-        let testNodeId = try createNode(app, NodeModel(
+        let testNodeId = try Node(
             name: "Test node",
-            messages: [
-                .init(message: "Test message here."),
-                .init(message: "And other message.")
+            messagesGroup: [
+                .init(text: "Test message here."),
+                .init(text: "And other message.")
             ]
-        ))
+            //action: .init(.buildType, success: .moveToBuilder(of: .init(type: NodeBuildable.self), object: <#[String : AnyCodable]#>))
+        ).toModel!.saveWithId(on: app.db).wait()
         
-        let welcomeNodeId = try createNode(app, NodeModel(
+        let createNodeId = try Node(
+            systemic: true,
+            name: "Create node",
+            messagesGroup: .builder,
+            action: .init(.createNode, success: .moveToBuilder(of: .node), failure: "Wrong text, please try again.")
+        ).toModel!.saveWithId(on: app.db).wait()
+        
+        let welcomeNodeId = try Node(
             name: "Welcome node",
-            messages: [
-                .init(message: "Welcome to bot, $USER!", keyboard: .init(oneTime: false, buttons: [[
+            messagesGroup: [
+                .init(text: "Welcome to bot, $USER!", keyboard: .init([[
                     .init(text: "To test node", action: .callback, data: NavigationPayload.toNode(testNodeId))
-                ]], inline: true))
+                ]]))
             ],
             entryPoint: .welcome
-        ))
+        ).toModel!.saveWithId(on: app.db).wait()
         
-        let welcomeGuestNodeId = try createNode(app, NodeModel(
+        try Node(
             name: "Welcome guest node",
-            messages: [
-                .init(message: "Welcome to bot, newcomer! Please send your name.")
+            messagesGroup: [
+                .init(text: "Welcome to bot, newcomer! Please send your name.")
             ],
             entryPoint: .welcome_guest,
-            action: .init(.set_name, success:.moveToNode(id: welcomeNodeId), failure: "Wrong name, please try again.")
-        ))
+            action: .init(.setName, success: .moveToNode(id: welcomeNodeId), failure: "Wrong name, please try again.")
+        ).toModel!.saveWithId(on: app.db).wait()
         
-        try createNode(app, NodeModel(
+        try Node(
             systemic: true,
             name: "Change node text",
-            messages: [ .init(message: "Send me new text") ],
-            action: .init(.message_edit, success: .pop, failure: "Wrong text, please try again.")
-        ))
+            messagesGroup: [ .init(text: "Send me new text") ],
+            action: .init(.messageEdit, success: .pop, failure: "Wrong text, please try again.")
+        ).toModel!.saveWithId(on: app.db).wait()
+
+        //try BuilderTypeKind.configureNodeIds(app: app).wait()
         
     }
 }
 
-@discardableResult
-private func createNode(_ app: Application, _ node: NodeModel) throws -> UUID {
-    try node.save(on: app.db).map { node.id! }.wait()
-}
+//@discardableResult
+//private func createNode(_ app: Application, _ nodeModel: NodeModel) throws -> UUID {
+//    try nodeModel.save(on: app.db).map { node.id! }.wait()
+//}
 
 func tgSettings(_ app: Application) -> Telegrammer.Bot.Settings {
     var tgSettings = Telegrammer.Bot.Settings(token: Application.tgToken, debugMode: !app.environment.isRelease)

@@ -16,14 +16,14 @@ class User {
     
     struct HistoryEntry: Codable {
         let nodeId: UUID
-        let nodePayload: DecodableString?
+        let nodePayload: NodePayload?
     }
     
     var history: [HistoryEntry]
 
     var nodeId: UUID?
     
-    var nodePayload: DecodableString?
+    var nodePayload: NodePayload?
     
     var vkId: Int64?
 
@@ -45,7 +45,7 @@ class User {
     
     private let model: UserModel?
     
-    init(history: [HistoryEntry] = [], nodeId: UUID? = nil, nodePayload: DecodableString, vkId: Int64? = nil, tgId: Int64? = nil, name: String? = nil) {
+    init(history: [HistoryEntry] = [], nodeId: UUID? = nil, nodePayload: NodePayload, vkId: Int64? = nil, tgId: Int64? = nil, name: String? = nil) {
         self.model = nil
         self.history = history
         self.nodeId = nodeId
@@ -69,7 +69,7 @@ class User {
         _name.isValid
     }
     
-    public static func findOrCreate<T: Replyable>(
+    public static func findOrCreate<T: PlatformReplyable>(
         _ replyable: T,
         on database: Database,
         app: Application
@@ -77,23 +77,15 @@ class User {
         UserModel.findOrCreate(replyable, on: database, app: app).map { try! $0.toMyType() }
     }
     
-    public static func find<T: Replyable>(
+    public static func find<T: PlatformReplyable>(
         _ replyable: T,
         on database: Database
     ) -> Future<User?> {
         UserModel.find(replyable, on: database).map { try! $0?.toMyType() }
     }
     
-    func moveToNode<NodePayload: Encodable, T: Replyable>(
-        _ nodeId: UUID, payload: NodePayload? = nil, to replyable: T,
-        with bot: Bot, on database: Database,
-        app: Application, saveMove: Bool = true
-    ) throws -> Future<[Message]> {
-        moveToNode(nodeId, try payload?.encodeToString(), to: replyable, with: bot, on: database, app: app, saveMove: saveMove)
-    }
-    
-    func moveToNode<T: Replyable>(
-        _ nodeId: UUID, _ payload: String? = nil,
+    func moveToNode<T: PlatformReplyable>(
+        _ nodeId: UUID, payload: NodePayload? = nil,
         to replyable: T, with bot: Bot, on database: Database,
         app: Application, saveMove: Bool = true
     ) -> Future<[Message]> {
@@ -102,16 +94,8 @@ class User {
         }
     }
     
-    func moveToNode<NodePayload: Encodable, T: Replyable>(
+    func moveToNode<T: PlatformReplyable>(
         _ node: Node, payload: NodePayload? = nil,
-        to replyable: T, with bot: Bot, on database: Database,
-        app: Application, saveMove: Bool = true
-    ) throws -> Future<[Message]> {
-        try moveToNode(node, try payload?.encodeToString(), to: replyable, with: bot, on: database, app: app, saveMove: saveMove)
-    }
-    
-    func moveToNode<T: Replyable>(
-        _ node: Node, _ payload: String? = nil,
         to replyable: T, with bot: Bot, on database: Database,
         app: Application, saveMove: Bool = true
     ) throws -> Future<[Message]> {
@@ -121,38 +105,53 @@ class User {
             history.append(.init(nodeId: oldNodeId, nodePayload: nodePayload))
         }
 
-        if !history.isEmpty, let lastMessage = node.messages?.last {
-            let lastButtons: [Button] = (lastMessage.keyboard?.buttons.last ?? [])
-                + [ try .init(text: "Back", action: .callback, data: NavigationPayload.back) ]
+        return node.messagesGroup.array(app: app, self, payload).flatMap { messages in
             
-            if let _ = lastMessage.keyboard?.buttons.last {
-                lastMessage.keyboard?.buttons.indices.last.map { lastMessage.keyboard?.buttons[$0] = lastButtons }
-            } else {
-                if lastMessage.keyboard == nil {
-                    lastMessage.keyboard = .init(oneTime: false, buttons: [], inline: true)
+            if !self.history.isEmpty, let lastMessage = messages.last {
+                let actualLastButtons = lastMessage.keyboard.buttons.last
+                let newLastButtons: [Button] = (actualLastButtons ?? [])
+                    + [ try! .init(text: "Back", action: .callback, data: NavigationPayload.back) ]
+                
+                if actualLastButtons != nil {
+                    lastMessage.keyboard.buttons.indices.last.map { lastMessage.keyboard.buttons[$0] = newLastButtons }
+                } else {
+                    lastMessage.keyboard.buttons = [newLastButtons]
                 }
-                lastMessage.keyboard?.buttons = [lastButtons]
+                
             }
-            
-        }
 
-        self.nodePayload = payload
-        self.nodeId = node.id!
+            self.nodePayload = payload
+            self.nodeId = node.id!
 
-        return toModel.save(on: database).flatMap {
-            for message in node.messages ?? [] {
-                if let text = message.message {
-                    message.message = MessageFormatter.shared.format(text, user: self)
+            return self.toModel.save(on: database).flatMap {
+                for message in messages {
+                    if let text = message.text {
+                        message.text = MessageFormatter.shared.format(text, user: self)
+                    }
                 }
+                return try! replyable.replyNode(with: bot, user: self, node: node, app: app)!
             }
-            return try! replyable.replyNode(from: bot, node: node, app: app)!
         }
     }
     
-    func pop<T: Replyable>(to replyable: T, with bot: Bot, on database: Database, app: Application) throws -> Future<[Message]>? {
+    func pop<T: PlatformReplyable>(to replyable: T, with bot: Bot, on database: Database, app: Application) -> Future<[Message]>? {
+        var counter = 0
+        return pop(to: replyable, with: bot, on: database, app: app) { _ in
+            counter += 1
+            return counter == 1
+        }
+    }
+    
+    func pop<T: PlatformReplyable>(to replyable: T, with bot: Bot, on database: Database, app: Application, while whileCompletion: (HistoryEntry) -> Bool) -> Future<[Message]>? {
         guard let lastHistoryEntry = history.last else { return nil }
-        history.removeLast()
-        return try moveToNode(lastHistoryEntry.nodeId, payload: lastHistoryEntry.nodePayload, to: replyable, with: bot, on: database, app: app, saveMove: false)
+        for entry in history {
+            if whileCompletion(entry) {
+                history.removeLast()
+            } else {
+                break
+            }
+        }
+        return moveToNode(lastHistoryEntry.nodeId, payload: lastHistoryEntry.nodePayload, to: replyable, with: bot, on: database, app: app, saveMove: false)
     }
 }
 
