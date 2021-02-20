@@ -9,15 +9,11 @@ import Foundation
 import Fluent
 
 protocol TypedModel: Model {
-    associatedtype _ModelType: ModelType
+    associatedtype MyType: ModeledType
     
-    func toMyType() throws -> _ModelType
+    func toMyType() throws -> MyType
 }
 
-extension TypedModel where _ModelType._TypedModel == Self {
-    func toMyType() throws -> _ModelType { try .init(from: self) }
+extension TypedModel where MyType.Model == Self {
+    func toMyType() throws -> MyType { try .init(from: self) }
 }
-
-extension NodeModel: TypedModel { typealias _ModelType = Node }
-
-extension UserModel: TypedModel { typealias _ModelType = User }

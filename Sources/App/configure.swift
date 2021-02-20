@@ -9,7 +9,9 @@ import Botter
 
 extension Application {
     static var databaseURL: URL = URL(string: Environment.get("DATABASE_URL")!)!
-    static var tgToken = Environment.get("TELEGRAM_BOT_TOKEN")!
+    static var tgToken = Environment.get("TG_BOT_TOKEN")!
+    static var tgBufferUserId = Int64(Environment.get("TG_BUFFER_USER_ID")!)!
+    static var vkBufferUserId = Int64(Environment.get("VK_BUFFER_USER_ID")!)!
     static var vkToken = Environment.get("VK_GROUP_TOKEN")!
     static var vkGroupId: UInt64? = {
         if let groupIdStr = Environment.get("VK_GROUP_ID"),
@@ -41,6 +43,8 @@ private func configurePostgres(_ app: Application) throws {
 
     app.migrations.add(CreateNodes())
     app.migrations.add(CreateUsers())
+    app.migrations.add(CreateStylists())
+    app.migrations.add(CreatePlatformFiles())
     if app.environment == .development {
         try app.autoMigrate().wait()
     }
@@ -57,57 +61,114 @@ private func configurePostgres(_ app: Application) throws {
 //    }
     
     if try NodeModel.query(on: app.db).count().wait() == 0 {
-        let testNodeId = try Node(
-            name: "Test node",
+        
+        let welcomeNodeId = try mainGroup(app)
+
+        try Array(1...20).map {
+            try Stylist(
+                name: "Stylist \($0)"
+            ).toModel().saveWithId(on: app.db).wait()
+        }
+        
+        try PlatformFile(platform: [ .tg("fdfdf"), .vk("vcvcv") ]).toModel().saveWithId(on: app.db).wait()
+
+        let showcaseNodeId = try Node(
+            name: "Showcase node",
             messagesGroup: [
-                .init(text: "Test message here."),
-                .init(text: "And other message.")
+                .init(text: "Тут описание бота в деталях.", keyboard: [[
+                    .init(text: "Перейти в главное меню", action: .callback, data: NavigationPayload.toNode(welcomeNodeId))
+                ]])
             ]
-            //action: .init(.buildType, success: .moveToBuilder(of: .init(type: NodeBuildable.self), object: <#[String : AnyCodable]#>))
-        ).toModel!.saveWithId(on: app.db).wait()
-        
-        let createNodeId = try Node(
-            systemic: true,
-            name: "Create node",
-            messagesGroup: .builder,
-            action: .init(.createNode, success: .moveToBuilder(of: .node), failure: "Wrong text, please try again.")
-        ).toModel!.saveWithId(on: app.db).wait()
-        
-        let welcomeNodeId = try Node(
-            name: "Welcome node",
-            messagesGroup: [
-                .init(text: "Welcome to bot, $USER!", keyboard: .init([[
-                    .init(text: "To test node", action: .callback, data: NavigationPayload.toNode(testNodeId))
-                ]]))
-            ],
-            entryPoint: .welcome
-        ).toModel!.saveWithId(on: app.db).wait()
+        ).toModel().saveWithId(on: app.db).wait()
         
         try Node(
             name: "Welcome guest node",
             messagesGroup: [
-                .init(text: "Welcome to bot, newcomer! Please send your name.")
+                .init(text: "Привет, $USER! Похоже ты тут впервые) Хочешь узнать что делает этот бот?", keyboard: [[
+                    .init(text: "Да", action: .callback, data: NavigationPayload.toNode(showcaseNodeId)),
+                    .init(text: "Нет", action: .callback, data: NavigationPayload.toNode(welcomeNodeId))
+                ]])
             ],
-            entryPoint: .welcome_guest,
-            action: .init(.setName, success: .moveToNode(id: welcomeNodeId), failure: "Wrong name, please try again.")
-        ).toModel!.saveWithId(on: app.db).wait()
+            //action: .init(.setName, success: .moveToNode(id: showcaseNodeId), failure: "Wrong name, please try again.")
+            entryPoint: .welcome_guest
+        ).toModel().saveWithId(on: app.db).wait()
         
         try Node(
             systemic: true,
-            name: "Change node text",
-            messagesGroup: [ .init(text: "Send me new text") ],
-            action: .init(.messageEdit, success: .pop, failure: "Wrong text, please try again.")
-        ).toModel!.saveWithId(on: app.db).wait()
-
-        //try BuilderTypeKind.configureNodeIds(app: app).wait()
+            name: "Изменить текст сообщения",
+            messagesGroup: [ .init(text: "Пришли мне новый текст") ],
+            action: .init(.messageEdit, success: .pop)
+        ).toModel().saveWithId(on: app.db).wait()
         
     }
 }
 
-//@discardableResult
-//private func createNode(_ app: Application, _ nodeModel: NodeModel) throws -> UUID {
-//    try nodeModel.save(on: app.db).map { node.id! }.wait()
-//}
+func mainGroup(_ app: Application) throws -> UUID {
+    let uploadPhotoNodeId = try Node(
+        name: "Upload photo node",
+        messagesGroup: [
+            .init(text: "Пришли мне прямую ссылку.")
+        ],
+        action: .init(.uploadPhoto)
+    ).toModel().saveWithId(on: app.db).wait()
+    
+    let aboutNodeId = try Node(
+        name: "About node",
+        messagesGroup: [
+            .init(text: "Test message here."),
+            .init(text: "And other message.")
+        ]
+    ).toModel().saveWithId(on: app.db).wait()
+    
+    let portfolioNodeId = try Node(
+        name: "Portfolio node",
+        messagesGroup: [
+            .init(text: "Test message here.")
+        ]
+    ).toModel().saveWithId(on: app.db).wait()
+    
+    let orderMainNodeId = try ordersConstructorGroup(app)
+    
+//        try Node(
+//            systemic: true,
+//            name: "Create node",
+//            messagesGroup: .builder,
+//            action: .init(.createNode, success: .moveToBuilder(of: .node), failure: "Wrong text, please try again.")
+//        ).toModel().saveWithId(on: app.db).wait()
+    
+    return try Node(
+        name: "Welcome node",
+        messagesGroup: [
+            .init(text: "Добро пожаловать, $USER! Выбери секцию чтобы в нее перейти.", keyboard: [
+                [
+                    .init(text: "Обо мне", action: .callback, data: NavigationPayload.toNode(aboutNodeId)),
+                    .init(text: "Мои работы", action: .callback, data: NavigationPayload.toNode(portfolioNodeId)),
+                ],
+                [
+                    .init(text: "Создание заявки", action: .callback, data: NavigationPayload.toNode(orderMainNodeId)),
+                    .init(text: "Выгрузить фотку", action: .callback, data: NavigationPayload.toNode(uploadPhotoNodeId))
+                ]
+            ])
+        ],
+        entryPoint: .welcome
+    ).toModel().saveWithId(on: app.db).wait()
+}
+
+func ordersConstructorGroup(_ app: Application) throws -> UUID {
+    let stylistNode = try Node(
+        name: "Order stylist node",
+        messagesGroup: .list(.stylists)
+    ).toModel().saveWithId(on: app.db).wait()
+    
+    return try Node(
+        name: "Order main node",
+        messagesGroup: [
+            .init(text: "Конструктор заявки.", keyboard: [[
+                .init(text: "Стилист", action: .callback, data: NavigationPayload.toNode(stylistNode))
+            ]])
+        ]
+    ).toModel().saveWithId(on: app.db).wait()
+}
 
 func tgSettings(_ app: Application) -> Telegrammer.Bot.Settings {
     var tgSettings = Telegrammer.Bot.Settings(token: Application.tgToken, debugMode: !app.environment.isRelease)

@@ -30,20 +30,8 @@ class Node {
     var entryPoint: EntryPoint?
 
     var action: NodeAction?
-
-    var toModel: NodeModel? {
-        guard let name = name else { return nil }
-        let model = self.model ?? .init()
-        
-        model.systemic = systemic
-        model.name = name
-        model.messagesGroup = messagesGroup
-        model.entryPoint = entryPoint
-        model.action = action
-        return model
-    }
     
-    private let model: NodeModel?
+    private let model: Model?
 
     init(systemic: Bool = false, name: String? = nil, messagesGroup: SendMessageGroup = [], entryPoint: Node.EntryPoint? = nil, action: NodeAction? = nil) {
         self.model = nil
@@ -54,8 +42,10 @@ class Node {
         self.action = action
         self.name = name
     }
+    
+    // MARK: Modeled Type
 
-    required init(from model: NodeModel) throws { // model
+    required init(from model: Model) throws {
         self.model = model
         self.id = try model.requireID()
         systemic = model.systemic
@@ -65,22 +55,43 @@ class Node {
         self.name = model.name
     }
     
+}
+
+extension Node: ModeledType {
+    typealias Model = NodeModel
+    
     var isValid: Bool {
         _name.isValid
     }
     
+    func toModel() throws -> Model {
+        guard let name = name else {
+            throw ModeledTypeError.validationError(self)
+        }
+        let model = self.model ?? .init()
+        
+        model.systemic = systemic
+        model.name = name
+        model.messagesGroup = messagesGroup
+        model.entryPoint = entryPoint
+        model.action = action
+        return model
+    }
+}
+
+extension Node {
     public static func find(
         _ action: NodeAction.`Type`,
         on database: Database
     ) -> Future<Node> {
-        NodeModel.find(action, on: database).flatMapThrowing { try $0.toMyType() }
+        Model.find(action, on: database).flatMapThrowing { try $0.toMyType() }
     }
     
     public static func find(
         _ entryPoint: EntryPoint,
         on database: Database
     ) -> Future<Node> {
-        NodeModel.find(entryPoint, on: database).flatMapThrowing { try! $0.toMyType() }
+        Model.find(entryPoint, on: database).flatMapThrowing { try! $0.toMyType() }
     }
     
     func editableMessages(_ user: User) -> [SendMessage]? {
@@ -92,12 +103,12 @@ class Node {
                             text: "Edit text",
                             action: .callback,
                             eventPayload: .editText(messageId: index)
-                        ),
-                        try! Button(
-                            text: "Add node",
-                            action: .callback,
-                            eventPayload: .createNode(type: .node)
                         )
+//                        try! Button( TODO: node creation
+//                            text: "Add node",
+//                            action: .callback,
+//                            eventPayload: .createNode(type: .node)
+//                        )
                     ], at: 0)
                     messages[index] = params
                 }

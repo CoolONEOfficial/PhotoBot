@@ -51,6 +51,8 @@ extension NavigationPayload {
     enum CodingKeys: String, CodingKey {
         case back
         case toNode
+        case nextPage
+        case prevPage
     }
 
     internal init(from decoder: Decoder) throws {
@@ -61,9 +63,16 @@ extension NavigationPayload {
             return
         }
         if container.allKeys.contains(.toNode), try container.decodeNil(forKey: .toNode) == false {
-            var associatedValues = try container.nestedUnkeyedContainer(forKey: .toNode)
-            let associatedValue0 = try associatedValues.decode(UUID.self)
-            self = .toNode(associatedValue0)
+            let id = try container.decode(UUID.self, forKey: .toNode)
+            self = .toNode(id)
+            return
+        }
+        if container.allKeys.contains(.nextPage) {
+            self = .nextPage
+            return
+        }
+        if container.allKeys.contains(.prevPage) {
+            self = .previousPage
             return
         }
         throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown enum case"))
@@ -74,10 +83,13 @@ extension NavigationPayload {
 
         switch self {
         case .back:
-            _ = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .back)
-        case let .toNode(associatedValue0):
-            var associatedValues = container.nestedUnkeyedContainer(forKey: .toNode)
-            try associatedValues.encode(associatedValue0)
+            try container.encode(true, forKey: .back)
+        case let .toNode(id):
+            try container.encode(id, forKey: .toNode)
+        case .previousPage:
+            try container.encode(true, forKey: .prevPage)
+        case .nextPage:
+            try container.encode(true, forKey: .nextPage)
         }
     }
 

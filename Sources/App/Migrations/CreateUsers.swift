@@ -9,7 +9,7 @@ import Fluent
 
 struct CreateUsers: Migration {
     func prepare(on database: Database) -> EventLoopFuture<Void> {
-        return database.schema("users")
+        return database.schema(UserModel.schema)
             .id()
             .field("name", .string)
             .field("vk_id", .int64)
@@ -22,6 +22,6 @@ struct CreateUsers: Migration {
     }
 
     func revert(on database: Database) -> EventLoopFuture<Void> {
-        return database.schema("users").delete()
+        return database.schema(UserModel.schema).delete()
     }
 }

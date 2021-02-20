@@ -19,14 +19,24 @@ extension Decodable {
 }
 
 extension Dictionary where Value == AnyCodable {
-    var unwrapped: [Key: Any] {
-        mapValues { wrapped in
-            if let wrapped = wrapped.value as? Self {
-                return wrapped.unwrapped
-            } else {
+    private func mapFunc(_ wrapped: Value) -> Any {
+        switch wrapped.value {
+        case let wrapped as Self:
+            return wrapped.unwrapped
+
+        default:
+            switch wrapped.value {
+            case let arr as [AnyCodable]:
+                return arr.map(mapFunc)
+
+            default:
                 return wrapped.value
             }
         }
+    }
+    
+    var unwrapped: [Key: Any] {
+        mapValues(mapFunc)
     }
 }
 

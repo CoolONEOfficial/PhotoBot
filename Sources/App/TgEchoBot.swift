@@ -32,20 +32,22 @@ class TgEchoBot {
     }
 
     func echoResponse(_ update: Telegrammer.Update, _ context: Telegrammer.BotContext?) throws {
-        guard let message = update.message, let text = message.text else {
+        guard let message = update.message,
+              let photos = message.photo,
+              let biggestPhoto = photos.sorted(by: { $0.fileSize ?? 0 < $1.fileSize ?? 0 }).first else {
             return
         }
 
-        let params = Bot.SendMessageParams(
-            chatId: .chat(message.chat.id),
-            text: text,
-            replyMarkup: .inlineKeyboardMarkup(.init(inlineKeyboard: [ [ .init(text: "test", callbackData: "fix:dgdfgd") ] ]))
-        )
+//        let params = Bot.SendMessageParams(
+//            chatId: .chat(message.chat.id),
+//            text: "Thats photo",
+//            replyMarkup: .inlineKeyboardMarkup(.init(inlineKeyboard: [ [ .init(text: "test", callbackData: "fix:dgdfgd") ] ]))
+//        )
         
-        try bot.sendMessage(params: .init(chatId: .chat(message.chat.id), text: "Starting..."))
+        try bot.sendMessage(params: .init(chatId: .chat(message.chat.id), text: biggestPhoto.fileId))
         
         //if let data = try? Data(contentsOf: URL(string: "https://upload.wikimedia.org/wikipedia/commons/1/1e/Caerte_van_Oostlant_4MB.jpg")!) {
-            try bot.sendPhoto(params: .init(chatId: .chat(message.chat.id), photo: .url("https://upload.wikimedia.org/wikipedia/en/a/a9/Example.jpg"), caption: "123123"))
+        try bot.sendPhoto(params: .init(chatId: .chat(message.chat.id), photo: .fileId(biggestPhoto.fileId), caption: "Thats photo"))
         //}
         
         

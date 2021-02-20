@@ -47,36 +47,40 @@ final class UserModel: Model, Content {
         self.history = history
     }
     
-    convenience init<T: PlatformReplyable>(from replyable: T) throws {
-        switch replyable.platform {
+    convenience init(from user: Botter.User) throws {
+        let name = user.firstName
+        switch user.platform {
         case .tg:
-            try self.init(tgId: replyable.userId)
+            try self.init(tgId: user.id, name: name)
         case .vk:
-            try self.init(vkId: replyable.userId)
+            try self.init(vkId: user.id, name: name)
         }
     }
     
-    public static func findOrCreate<T: PlatformReplyable>(
-        _ replyable: T,
+    public static func findOrCreate<T: PlatformObject & Replyable & UserFetchable>(
+        from instance: T,
+        bot: Bot,
         on database: Database,
         app: Application
     ) -> Future<UserModel> {
-        find(replyable, on: database).flatMap { user in
+        find(instance, on: database).flatMap { user in
             if let user = user {
                 return app.eventLoopGroup.next().makeSucceededFuture(user)
             } else {
-                let userModel = try! UserModel(from: replyable)
-                return userModel.save(on: database).transform(to: userModel)
+                return try! bot.getUser(from: instance, app: app)!.flatMap { user -> Future<UserModel> in
+                    let userModel = try! UserModel(from: user)
+                    return userModel.save(on: database).transform(to: userModel)
+                }
             }
         }
     }
     
-    public static func find<T: PlatformReplyable>(
-        _ replyable: T,
+    public static func find<T: PlatformObject & Replyable>(
+        _ platformReplyable: T,
         on database: Database
     ) -> Future<UserModel?> {
-        let id = replyable.userId!
-        switch replyable.platform {
+        let id = platformReplyable.userId!
+        switch platformReplyable.platform {
         case .tg:
             return query(on: database)
                 .filter(\.$tgId == id)
@@ -88,3 +92,5 @@ final class UserModel: Model, Content {
         }
     }
 }
+
+extension UserModel: TypedModel { typealias MyType = User }

@@ -10,4 +10,6 @@ import Foundation
 enum NavigationPayload: AutoCodable {
     case back
     case toNode(UUID)
+    case previousPage
+    case nextPage
 }

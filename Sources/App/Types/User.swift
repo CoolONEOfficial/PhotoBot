@@ -29,21 +29,10 @@ class User {
 
     var tgId: Int64?
     
-    @Validated(.isLetters && .greater(1) && .less(25))
+    @Validated(.greater(1)) // .isLetters && 
     var name: String?
     
-    var toModel: UserModel {
-        let model = self.model ?? .init()
-        model.history = history
-        model.$node.id = nodeId
-        model.nodePayload = nodePayload
-        model.tgId = tgId
-        model.vkId = vkId
-        model.name = name
-        return model
-    }
-    
-    private let model: UserModel?
+    private let model: Model?
     
     init(history: [HistoryEntry] = [], nodeId: UUID? = nil, nodePayload: NodePayload, vkId: Int64? = nil, tgId: Int64? = nil, name: String? = nil) {
         self.model = nil
@@ -54,8 +43,10 @@ class User {
         self.tgId = tgId
         self.name = name
     }
+    
+    // MARK: - Modeled Type
 
-    required init(from model: UserModel) {
+    required init(from model: Model) {
         self.model = model
         history = model.history
         nodeId = model.$node.id
@@ -64,27 +55,55 @@ class User {
         tgId = model.tgId
         name = model.name
     }
+
+}
+
+extension User: ModeledType {
+    typealias Model = UserModel
     
     var isValid: Bool {
         _name.isValid
     }
     
-    public static func findOrCreate<T: PlatformReplyable>(
-        _ replyable: T,
+    func toModel() throws -> Model {
+        guard isValid else {
+            throw ModeledTypeError.validationError(self)
+        }
+        let model = self.model ?? .init()
+        model.history = history
+        model.$node.id = nodeId
+        model.nodePayload = nodePayload
+        model.tgId = tgId
+        model.vkId = vkId
+        model.name = name
+        return model
+    }
+}
+
+extension User {
+    public static func findOrCreate<T: PlatformObject & Replyable & UserFetchable>(
+        from: T,
         on database: Database,
+        bot: Bot,
         app: Application
     ) -> Future<User> {
-        UserModel.findOrCreate(replyable, on: database, app: app).map { try! $0.toMyType() }
+        Model.findOrCreate(from: from, bot: bot, on: database, app: app).map { try! $0.toMyType() }
     }
     
-    public static func find<T: PlatformReplyable>(
+    public static func find<T: PlatformObject & Replyable>(
         _ replyable: T,
         on database: Database
     ) -> Future<User?> {
-        UserModel.find(replyable, on: database).map { try! $0?.toMyType() }
+        Model.find(replyable, on: database).map { try! $0?.toMyType() }
     }
     
-    func moveToNode<T: PlatformReplyable>(
+    enum HistoryAction {
+        case save
+        case noSave
+        case replacing
+    }
+    
+    func moveToNode<T: PlatformObject & Replyable>(
         _ nodeId: UUID, payload: NodePayload? = nil,
         to replyable: T, with bot: Bot, on database: Database,
         app: Application, saveMove: Bool = true
@@ -94,7 +113,7 @@ class User {
         }
     }
     
-    func moveToNode<T: PlatformReplyable>(
+    func moveToNode<T: PlatformObject & Replyable>(
         _ node: Node, payload: NodePayload? = nil,
         to replyable: T, with bot: Bot, on database: Database,
         app: Application, saveMove: Bool = true
@@ -105,7 +124,7 @@ class User {
             history.append(.init(nodeId: oldNodeId, nodePayload: nodePayload))
         }
 
-        return node.messagesGroup.array(app: app, self, payload).flatMap { messages in
+        return node.messagesGroup.initializeArray(in: node, app: app, self, payload).throwingFlatMap { messages in
             
             if !self.history.isEmpty, let lastMessage = messages.last {
                 let actualLastButtons = lastMessage.keyboard.buttons.last
@@ -122,8 +141,8 @@ class User {
 
             self.nodePayload = payload
             self.nodeId = node.id!
-
-            return self.toModel.save(on: database).flatMap {
+            
+            return try self.toModel().save(on: database).flatMap { () -> Future<[Message]> in
                 for message in messages {
                     if let text = message.text {
                         message.text = MessageFormatter.shared.format(text, user: self)
@@ -134,7 +153,7 @@ class User {
         }
     }
     
-    func pop<T: PlatformReplyable>(to replyable: T, with bot: Bot, on database: Database, app: Application) -> Future<[Message]>? {
+    func pop<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, on database: Database, app: Application) -> Future<[Message]>? {
         var counter = 0
         return pop(to: replyable, with: bot, on: database, app: app) { _ in
             counter += 1
@@ -142,7 +161,7 @@ class User {
         }
     }
     
-    func pop<T: PlatformReplyable>(to replyable: T, with bot: Bot, on database: Database, app: Application, while whileCompletion: (HistoryEntry) -> Bool) -> Future<[Message]>? {
+    func pop<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, on database: Database, app: Application, while whileCompletion: (HistoryEntry) -> Bool) -> Future<[Message]>? {
         guard let lastHistoryEntry = history.last else { return nil }
         for entry in history {
             if whileCompletion(entry) {

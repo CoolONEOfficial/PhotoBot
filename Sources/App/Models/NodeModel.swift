@@ -58,3 +58,5 @@ final class NodeModel: Model, Content {
             .unwrap(or: PhotoBotError.node_by_entry_point_not_found)
     }
 }
+
+extension NodeModel: TypedModel { typealias MyType = Node }

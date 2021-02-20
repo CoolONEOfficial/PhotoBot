@@ -14,6 +14,7 @@ struct NodeAction: Codable {
         case setName
         case buildType
         case createNode
+        case uploadPhoto
     }
     
     let type: Type
@@ -25,11 +26,9 @@ struct NodeAction: Codable {
     }
     
     let action: Action?
-    let failureMessage: String?
     
-    init(_ type: Type, success action: Action? = nil, failure message: String? = nil) {
+    init(_ type: Type, success action: Action? = nil) {
         self.type = type
         self.action = action
-        self.failureMessage = message
     }
 }

@@ -12,6 +12,16 @@ import Fluent
 import Vkontakter
 import AnyCodable
 
+protocol ArrayProtocol {
+    static var elementType: Any.Type { get }
+    var elements: [Any] { get }
+}
+
+extension Array: ArrayProtocol {
+    static var elementType: Any.Type { Element.self }
+    var elements: [Any] { self }
+}
+
 protocol OptionalProtocol {
     var myWrappedType: Any.Type { get }
     var myWrapped: Any? { get }
@@ -27,14 +37,20 @@ extension Optional: OptionalProtocol {
     }
 }
 
-extension Array where Element == Buildable.DictEntry {
+extension Array where Element == DictEntry {
     var nextEntry: Element? {
         for entry in self {
             if Optional.isNil(entry.value) {
                return entry
-            } else if let childDict = entry.value as? [Buildable.DictEntry] {
+            } else if let childDict = entry.value as? [DictEntry] {
                 if let nextChildEntry = childDict.nextEntry {
                     return nextChildEntry
+                }
+            } else if let childArrDict = entry.value as? [[DictEntry]] {
+                for childDict in childArrDict {
+                    if let nextChildEntry = childDict.nextEntry {
+                        return nextChildEntry
+                    }
                 }
             }
         }
@@ -42,34 +58,72 @@ extension Array where Element == Buildable.DictEntry {
     }
 }
 
-extension Buildable {
-    typealias DictEntry = (key: String, value: Any)
+struct DictEntry {
+    let key: String
+    let value: Any
     
+    enum DictEntryType {
+        case array
+    }
+    
+    var type: DictEntryType?
+}
+
+extension Buildable {
+
     var dict: [DictEntry] {
         let dict: [DictEntry] = Mirror(reflecting: self).children.compactMap { child in
             if let label = child.label {
-                return (key: label, value: child.value)
+                return .init(key: label, value: child.value)
             }
             return nil
         }
         
-        return dict.reduce([]) { arr, entry in
+        let res: [DictEntry] = dict.reduce([]) { arr, entry in
             var arr = arr
 
-            if let child = entry.value as? OptionalProtocol,
-               let childType = child.myWrappedType as? Buildable.Type {
-                if let childWrappedInstance = child.myWrapped,
-                    let childInstance = childWrappedInstance as? Buildable {
-                    arr.append((key: entry.key, value: childInstance.dict))
-                } else {
-                    arr.append((key: entry.key, value: childType.init().dict))
+            switch entry.value {
+            case let child as OptionalProtocol:
+                
+                var shouldFallthrough: Bool = false
+                
+                switch child.myWrappedType {
+                case let childType as Buildable.Type:
+                    let val: Any
+                    if let childWrappedInstance = child.myWrapped,
+                        let childInstance = childWrappedInstance as? Buildable {
+                        val = childInstance.dict
+                    } else {
+                        val = childType.init().dict
+                    }
+                    arr.append(.init(key: entry.key, value: val))
+                    
+                case let childType as ArrayProtocol.Type where childType.elementType is Buildable.Type:
+                    let _entry: DictEntry
+                    if let childWrappedInstance = child.myWrapped,
+                       let childInstance = childWrappedInstance as? [Buildable] {
+                        _entry = .init(key: entry.key, value: childInstance.map(\.dict), type: .array)
+                    } else {
+                        _entry = .init(key: entry.key, value: (childType.elementType as! Buildable.Type).init().dict, type: .array)
+                    }
+                    arr.append(_entry)
+                    
+                default:
+                    shouldFallthrough = true
                 }
-            } else {
+                
+                if shouldFallthrough {
+                    fallthrough
+                }
+                
+            default:
                 arr.append(entry)
             }
             
             return arr
         }
+        
+        return res
     }
 }
 
@@ -109,65 +163,95 @@ class PhotoBot {
 //
 //    }
     
-    func handleError(err: Error) {
-        fatalError("Error: \(err.localizedDescription)")
+    func handleError<T: Botter.Replyable & PlatformObject>(_ platformReplyable: T, err: Error) {
+        try? platformReplyable.replyMessage(from: bot, params: .init(text: "Error: \(err)"), app: app)
+        #if DEBUG
+        fatalError("Error: \(err)")
+        #endif
     }
     
     func handleEvent(_ update: Botter.Update, _ context: Botter.BotContext?) throws {
         guard case let .event(event) = update.content else { return }
         
-        let userFuture = User.findOrCreate(event, on: app.db, app: app)
-        userFuture.whenFailure(handleError)
-        userFuture.whenSuccess { user in
-        
+        let userFuture = User.findOrCreate(from: event, on: app.db, bot: bot, app: app).throwingFlatMap { user -> Future<[Botter.Message]> in
+            
             let replyText: String
+            let nextFuture: Future<[Botter.Message]>?
             
             if let eventPayload: EventPayload = try? event.decodeData() {
                 switch eventPayload {
                 case let .editText(messageId):
-                    Node.find(.messageEdit, on: self.app.db).flatMap { node -> Future<[Botter.Message]> in
-                        try! user.moveToNode(node, payload: .editText(messageId: messageId), to: event, with: self.bot, on: self.app.db, app: self.app)
+                    nextFuture = Node.find(.messageEdit, on: self.app.db).throwingFlatMap { node in
+                        try user.moveToNode(node, payload: .editText(messageId: messageId), to: event, with: self.bot, on: self.app.db, app: self.app)
                     }
                     replyText = "Move"
                 case let .createNode(type):
-                    Node.find(.createNode, on: self.app.db).flatMap { node -> Future<[Botter.Message]> in
-                        try! user.moveToNode(node, payload: .build(type: type), to: event, with: self.bot, on: self.app.db, app: self.app)
+                    nextFuture = Node.find(.createNode, on: self.app.db).throwingFlatMap { node in
+                        try user.moveToNode(node, payload: .build(type: type), to: event, with: self.bot, on: self.app.db, app: self.app)
                     }
                     replyText = "Move"
                 }
             } else if let navPayload: NavigationPayload = try? event.decodeData() {
                 switch navPayload {
                 case .back:
-                    try! user.pop(to: event, with: self.bot, on: self.app.db, app: self.app)
+                    nextFuture = user.pop(to: event, with: self.bot, on: self.app.db, app: self.app)
                     replyText = "Pop"
+
                 case let .toNode(id):
-                    try! user.moveToNode(id, to: event, with: self.bot, on: self.app.db, app: self.app)
+                    nextFuture = user.moveToNode(id, to: event, with: self.bot, on: self.app.db, app: self.app)
                     replyText = "Move"
+
+                case .nextPage, .previousPage:
+                    var pageIndex: Int
+                    if case let .page(index) = user.nodePayload {
+                        pageIndex = index
+                    } else {
+                        pageIndex = 0
+                    }
+                    
+                    if case .nextPage = navPayload {
+                        replyText = "Next"
+                        pageIndex += 1
+                    } else {
+                        pageIndex -= 1
+                        replyText = "Prev"
+                    }
+
+                    nextFuture = user.moveToNode(user.nodeId!, payload: .page(at: pageIndex), to: event, with: self.bot, on: self.app.db, app: self.app, saveMove: false)
                 }
             } else {
+                nextFuture = nil
                 replyText = "Not handled"
             }
             
-            try! event.reply(from: self.bot, params: .init(type: .notification(text: replyText)), app: self.app)
+            var futureArr: [EventLoopFuture<[Botter.Message]>] = [
+                try event.reply(from: self.bot, params: .init(type: .notification(text: replyText)), app: self.app).map { _ in [] }
+            ]
+            
+            if let nextFuture = nextFuture {
+                futureArr.append(nextFuture)
+            }
+            
+            return futureArr.flatten(on: self.app.eventLoopGroup.next()).map { $0[1] }
         }
+        userFuture.whenFailure { [weak self] in self?.handleError(event, err: $0) }
     }
-    
-    static func dropSome(_ val: Any) -> Any? { Mirror(reflecting: val).descendant("Some") }
-    
+
     func handleText(_ update: Botter.Update, _ context: Botter.BotContext?) throws {
         guard case let .message(message) = update.content, let text = message.text else { return }
         
-        let userFuture = User.findOrCreate(message, on: app.db, app: app)
-        userFuture.whenFailure(handleError)
-        userFuture.whenSuccess { user in
-            if let nodeId = user.nodeId {
-                NodeModel.find(nodeId, on: self.app.db)
-                    .unwrap(or: PhotoBotError.node_by_id_not_found)
-                    .whenSuccess { node in
-                        if let action = node.action {
-                            self.handleAction(action, user, message, context)?.flatMap { result -> Future<[Botter.Message]?> in
-                                var future: Future<[Botter.Message]>?
-                                if result {
+        let userFuture = User.findOrCreate(from: message, on: app.db, bot: bot, app: app)
+            .throwingFlatMap { user -> Future<[Botter.Message]?> in
+                if let nodeId = user.nodeId {
+                    return NodeModel.find(nodeId, on: self.app.db)
+                        .unwrap(or: PhotoBotError.node_by_id_not_found)
+                        .throwingFlatMap { node -> Future<[Botter.Message]?> in
+                            let nextFuture: Future<[Botter.Message]?>?
+                            
+                            if let action = node.action {
+                                nextFuture = try self.handleAction(action, user, message, context).flatMap { result -> Future<[Botter.Message]?> in
+                                    var future: Future<[Botter.Message]>?
+                                
                                     guard let successNodeId = action.action else { return self.app.eventLoopGroup.future(nil) }
                                     switch successNodeId {
                                     case let .moveToNode(nodeId):
@@ -179,22 +263,22 @@ class PhotoBot {
                                     case .moveToBuilder(let builderType):
                                         future = self.moveToBuilder(builderType, user: user, nodeId: nodeId, message: message, text: text)
                                     }
-                                } else {
-                                    guard let failureMessage = action.failureMessage else { return self.app.eventLoopGroup.future(nil) }
-                                    future = try! message.reply(from: self.bot, params: .init(text: failureMessage), app: self.app)?.map { [$0] }
+                                    
+                                    return future?.map { Optional($0) } ?? (self.app.eventLoopGroup.future(nil))
                                 }
-                                return future?.map { Optional($0) } ?? self.app.eventLoopGroup.future(nil)
+                            } else {
+                                nextFuture = try message.reply(from: self.bot, params: .init(text: "В этом месте не принимается текст. Попробуй нажать на подходящую кнопку."), app: self.app).map { [$0] }
                             }
-                        } else {
-                            try! message.reply(from: self.bot, params: .init(text: "That node not handles text, use buttons please."), app: self.app)
+                            
+                            return nextFuture ?? self.app.eventLoopGroup.future(nil)
                         }
+                } else {
+                    return Node.find(.welcome_guest, on: self.app.db).throwingFlatMap { node in
+                        try user.moveToNode(node, to: message, with: self.bot, on: self.app.db, app: self.app).map { Optional($0) }
                     }
-            } else {
-                Node.find(.welcome_guest, on: self.app.db).flatMap { node in
-                    try! user.moveToNode(node, to: message, with: self.bot, on: self.app.db, app: self.app)
                 }
             }
-        }
+        userFuture.whenFailure { [weak self] in self?.handleError(message, err: $0) }
     }
     
     enum UpdateNextValueResult {
@@ -203,23 +287,31 @@ class PhotoBot {
         case notFound
     }
     
-    func updatingNextValue(_ dict: [Buildable.DictEntry], _ payloadObject: [String: AnyCodable], _ text: String) -> UpdateNextValueResult {
-        var payloadObject = payloadObject
-        for entry in dict {
-            if Optional.isNil(entry.value),
-               let fieldType = type(of: entry.value) as? BuildableField.Type {
-                if fieldType.check(text) {
-                    payloadObject[entry.key] = fieldType.value(text)
-                    return .success(payloadObject)
-                } else {
-                    return .checkFailed
+    func checkEntry(_ entry: DictEntry, _ payloadObject: [String: AnyCodable]?, _ text: String) -> UpdateNextValueResult {
+        var payloadObject = payloadObject ?? [:]
+        if Optional.isNil(entry.value),
+           let fieldType = type(of: entry.value) as? BuildableField.Type {
+            if fieldType.check(text) {
+                payloadObject[entry.key] = fieldType.value(text)
+                return .success(payloadObject)
+            } else {
+                return .checkFailed
+            }
+        } else if let childDict = entry.value as? [DictEntry] {
+            if entry.type == .array {
+                for entry in childDict {
+                    switch checkEntry(entry, payloadObject[entry.key]?.value as? [String: AnyCodable], text) {
+                    case let .success(obj):
+                        payloadObject[entry.key] = .init(obj)
+                        return .success(payloadObject)
+                    case .checkFailed:
+                        return .checkFailed
+                    case .notFound:
+                        break
+                    }
                 }
-            } else if let childDict = entry.value as? [Buildable.DictEntry] {
-                if payloadObject[entry.key] == nil {
-                    payloadObject[entry.key] = [:]
-                }
-                
-                switch updatingNextValue(childDict, payloadObject[entry.key]!.value as! [String: AnyCodable], text) {
+            } else {
+                switch updatingNextValue(childDict, payloadObject[entry.key]?.value as? [String: AnyCodable], text) {
                 case let .success(childPayloadObject):
                     payloadObject[entry.key] = .init(childPayloadObject)
                     return .success(payloadObject)
@@ -230,6 +322,16 @@ class PhotoBot {
                 case .notFound:
                     break
                 }
+            }
+        }
+        return .notFound
+    }
+    
+    func updatingNextValue(_ dict: [DictEntry], _ payloadObject: [String: AnyCodable]?, _ text: String) -> UpdateNextValueResult {
+        for entry in dict {
+            let res = checkEntry(entry, payloadObject, text)
+            guard case .notFound = res else {
+                return res
             }
         }
         return .notFound
@@ -249,17 +351,18 @@ class PhotoBot {
                 
             case .notFound:
                 let future: Future<Void>?
-                if let model = try? Node(from: NodeModel(from: NodeBuildable(from: payloadObject))).toModel {
+                if let model = try? Node(from: NodeModel(from: NodeBuildable(from: payloadObject))).toModel() {
                     future = model.save(on: self.app.db)
                 } else {
-                    future = try? message.reply(from: self.bot, params: .init(text: "Failed to crete model"), app: self.app)?.map { _ in () }
+                    future = try? message.reply(from: self.bot, params: .init(text: "Failed to crete model"), app: self.app).map { _ in () }
                 }
                 return future.flatMap { _ in user.pop(to: message, with: self.bot, on: self.app.db, app: self.app)
-                    { $0.nodeId != nodeId }! }
+                    { $0.nodeId != nodeId } }
                 
             case .checkFailed:
-                return try? message.reply(from: self.bot, params: .init(text: "Incorrect format, try again"), app: self.app)?.map { [$0] }
+                return try? message.reply(from: self.bot, params: .init(text: "Incorrect format, try again"), app: self.app).map { [$0] }
             }
+            
         } else {
             payloadObject = [:]
         }
@@ -267,47 +370,122 @@ class PhotoBot {
         return user.moveToNode(nodeId, payload: .build(type: builderType, object: payloadObject), to: message, with: self.bot, on: self.app.db, app: self.app)
     }
 
-    func handleAction(_ action: NodeAction, _ user: User, _ message: Botter.Message, _ context: Botter.BotContext?) -> Future<Bool>? {
+    enum HandleActionError: Error {
+        case textNotFound
+        case textIncorrect
+        case payloadInvalid
+        case noAttachments
+    }
+    
+    func handleAction(_ action: NodeAction, _ user: User, _ message: Botter.Message, _ context: Botter.BotContext?) throws -> Future<Void> {
         switch action.type {
         case .messageEdit:
-            guard let text = message.text else { return app.eventLoopGroup.future(false) }
-            return Node.find(user.history.last!.nodeId, on: app.db).flatMap { node in
-                if let nodePayload = user.nodePayload,
-                   case let .editText(messageId) = nodePayload {
-                    return node.messagesGroup.array(app: self.app, user, nodePayload).flatMap { messages in
+            guard let text = message.text else { throw HandleActionError.textNotFound }
+            return Node.find(user.history.last!.nodeId, on: app.db).throwingFlatMap { node in
+                
+                guard let nodePayload = user.nodePayload,
+                      case let .editText(messageId) = nodePayload else {
+                    throw HandleActionError.payloadInvalid
+                }
+
+                return node.messagesGroup.initializeArray(in: node, app: self.app, user, nodePayload).throwingFlatMap { messages in
                         node.messagesGroup.updateText(at: messageId, text: text)
                         
-                        if let nodeModel = node.toModel {
-                            return nodeModel.save(on: self.app.db).flatMap {
-                                user.pop(to: message, with: self.bot, on: self.app.db, app: self.app)!.map { _ in true }
-                            }
-                        } else {
-                            return self.app.eventLoopGroup.future(false)
+                        let nodeModel = try node.toModel()
+                        return nodeModel.save(on: self.app.db).flatMap {
+                            user.pop(to: message, with: self.bot, on: self.app.db, app: self.app)?.map { _ in () } ?? self.app.eventLoopGroup.future(())
                         }
                     }
-                } else {
-                    return self.app.eventLoopGroup.future(false)
-                }
             }
 
         case .setName:
             user.name = message.text
-            if user.isValid {
-                let userModel = user.toModel
-                return userModel.save(on: app.db).flatMap {
-                    try! message.reply(from: self.bot, params: .init(text: "Good, \(user.name!)"), app: self.app)!.map { _ in true }
-                }
-            } else {
-                return app.eventLoopGroup.future(false)
+            let userModel = try user.toModel()
+            return userModel.save(on: app.db).throwingFlatMap {
+                try message.reply(from: self.bot, params: .init(text: "Good, \(user.name!)"), app: self.app).map { _ in () }
             }
-
+            
         case .createNode:
-            return app.eventLoopGroup.future(true)
+            return app.eventLoopGroup.future(())
             
         case .buildType:
-            return app.eventLoopGroup.future(true)
+            return app.eventLoopGroup.future(())
+
+        case .uploadPhoto:
+            guard let text = message.text else { throw HandleActionError.textNotFound }
+            
+            var platforms: [Platform<AnyCodable, AnyCodable>] = []
+            
+            if bot.vk != nil {
+                platforms.append(.vk(.init()))
+            }
+            
+            if bot.tg != nil {
+                platforms.append(.tg(.init()))
+            }
+            
+            return try platforms.map { platform -> Future<PlatformFile.Entry> in
+                let (userId, chatId): (Int64?, Int64?)
+                switch platform {
+                case .tg:
+                    chatId = Application.tgBufferUserId
+                    userId = nil
+                case .vk:
+                    userId = Application.vkBufferUserId
+                    chatId = nil
+                }
+                return try self.bot.sendMessage(params: .init(
+                    chatId: chatId,
+                    userId: userId,
+                    text: "Загружаю вот эту фото",
+                    attachments: [
+                        .init(type: .photo, content: .url(text))
+                    ]
+                ), platform: platform, app: app).throwingFlatMap { res -> Future<PlatformFile.Entry> in
+                    guard let attachment = res.attachments.first else { throw HandleActionError.noAttachments }
+                    var text = ""
+                    switch platform {
+                    case .tg:
+                        text.append("tg id: ")
+                        
+                    case .vk:
+                        text.append("vk id: ")
+                    }
+                    text.append(attachment.attachmentId)
+                    return try message.reply(from: self.bot, params: .init(text: text), app: self.app)
+                        .map { _ in platform.to(attachment.attachmentId) }
+                }
+            }.flatten(on: app.eventLoopGroup.next()).throwingFlatMap { platformEntries in
+                try PlatformFile(platform: platformEntries).toModel().saveWithId(on: self.app.db).throwingFlatMap { savedId in
+                    try message.reply(from: self.bot, params: .init(text: "локальный id: \(savedId)"), app: self.app)
+                        .map { _ in () }
+                }
+            }
+            
+         
+            
+//            return try bot.sendMessage(params: .init(
+//                to: message,
+//                text: "Photo",
+//                attachments: [
+//                    .init(type: .photo, content: .url(text))
+//                ]
+//            ), platform: message.platform, app: app).throwingFlatMap { res in
+//                guard let attachment = res.attachments.first else { throw HandleActionError.noAttachments }
+//                let text: String
+//                switch attachment {
+//                case let .photo(photo):
+//                    text = photo.attachmentId
+//
+//                case let .document(doc):
+//                    text = doc.attachmentId
+//                }
+//                return try message.reply(from: self.bot, params: .init(text: text), app: self.app).map { _ in () }
+//            }
         }
     }
+    
+    
 }
 
 extension Botter.Button {

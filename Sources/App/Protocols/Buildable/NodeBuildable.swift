@@ -9,14 +9,22 @@ import Foundation
 
 extension NodeModel: BuildableModel {}
 extension SendMessage: BuildableModel {}
+extension SendMessageGroup: BuildableModel {}
 
 struct NodeBuildable: Buildable {
     var modelType: BuildableModel.Type { NodeModel.self }
 
     var name: String? = nil
     var systemic: Bool? = nil
-    var test: SendMessageBuildable? = nil
+    var test: [SendMessageBuildable]? = nil
 }
+
+//enum SendMessageGroupBuildable: Buildable {
+//    var modelType: BuildableModel.Type { SendMessageGroup.self }
+//
+//    case array(_ elements: [SendMessageBuildable])
+//    case builder
+//}
 
 struct SendMessageBuildable: Buildable {
     var modelType: BuildableModel.Type { SendMessage.self }

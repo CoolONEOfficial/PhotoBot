@@ -35,36 +35,48 @@ class VkEchoBot {
         guard case let .messageWrapper(wrapper) = update.object, let text = wrapper.message.text else {
             return
         }
-
-        let test =  Button(action: .link(.init(payload: .init("{}"), label: "Test", link: "https://google.com")))
         
-        let params = Vkontakter.Bot.SendMessageParams(
-            randomId: .random(),
-            peerId: wrapper.message.fromId!,
-            message: "Starting.."
-            //keyboard: .init(oneTime: false, buttons: [ [ test ] ], inline: true)
-        )
-
-//        let data: Data = try JSONEncoder().encode(params)
-//        let data2 = try JSONSerialization.jsonObject(with: data, options: .allowFragments)
-//        let data3 = try JSONSerialization.data(withJSONObject: data2, options: .prettyPrinted)
-//
-//        let testStr = String(data: data3, encoding: .utf8)
+        var message: String = "Starting.."
         
-        try bot.sendMessage(params: params)
-
-        let jpgLink = "https://upload.wikimedia.org/wikipedia/commons/1/1e/Caerte_van_Oostlant_4MB.jpg"
-        let txtLink = "https://www.w3.org/TR/PNG/iso_8859-1.txt"
-        
-        if let data = try? Data(contentsOf: URL(string: txtLink)!) {
-            try! bot.upload(.init(data: data, filename: "test_file.txt"), as: .doc(peerId: wrapper.message.fromId!), for: .message).whenSuccess { res in
-                guard let attachable = res.first?.attachable else { return }
-
-                let att: Attachments = .init([ .doc(.init(id: attachable.mediaId, ownerId: attachable.ownerId)) ])
-
-                try! self.bot.sendMessage(params: .init(userId: wrapper.message.fromId, randomId: .random(), attachment: att,
-                                                        keyboard: .init(oneTime: false, buttons: [ [ test ] ], inline: true)))
-            }
+        defer {
+            let params = Vkontakter.Bot.SendMessageParams(
+                randomId: .random(),
+                peerId: wrapper.message.fromId!,
+                message: message
+            )
+            
+            try! bot.sendMessage(params: params)
         }
+//        let jpgLink = "https://upload.wikimedia.org/wikipedia/ru/a/a9/Example.jpg"
+//        let txtLink = "https://www.w3.org/TR/PNG/iso_8859-1.txt"
+        
+        guard let url = URL(string: text) else {
+            message = "URL incorrect"
+            return
+        }
+        
+        guard let data = try? Data(contentsOf: url) else {
+            message = "Cannot get data"
+            return
+        }
+
+        func randomString(length: Int) -> String {
+          let letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+          return String((0..<length).map{ _ in letters.randomElement()! })
+        }
+        
+        try! bot.upload(.init(data: data, filename: "\(randomString(length: 10)).jpg"), as: .photo, for: .message).whenSuccess { res in
+            guard let attachable = res.first?.attachable else { return }
+
+            let att: ArrayByComma<Vkontakter.Attachment> = [ .photo(.init(id: attachable.mediaId, ownerId: attachable.ownerId)) ]
+
+            try! self.bot.sendMessage(params: .init(
+                userId: wrapper.message.fromId,
+                randomId: .random(),
+                message: String(attachable.mediaId!),
+                attachment: att
+            ))
+        }
+        
     }
 }
