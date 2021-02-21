@@ -16,8 +16,14 @@ final class PlatformFileModel: Model, Content {
     @ID(key: .id)
     var id: UUID?
 
-    @Field(key: "platform")
-    var platform: [PlatformFile.Entry]
+    @Siblings(through: StylistPhoto.self, from: \.$photo, to: \.$stylist)
+    var stylists: [StylistModel]
+    
+    @Field(key: "platform_entries")
+    var platformEntries: [PlatformFile.Entry]
+    
+    @Field(key: "type")
+    var type: FileInfoType
 }
 
 extension PlatformFileModel: TypedModel { typealias MyType = PlatformFile }

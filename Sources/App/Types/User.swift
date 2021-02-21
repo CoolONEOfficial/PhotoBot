@@ -29,7 +29,7 @@ class User {
 
     var tgId: Int64?
     
-    @Validated(.greater(1)) // .isLetters && 
+    @Validated(.greater(1)) // .isLetters &&
     var name: String?
     
     private let model: Model?
@@ -118,38 +118,18 @@ extension User {
         to replyable: T, with bot: Bot, on database: Database,
         app: Application, saveMove: Bool = true
     ) throws -> Future<[Message]> {
+        
         if node.entryPoint == .welcome {
             history.removeAll()
         } else if saveMove, let oldNodeId = self.nodeId {
             history.append(.init(nodeId: oldNodeId, nodePayload: nodePayload))
         }
 
-        return node.messagesGroup.initializeArray(in: node, app: app, self, payload).throwingFlatMap { messages in
-            
-            if !self.history.isEmpty, let lastMessage = messages.last {
-                let actualLastButtons = lastMessage.keyboard.buttons.last
-                let newLastButtons: [Button] = (actualLastButtons ?? [])
-                    + [ try! .init(text: "Back", action: .callback, data: NavigationPayload.back) ]
-                
-                if actualLastButtons != nil {
-                    lastMessage.keyboard.buttons.indices.last.map { lastMessage.keyboard.buttons[$0] = newLastButtons }
-                } else {
-                    lastMessage.keyboard.buttons = [newLastButtons]
-                }
-                
-            }
-
-            self.nodePayload = payload
-            self.nodeId = node.id!
-            
-            return try self.toModel().save(on: database).flatMap { () -> Future<[Message]> in
-                for message in messages {
-                    if let text = message.text {
-                        message.text = MessageFormatter.shared.format(text, user: self)
-                    }
-                }
-                return try! replyable.replyNode(with: bot, user: self, node: node, app: app)!
-            }
+        self.nodePayload = payload
+        self.nodeId = node.id!
+        
+        return try self.toModel().save(on: database).flatMap { () -> Future<[Message]> in
+            try! replyable.replyNode(with: bot, user: self, node: node, payload: payload, app: app)!
         }
     }
     

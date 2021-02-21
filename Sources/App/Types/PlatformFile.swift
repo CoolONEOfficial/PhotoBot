@@ -17,15 +17,18 @@ class PlatformFile {
     
     typealias Entry = Platform<String, String>
     
-    // TODO: @validated
-    var platform: [Entry]
+    @Validated(.contains(.tg, .vk))
+    var platformEntries: [Entry]?
+    
+    var type: FileInfoType
     
     private let model: Model?
 
-    init(platform: [Entry]) {
+    init(platform: [Entry], type: FileInfoType) {
         self.model = nil
         self.id = nil
-        self.platform = platform
+        self.type = type
+        self.platformEntries = platform
     }
     
     // MARK: Modeled Type
@@ -33,7 +36,8 @@ class PlatformFile {
     required init(from model: Model) throws {
         self.model = model
         self.id = try model.requireID()
-        self.platform = model.platform
+        self.type = model.type
+        self.platformEntries = model.platformEntries
     }
     
 }
@@ -42,16 +46,25 @@ extension PlatformFile: ModeledType {
     typealias Model = PlatformFileModel
     
     var isValid: Bool {
-        true
+        _platformEntries.isValid
     }
     
     func toModel() throws -> Model {
-//        guard let name = name else {
-//            throw ModeledTypeError.validationError(self)
-//        }
+        guard let platform = platformEntries else {
+            throw ModeledTypeError.validationError(self)
+        }
         let model = self.model ?? .init()
-        
-        model.platform = platform
+        model.type = type
+        model.platformEntries = platform
         return model
     }
+}
+
+extension PlatformFile {
+    
+    var fileInfo: FileInfo? {
+        guard let platformEntries = platformEntries else { return nil }
+        return .init(type: type, content: .fileId(.init(platformEntries)))
+    }
+    
 }

@@ -16,18 +16,23 @@ class Stylist {
     
     @Validated(.isLetters && .greater(1) && .less(25))
     var name: String?
+
+    @Validated(.nonEmpty)
+    var photos: [PlatformFile]?
     
     private let model: Model?
     
-    init(name: String? = nil) {
+    init(name: String? = nil, photos: [PlatformFile]) {
         self.model = nil
+        self.photos = photos
         self.name = name
     }
 
     // MARK: Modeled Type
     
-    required init(from model: Model) {
+    required init(from model: Model) throws {
         self.model = model
+        photos = try model.photos.map { try $0.toMyType() }
         name = model.name
     }
     
@@ -46,6 +51,6 @@ extension Stylist: ModeledType {
     }
     
     var isValid: Bool {
-        _name.isValid
+        _name.isValid && _photos.isValid
     }
 }

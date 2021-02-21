@@ -37,12 +37,34 @@ enum SendMessageGroup {
     case builder
     case list(_ content: MessageListType)
     
-    mutating func initializeArray(in parentNode: Node, app: Application, _ user: User, _ payload: NodePayload?) -> Future<[SendMessage]> {
-        
+//    struct MessagesInfo {
+//        var messages: [SendMessage] = []
+//        var isStatic: Bool
+//    }
+    
+    mutating func getSendMessages(in node: Node, app: Application, _ user: User, _ payload: NodePayload?) -> Future<[SendMessage]> {
         let result: Future<[SendMessage]>
         
         switch self {
-        case let .array(arr):
+        case var .array(arr):
+            
+            if !node.systemic, user.isValid {
+                for (index, params) in arr.enumerated() {
+                    params.keyboard.buttons.insert([
+                        try! Button(
+                            text: "Edit text",
+                            action: .callback,
+                            eventPayload: .editText(messageId: index)
+                        )
+//                        try! Button( TODO: node creation
+//                            text: "Add node",
+//                            action: .callback,
+//                            eventPayload: .createNode(type: .node)
+//                        )
+                    ], at: 0)
+                    arr[index] = params
+                }
+            }
             result = app.eventLoopGroup.future(arr)
 
         case let .list(type):
@@ -72,15 +94,17 @@ enum SendMessageGroup {
                         buttons.append(nextButton)
                     }
                     
-                    return StylistModel.query(on: app.db).range(startIndex ..< endIndex).all().map { stylists in
-                        stylists.enumerated().map { (index, stylist) in
-                            .init(
-                                text: stylist.name,
-                                keyboard: .init(arrayLiteral: index == messagesByPage - 1 ? buttons : [])
-                            )
-                        }
+                    return StylistModel.query(on: app.db).range(startIndex ..< endIndex).all().flatMap { stylists in
+                        stylists.enumerated().map { (index, stylist) -> Future<SendMessage> in
+                            stylist.$photos.get(on: app.db).flatMapThrowing { photos in
+                                SendMessage(
+                                    text: stylist.name,
+                                    keyboard: Keyboard(buttons: index == messagesByPage - 1 ? [buttons] : []),
+                                    attachments: try photos.compactMap { try $0.toMyType().fileInfo }
+                                )
+                            }
+                        }.flatten(on: app.eventLoopGroup.next())
                     }
-                    
                 }
             }
             
@@ -98,15 +122,37 @@ enum SendMessageGroup {
                 arr = [ .init(text: "Builded obj" + statusStr) ]
             }
             
-            
             result = app.eventLoopGroup.future(arr)
-        }
-        
-        result.whenSuccess {
-            parentNode.messagesGroup = .array($0)
         }
 
         return result
+            .map { Self.addNavigationButtons($0, user) }
+            .map { Self.formatMessages($0, user) }
+    }
+    
+    static private func addNavigationButtons(_ messages: [SendMessage], _ user: User) -> [SendMessage] {
+        if !user.history.isEmpty, let lastMessage = messages.last {
+            let actualLastButtons = lastMessage.keyboard.buttons.last ?? []
+            let newLastButtons: [Button] = actualLastButtons + [ try! .init(text: "Pop", action: .callback, data: NavigationPayload.back) ]
+            
+            lastMessage.keyboard.buttons.indices.last.map {
+                if newLastButtons.count < 2 {
+                    lastMessage.keyboard.buttons[$0] = newLastButtons
+                } else {
+                    lastMessage.keyboard.buttons.append([ newLastButtons.last! ])
+                }
+            }
+        }
+        return messages
+    }
+    
+    static private func formatMessages(_ messages: [SendMessage], _ user: User) -> [SendMessage] {
+        for message in messages {
+            if let text = message.text {
+                message.text = MessageFormatter.shared.format(text, user: user)
+            }
+        }
+        return messages
     }
     
     mutating func updateText(at index: Int, text: String) {

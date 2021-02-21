@@ -232,7 +232,7 @@ class PhotoBot {
                 futureArr.append(nextFuture)
             }
             
-            return futureArr.flatten(on: self.app.eventLoopGroup.next()).map { $0[1] }
+            return futureArr.flatten(on: self.app.eventLoopGroup.next()).map { $0.last ?? [] }
         }
         userFuture.whenFailure { [weak self] in self?.handleError(event, err: $0) }
     }
@@ -388,14 +388,10 @@ class PhotoBot {
                     throw HandleActionError.payloadInvalid
                 }
 
-                return node.messagesGroup.initializeArray(in: node, app: self.app, user, nodePayload).throwingFlatMap { messages in
-                        node.messagesGroup.updateText(at: messageId, text: text)
-                        
-                        let nodeModel = try node.toModel()
-                        return nodeModel.save(on: self.app.db).flatMap {
-                            user.pop(to: message, with: self.bot, on: self.app.db, app: self.app)?.map { _ in () } ?? self.app.eventLoopGroup.future(())
-                        }
-                    }
+                node.messagesGroup.updateText(at: messageId, text: text)
+                
+                let nodeModel = try node.toModel()
+                return nodeModel.save(on: self.app.db)
             }
 
         case .setName:
@@ -456,7 +452,7 @@ class PhotoBot {
                         .map { _ in platform.to(attachment.attachmentId) }
                 }
             }.flatten(on: app.eventLoopGroup.next()).throwingFlatMap { platformEntries in
-                try PlatformFile(platform: platformEntries).toModel().saveWithId(on: self.app.db).throwingFlatMap { savedId in
+                try PlatformFile(platform: platformEntries, type: .photo).toModel().saveWithId(on: self.app.db).throwingFlatMap { savedId in
                     try message.reply(from: self.bot, params: .init(text: "локальный id: \(savedId)"), app: self.app)
                         .map { _ in () }
                 }

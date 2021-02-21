@@ -45,6 +45,7 @@ private func configurePostgres(_ app: Application) throws {
     app.migrations.add(CreateUsers())
     app.migrations.add(CreateStylists())
     app.migrations.add(CreatePlatformFiles())
+    app.migrations.add(CreateStylistPhotos())
     if app.environment == .development {
         try app.autoMigrate().wait()
     }
@@ -60,17 +61,25 @@ private func configurePostgres(_ app: Application) throws {
 //        print("Ok, just start with previous db state")
 //    }
     
+    
+    
     if try NodeModel.query(on: app.db).count().wait() == 0 {
         
         let welcomeNodeId = try mainGroup(app)
 
-        try Array(1...20).map {
-            try Stylist(
-                name: "Stylist \($0)"
-            ).toModel().saveWithId(on: app.db).wait()
-        }
+        let test = try PlatformFile(platform: [
+            .tg("AgACAgQAAxkDAAIHjGAyWdeuTYimywkuaJsCk6cnPBw_AAKIqDEb84k9Ulm1-biSJET0czAfGwAEAQADAgADbQADE8MBAAEeBA"),
+            .vk("photo-119092254_457239065")
+        ], type: .photo).toModel()
+        try test.saveWithId(on: app.db).wait()
         
-        try PlatformFile(platform: [ .tg("fdfdf"), .vk("vcvcv") ]).toModel().saveWithId(on: app.db).wait()
+        try Array(1...20).map {
+            let stylistModel = try Stylist(
+                name: "Stylist \($0)", photos: [try test.toMyType()]
+            ).toModel()
+            try stylistModel.saveWithId(on: app.db).wait()
+            try stylistModel.$photos.attach(test, on: app.db).wait()
+        }
 
         let showcaseNodeId = try Node(
             name: "Showcase node",

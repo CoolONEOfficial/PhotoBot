@@ -7,6 +7,8 @@
 
 import Foundation
 import ValidatedPropertyKit
+import Botter
+import AnyCodable
 
 public extension Validation where Value == String {
     /// The Letters Validation
@@ -74,6 +76,38 @@ public extension Validation where Value: StringProtocol {
         }
     }
 }
+
+extension Validation where Value: Collection {
+    
+    /// The nonEmpty Validation
+    static var nonEmpty: Self {
+        .init { value in
+            if !value.isEmpty {
+                return .success
+            } else {
+                return .failure("\(value) is empty")
+            }
+        }
+    }
+
+}
+
+extension Validation where Value == [Platform<String, String>] {
+    static func contains(_ platforms: Platform<AnyCodable, AnyCodable>...) -> Validation {
+        return contains(platforms)
+    }
+
+    static func contains(_ platforms: [Platform<AnyCodable, AnyCodable>]) -> Validation {
+        return .init { value in
+            if value.map({ $0.to(AnyCodable()) }).contains(where: { platform in platforms.contains { $0 == platform } }) {
+                return .success
+            } else {
+                return .failure("\(value) is not contains all \(platforms)")
+            }
+        }
+    }
+}
+
 
 // MARK: - Result+Success
 

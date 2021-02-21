@@ -11,7 +11,8 @@ struct CreatePlatformFiles: Migration {
     func prepare(on database: Database) -> EventLoopFuture<Void> {
         return database.schema(PlatformFileModel.schema)
             .id()
-            .field("platform", .array(of: .json))
+            .field("platform_entries", .array(of: .json), .required)
+            .field("type", .string, .required)
             .create()
     }
 

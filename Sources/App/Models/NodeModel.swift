@@ -8,7 +8,6 @@
 import Fluent
 import Vapor
 import Botter
-import ValidatedPropertyKit
 
 final class NodeModel: Model, Content {
     static let schema = "nodes"

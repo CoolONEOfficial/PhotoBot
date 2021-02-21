@@ -94,27 +94,27 @@ extension Node {
         Model.find(entryPoint, on: database).flatMapThrowing { try! $0.toMyType() }
     }
     
-    func editableMessages(_ user: User) -> [SendMessage]? {
-        if case var .array(messages) = messagesGroup {
-            if !systemic, user.isValid {
-                for (index, params) in messages.enumerated() {
-                    params.keyboard.buttons.insert([
-                        try! Button(
-                            text: "Edit text",
-                            action: .callback,
-                            eventPayload: .editText(messageId: index)
-                        )
-//                        try! Button( TODO: node creation
-//                            text: "Add node",
-//                            action: .callback,
-//                            eventPayload: .createNode(type: .node)
-//                        )
-                    ], at: 0)
-                    messages[index] = params
-                }
-            }
-            return messages
-        }
-        return nil
-    }
+//    func editableMessages(_ user: User, canEditText: Bool) -> [SendMessage]? {
+//        if case var .array(messages) = messagesGroup {
+////            if !systemic, user.isValid {
+////                for (index, params) in messages.enumerated() {
+////                    params.keyboard.buttons.insert([
+////                        try! Button(
+////                            text: "Edit text",
+////                            action: .callback,
+////                            eventPayload: .editText(messageId: index)
+////                        )
+//////                        try! Button( TODO: node creation
+//////                            text: "Add node",
+//////                            action: .callback,
+//////                            eventPayload: .createNode(type: .node)
+//////                        )
+////                    ], at: 0)
+////                    messages[index] = params
+////                }
+////            }
+//            return messages
+//        }
+//        return nil
+//    }
 }

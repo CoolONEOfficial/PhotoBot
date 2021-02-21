@@ -20,13 +20,15 @@ final class StylistModel: Model, Content {
     @OptionalField(key: "name")
     var name: String?
 
-    //var avatar: BotterFile
+    @Siblings(through: StylistPhoto.self, from: \.$stylist, to: \.$photo)
+    var photos: [PlatformFileModel]
     
     init() { }
 
     init(id: UUID? = nil, name: String? = nil) throws {
         self.id = id
         self.name = name
+        //self.avatar = avatar
     }
 }
 
