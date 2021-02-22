@@ -24,7 +24,8 @@ class Node {
     
     enum EntryPoint: String, Codable {
         case welcome
-        case welcome_guest
+        case welcomeGuest
+        case orderContructor
     }
 
     var entryPoint: EntryPoint?
@@ -69,7 +70,7 @@ extension Node: ModeledType {
             throw ModeledTypeError.validationError(self)
         }
         let model = self.model ?? .init()
-        
+        model.id = id
         model.systemic = systemic
         model.name = name
         model.messagesGroup = messagesGroup

@@ -166,7 +166,7 @@ class PhotoBot {
     func handleError<T: Botter.Replyable & PlatformObject>(_ platformReplyable: T, err: Error) {
         try? platformReplyable.replyMessage(from: bot, params: .init(text: "Error: \(err)"), app: app)
         #if DEBUG
-        fatalError("Error: \(err)")
+        print("Error: \(err)")
         #endif
     }
     
@@ -185,20 +185,31 @@ class PhotoBot {
                         try user.moveToNode(node, payload: .editText(messageId: messageId), to: event, with: self.bot, on: self.app.db, app: self.app)
                     }
                     replyText = "Move"
+
                 case let .createNode(type):
                     nextFuture = Node.find(.createNode, on: self.app.db).throwingFlatMap { node in
                         try user.moveToNode(node, payload: .build(type: type), to: event, with: self.bot, on: self.app.db, app: self.app)
                     }
                     replyText = "Move"
-                }
-            } else if let navPayload: NavigationPayload = try? event.decodeData() {
-                switch navPayload {
+
+                case let .selectStylist(stylistId):
+                    nextFuture = Node.find(.orderContructor, on: self.app.db).throwingFlatMap { node in
+                        try user.moveToNode(node, payload: .orderConstructor(with: user.history.last?.nodePayload, stylistId: stylistId), to: event, with: self.bot, on: self.app.db, app: self.app, saveMove: false)
+                    }
+                    replyText = "Selected"
+                    
+                case let .selectMakeuper(makeuperId):
+                    nextFuture = Node.find(.orderContructor, on: self.app.db).throwingFlatMap { node in
+                        try user.moveToNode(node, payload: .orderConstructor(with: user.history.last?.nodePayload, makeuperId: makeuperId), to: event, with: self.bot, on: self.app.db, app: self.app, saveMove: false)
+                    }
+                    replyText = "Selected"
+
                 case .back:
                     nextFuture = user.pop(to: event, with: self.bot, on: self.app.db, app: self.app)
                     replyText = "Pop"
 
-                case let .toNode(id):
-                    nextFuture = user.moveToNode(id, to: event, with: self.bot, on: self.app.db, app: self.app)
+                case let .toNode(id, saveMoveToHistory):
+                    nextFuture = user.moveToNode(id, to: event, with: self.bot, on: self.app.db, app: self.app, saveMove: saveMoveToHistory)
                     replyText = "Move"
 
                 case .nextPage, .previousPage:
@@ -209,7 +220,7 @@ class PhotoBot {
                         pageIndex = 0
                     }
                     
-                    if case .nextPage = navPayload {
+                    if case .nextPage = eventPayload {
                         replyText = "Next"
                         pageIndex += 1
                     } else {
@@ -273,7 +284,7 @@ class PhotoBot {
                             return nextFuture ?? self.app.eventLoopGroup.future(nil)
                         }
                 } else {
-                    return Node.find(.welcome_guest, on: self.app.db).throwingFlatMap { node in
+                    return Node.find(.welcomeGuest, on: self.app.db).throwingFlatMap { node in
                         try user.moveToNode(node, to: message, with: self.bot, on: self.app.db, app: self.app).map { Optional($0) }
                     }
                 }
@@ -400,12 +411,6 @@ class PhotoBot {
             return userModel.save(on: app.db).throwingFlatMap {
                 try message.reply(from: self.bot, params: .init(text: "Good, \(user.name!)"), app: self.app).map { _ in () }
             }
-            
-        case .createNode:
-            return app.eventLoopGroup.future(())
-            
-        case .buildType:
-            return app.eventLoopGroup.future(())
 
         case .uploadPhoto:
             guard let text = message.text else { throw HandleActionError.textNotFound }
@@ -457,27 +462,9 @@ class PhotoBot {
                         .map { _ in () }
                 }
             }
-            
-         
-            
-//            return try bot.sendMessage(params: .init(
-//                to: message,
-//                text: "Photo",
-//                attachments: [
-//                    .init(type: .photo, content: .url(text))
-//                ]
-//            ), platform: message.platform, app: app).throwingFlatMap { res in
-//                guard let attachment = res.attachments.first else { throw HandleActionError.noAttachments }
-//                let text: String
-//                switch attachment {
-//                case let .photo(photo):
-//                    text = photo.attachmentId
-//
-//                case let .document(doc):
-//                    text = doc.attachmentId
-//                }
-//                return try message.reply(from: self.bot, params: .init(text: text), app: self.app).map { _ in () }
-//            }
+
+        case .buildType, .createNode:
+            return app.eventLoopGroup.future(())
         }
     }
     

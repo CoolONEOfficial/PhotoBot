@@ -18,6 +18,9 @@ final class PlatformFileModel: Model, Content {
 
     @Siblings(through: StylistPhoto.self, from: \.$photo, to: \.$stylist)
     var stylists: [StylistModel]
+
+    @Siblings(through: MakeuperPhoto.self, from: \.$photo, to: \.$makeuper)
+    var makeupers: [MakeuperModel]
     
     @Field(key: "platform_entries")
     var platformEntries: [PlatformFile.Entry]

@@ -2,7 +2,7 @@
 //  File.swift
 //  
 //
-//  Created by Nickolay Truhin on 14.02.2021.
+//  Created by Nickolay Truhin on 22.02.2021.
 //
 
 import Foundation
@@ -12,7 +12,9 @@ import Vapor
 import Fluent
 import AnyCodable
 
-class Stylist {
+class Human<Model: HumanModel> {
+
+    var id: UUID?
     
     @Validated(.isLetters && .greater(1) && .less(25))
     var name: String?
@@ -23,6 +25,7 @@ class Stylist {
     private let model: Model?
     
     init(name: String? = nil, photos: [PlatformFile]) {
+        self.id = nil
         self.model = nil
         self.photos = photos
         self.name = name
@@ -32,20 +35,20 @@ class Stylist {
     
     required init(from model: Model) throws {
         self.model = model
+        id = model.id
         photos = try model.photos.map { try $0.toMyType() }
         name = model.name
     }
     
 }
 
-extension Stylist: ModeledType {
-    typealias Model = StylistModel
-    
+extension Human: ModeledType {
     func toModel() throws -> Model {
         guard isValid else {
             throw ModeledTypeError.validationError(self)
         }
         let model = self.model ?? .init()
+        model.id = id
         model.name = name
         return model
     }

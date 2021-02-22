@@ -8,6 +8,7 @@
 import Foundation
 import Botter
 import Vapor
+import Fluent
 
 enum SendMessageGroupError: Error {
     case invalidPayload
@@ -30,6 +31,7 @@ extension Optional {
 enum MessageListType: String, Codable {
     case portfolio
     case stylists
+    case makeupers
 }
 
 enum SendMessageGroup {
@@ -84,26 +86,43 @@ enum SendMessageGroup {
             case .portfolio:
                 result = app.eventLoopGroup.future([])
                 
-            case .stylists:
-                result = StylistModel.query(on: app.db).count().flatMap { count in
-                    var buttons = [Button]()
-                    if startIndex > 0, let prevButton = try? Button(text: "Предыдущая стр", action: .callback, data: NavigationPayload.previousPage) {
-                        buttons.append(prevButton)
-                    }
-                    if endIndex < count, let nextButton = try? Button(text: "Следующая стр", action: .callback, data: NavigationPayload.nextPage) {
-                        buttons.append(nextButton)
-                    }
-                    
-                    return StylistModel.query(on: app.db).range(startIndex ..< endIndex).all().flatMap { stylists in
-                        stylists.enumerated().map { (index, stylist) -> Future<SendMessage> in
-                            stylist.$photos.get(on: app.db).flatMapThrowing { photos in
+            case .makeupers:
+                let model = MakeuperModel.self
+                result = model.query(on: app.db).count().flatMap { count in
+                    model.query(on: app.db).range(startIndex ..< endIndex).all().flatMap { humans in
+                        humans.enumerated().map { (index, human) -> Future<SendMessage> in
+                            human.$photos.get(on: app.db).flatMapThrowing { photos in
                                 SendMessage(
-                                    text: stylist.name,
-                                    keyboard: Keyboard(buttons: index == messagesByPage - 1 ? [buttons] : []),
+                                    text: human.name,
+                                    keyboard: [ [
+                                        try Button(text: "Выбрать", action: .callback, eventPayload: .selectMakeuper(id: try human.requireID()))
+                                    ] ],
                                     attachments: try photos.compactMap { try $0.toMyType().fileInfo }
                                 )
                             }
-                        }.flatten(on: app.eventLoopGroup.next())
+                        }
+                        .flatten(on: app.eventLoopGroup.next())
+                        .map { Self.addPageButtons($0, startIndex, endIndex, count) }
+                    }
+                }
+                
+            case .stylists:
+                let model = StylistModel.self
+                result = model.query(on: app.db).count().flatMap { count in
+                    model.query(on: app.db).range(startIndex ..< endIndex).all().flatMap { humans in
+                        humans.enumerated().map { (index, human) -> Future<SendMessage> in
+                            human.$photos.get(on: app.db).flatMapThrowing { photos in
+                                SendMessage(
+                                    text: human.name,
+                                    keyboard: [ [
+                                        try Button(text: "Выбрать", action: .callback, eventPayload: .selectStylist(id: try human.requireID()))
+                                    ] ],
+                                    attachments: try photos.compactMap { try $0.toMyType().fileInfo }
+                                )
+                            }
+                        }
+                        .flatten(on: app.eventLoopGroup.next())
+                        .map { Self.addPageButtons($0, startIndex, endIndex, count) }
                     }
                 }
             }
@@ -127,32 +146,40 @@ enum SendMessageGroup {
 
         return result
             .map { Self.addNavigationButtons($0, user) }
-            .map { Self.formatMessages($0, user) }
+            .flatMapEach(on: app.eventLoopGroup.next()) { Self.formatMessage($0, user, app: app) }
+    }
+    
+    static private func addPageButtons(_ messages: [SendMessage], _ startIndex: Int, _ endIndex: Int, _ count: Int) -> [SendMessage] {
+        if let lastMessage = messages.last {
+            var buttons = [Button]()
+            if startIndex > 0, let prevButton = try? Button(text: "Предыдущая стр", action: .callback, eventPayload: .previousPage) {
+                buttons.append(prevButton)
+            }
+            if endIndex < count, let nextButton = try? Button(text: "Следующая стр", action: .callback, eventPayload: .nextPage) {
+                buttons.append(nextButton)
+            }
+            
+            lastMessage.keyboard.buttons.append(buttons)
+        }
+        return messages
     }
     
     static private func addNavigationButtons(_ messages: [SendMessage], _ user: User) -> [SendMessage] {
         if !user.history.isEmpty, let lastMessage = messages.last {
-            let actualLastButtons = lastMessage.keyboard.buttons.last ?? []
-            let newLastButtons: [Button] = actualLastButtons + [ try! .init(text: "Pop", action: .callback, data: NavigationPayload.back) ]
-            
-            lastMessage.keyboard.buttons.indices.last.map {
-                if newLastButtons.count < 2 {
-                    lastMessage.keyboard.buttons[$0] = newLastButtons
-                } else {
-                    lastMessage.keyboard.buttons.append([ newLastButtons.last! ])
-                }
-            }
+            lastMessage.keyboard.buttons.safeAppend([ try! .init(text: "Pop", action: .callback, eventPayload: .back) ])
         }
         return messages
     }
     
-    static private func formatMessages(_ messages: [SendMessage], _ user: User) -> [SendMessage] {
-        for message in messages {
-            if let text = message.text {
-                message.text = MessageFormatter.shared.format(text, user: user)
+    static private func formatMessage(_ message: SendMessage, _ user: User, app: Application) -> Future<SendMessage> {
+        if let text = message.text {
+            return MessageFormatter.shared.format(text, user: user, app: app).map { text in
+                message.text = text
+                return message
             }
+        } else {
+            return app.eventLoopGroup.future(message)
         }
-        return messages
     }
     
     mutating func updateText(at index: Int, text: String) {

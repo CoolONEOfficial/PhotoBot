@@ -9,8 +9,15 @@ extension EventPayload {
     enum CodingKeys: String, CodingKey {
         case editText
         case createNode
+        case selectStylist = "selStylist"
+        case selectMakeuper = "selMakeuper"
+        case back
+        case toNode
+        case previousPage
+        case nextPage
         case messageId
         case type
+        case id
     }
 
     internal init(from decoder: Decoder) throws {
@@ -28,6 +35,37 @@ extension EventPayload {
             self = .createNode(type: type)
             return
         }
+        if container.allKeys.contains(.selectStylist), try container.decodeNil(forKey: .selectStylist) == false {
+            let associatedValues = try container.nestedContainer(keyedBy: CodingKeys.self, forKey: .selectStylist)
+            let id = try associatedValues.decode(UUID.self, forKey: .id)
+            self = .selectStylist(id: id)
+            return
+        }
+        if container.allKeys.contains(.selectMakeuper), try container.decodeNil(forKey: .selectMakeuper) == false {
+            let associatedValues = try container.nestedContainer(keyedBy: CodingKeys.self, forKey: .selectMakeuper)
+            let id = try associatedValues.decode(UUID.self, forKey: .id)
+            self = .selectMakeuper(id: id)
+            return
+        }
+        if container.allKeys.contains(.back), try container.decodeNil(forKey: .back) == false {
+            self = .back
+            return
+        }
+        if container.allKeys.contains(.toNode), try container.decodeNil(forKey: .toNode) == false {
+            var associatedValues = try container.nestedUnkeyedContainer(forKey: .toNode)
+            let associatedValue0 = try associatedValues.decode(UUID.self)
+            let associatedValue1 = try associatedValues.decode(Bool.self)
+            self = .toNode(associatedValue0, associatedValue1)
+            return
+        }
+        if container.allKeys.contains(.previousPage), try container.decodeNil(forKey: .previousPage) == false {
+            self = .previousPage
+            return
+        }
+        if container.allKeys.contains(.nextPage), try container.decodeNil(forKey: .nextPage) == false {
+            self = .nextPage
+            return
+        }
         throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown enum case"))
     }
 
@@ -41,55 +79,22 @@ extension EventPayload {
         case let .createNode(type):
             var associatedValues = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .createNode)
             try associatedValues.encode(type, forKey: .type)
-        }
-    }
-
-}
-
-extension NavigationPayload {
-
-    enum CodingKeys: String, CodingKey {
-        case back
-        case toNode
-        case nextPage
-        case prevPage
-    }
-
-    internal init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-
-        if container.allKeys.contains(.back), try container.decodeNil(forKey: .back) == false {
-            self = .back
-            return
-        }
-        if container.allKeys.contains(.toNode), try container.decodeNil(forKey: .toNode) == false {
-            let id = try container.decode(UUID.self, forKey: .toNode)
-            self = .toNode(id)
-            return
-        }
-        if container.allKeys.contains(.nextPage) {
-            self = .nextPage
-            return
-        }
-        if container.allKeys.contains(.prevPage) {
-            self = .previousPage
-            return
-        }
-        throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown enum case"))
-    }
-
-    internal func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-
-        switch self {
+        case let .selectStylist(id):
+            var associatedValues = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .selectStylist)
+            try associatedValues.encode(id, forKey: .id)
+        case let .selectMakeuper(id):
+            var associatedValues = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .selectMakeuper)
+            try associatedValues.encode(id, forKey: .id)
         case .back:
-            try container.encode(true, forKey: .back)
-        case let .toNode(id):
-            try container.encode(id, forKey: .toNode)
+            _ = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .back)
+        case let .toNode(associatedValue0, associatedValue1):
+            var associatedValues = container.nestedUnkeyedContainer(forKey: .toNode)
+            try associatedValues.encode(associatedValue0)
+            try associatedValues.encode(associatedValue1)
         case .previousPage:
-            try container.encode(true, forKey: .prevPage)
+            _ = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .previousPage)
         case .nextPage:
-            try container.encode(true, forKey: .nextPage)
+            _ = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .nextPage)
         }
     }
 

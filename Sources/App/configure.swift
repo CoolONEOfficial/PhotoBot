@@ -43,9 +43,11 @@ private func configurePostgres(_ app: Application) throws {
 
     app.migrations.add(CreateNodes())
     app.migrations.add(CreateUsers())
-    app.migrations.add(CreateStylists())
     app.migrations.add(CreatePlatformFiles())
+    app.migrations.add(CreateStylists())
     app.migrations.add(CreateStylistPhotos())
+    app.migrations.add(CreateMakeupers())
+    app.migrations.add(CreateMakeuperPhotos())
     if app.environment == .development {
         try app.autoMigrate().wait()
     }
@@ -80,12 +82,20 @@ private func configurePostgres(_ app: Application) throws {
             try stylistModel.saveWithId(on: app.db).wait()
             try stylistModel.$photos.attach(test, on: app.db).wait()
         }
+        
+        try Array(1...20).map {
+            let makeuperModel = try Makeuper(
+                name: "Makeuper \($0)", photos: [try test.toMyType()]
+            ).toModel()
+            try makeuperModel.saveWithId(on: app.db).wait()
+            try makeuperModel.$photos.attach(test, on: app.db).wait()
+        }
 
         let showcaseNodeId = try Node(
             name: "Showcase node",
             messagesGroup: [
                 .init(text: "Тут описание бота в деталях.", keyboard: [[
-                    .init(text: "Перейти в главное меню", action: .callback, data: NavigationPayload.toNode(welcomeNodeId))
+                    .init(text: "Перейти в главное меню", action: .callback, eventPayload: .toNode(welcomeNodeId))
                 ]])
             ]
         ).toModel().saveWithId(on: app.db).wait()
@@ -94,12 +104,12 @@ private func configurePostgres(_ app: Application) throws {
             name: "Welcome guest node",
             messagesGroup: [
                 .init(text: "Привет, $USER! Похоже ты тут впервые) Хочешь узнать что делает этот бот?", keyboard: [[
-                    .init(text: "Да", action: .callback, data: NavigationPayload.toNode(showcaseNodeId)),
-                    .init(text: "Нет", action: .callback, data: NavigationPayload.toNode(welcomeNodeId))
+                    .init(text: "Да", action: .callback, eventPayload: .toNode(showcaseNodeId)),
+                    .init(text: "Нет", action: .callback, eventPayload: .toNode(welcomeNodeId))
                 ]])
             ],
             //action: .init(.setName, success: .moveToNode(id: showcaseNodeId), failure: "Wrong name, please try again.")
-            entryPoint: .welcome_guest
+            entryPoint: .welcomeGuest
         ).toModel().saveWithId(on: app.db).wait()
         
         try Node(
@@ -136,7 +146,7 @@ func mainGroup(_ app: Application) throws -> UUID {
         ]
     ).toModel().saveWithId(on: app.db).wait()
     
-    let orderMainNodeId = try ordersConstructorGroup(app)
+    let orderMainNodeId = try orderConstructorGroup(app)
     
 //        try Node(
 //            systemic: true,
@@ -150,12 +160,12 @@ func mainGroup(_ app: Application) throws -> UUID {
         messagesGroup: [
             .init(text: "Добро пожаловать, $USER! Выбери секцию чтобы в нее перейти.", keyboard: [
                 [
-                    .init(text: "Обо мне", action: .callback, data: NavigationPayload.toNode(aboutNodeId)),
-                    .init(text: "Мои работы", action: .callback, data: NavigationPayload.toNode(portfolioNodeId)),
+                    .init(text: "Обо мне", action: .callback, eventPayload: .toNode(aboutNodeId)),
+                    .init(text: "Мои работы", action: .callback, eventPayload: .toNode(portfolioNodeId)),
                 ],
                 [
-                    .init(text: "Создание заявки", action: .callback, data: NavigationPayload.toNode(orderMainNodeId)),
-                    .init(text: "Выгрузить фотку", action: .callback, data: NavigationPayload.toNode(uploadPhotoNodeId))
+                    .init(text: "Создание заявки", action: .callback, eventPayload: .toNode(orderMainNodeId)),
+                    .init(text: "Выгрузить фотку", action: .callback, eventPayload: .toNode(uploadPhotoNodeId))
                 ]
             ])
         ],
@@ -163,19 +173,26 @@ func mainGroup(_ app: Application) throws -> UUID {
     ).toModel().saveWithId(on: app.db).wait()
 }
 
-func ordersConstructorGroup(_ app: Application) throws -> UUID {
-    let stylistNode = try Node(
-        name: "Order stylist node",
+func orderConstructorGroup(_ app: Application) throws -> UUID {
+    let stylistNodeId = try Node(
+        name: "Order constructor stylist node",
         messagesGroup: .list(.stylists)
     ).toModel().saveWithId(on: app.db).wait()
     
+    let makeuperNodeId = try Node(
+        name: "Order constructor makeuper node",
+        messagesGroup: .list(.makeupers)
+    ).toModel().saveWithId(on: app.db).wait()
+    
     return try Node(
-        name: "Order main node",
+        name: "Order constructor main node",
         messagesGroup: [
-            .init(text: "Конструктор заявки.", keyboard: [[
-                .init(text: "Стилист", action: .callback, data: NavigationPayload.toNode(stylistNode))
+            .init(text: "Ваш заказ:\nСтилист: $STYLIST\nВизажист: $MAKEUPER", keyboard: [[
+                .init(text: "Стилист", action: .callback, eventPayload: .toNode(stylistNodeId)),
+                .init(text: "Визажист", action: .callback, eventPayload: .toNode(makeuperNodeId))
             ]])
-        ]
+        ],
+        entryPoint: .orderContructor
     ).toModel().saveWithId(on: app.db).wait()
 }
 

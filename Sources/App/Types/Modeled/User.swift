@@ -14,6 +14,8 @@ import AnyCodable
 
 class User {
     
+    var id: UUID?
+    
     struct HistoryEntry: Codable {
         let nodeId: UUID
         let nodePayload: NodePayload?
@@ -35,7 +37,8 @@ class User {
     private let model: Model?
     
     init(history: [HistoryEntry] = [], nodeId: UUID? = nil, nodePayload: NodePayload, vkId: Int64? = nil, tgId: Int64? = nil, name: String? = nil) {
-        self.model = nil
+        id = nil
+        model = nil
         self.history = history
         self.nodeId = nodeId
         self.nodePayload = nodePayload
@@ -48,6 +51,7 @@ class User {
 
     required init(from model: Model) {
         self.model = model
+        id = model.id
         history = model.history
         nodeId = model.$node.id
         nodePayload = model.nodePayload
@@ -70,6 +74,7 @@ extension User: ModeledType {
             throw ModeledTypeError.validationError(self)
         }
         let model = self.model ?? .init()
+        model.id = id
         model.history = history
         model.$node.id = nodeId
         model.nodePayload = nodePayload
@@ -128,8 +133,9 @@ extension User {
         self.nodePayload = payload
         self.nodeId = node.id!
         
-        return try self.toModel().save(on: database).flatMap { () -> Future<[Message]> in
-            try! replyable.replyNode(with: bot, user: self, node: node, payload: payload, app: app)!
+        return try self.toModel().saveWithId(on: database).flatMap { (id) -> Future<[Message]> in
+            self.id = id
+            return try! replyable.replyNode(with: bot, user: self, node: node, payload: payload, app: app)!
         }
     }
     

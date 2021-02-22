@@ -2,7 +2,7 @@
 //  File.swift
 //  
 //
-//  Created by Nickolay Truhin on 14.02.2021.
+//  Created by Nickolay Truhin on 22.02.2021.
 //
 
 import Foundation
@@ -11,8 +11,8 @@ import Vapor
 import Botter
 import ValidatedPropertyKit
 
-final class StylistModel: Model, Content {
-    static let schema = "stylists"
+final class MakeuperModel: Model, Content {
+    static let schema = "makeupers"
     
     @ID(key: .id)
     var id: UUID?
@@ -20,7 +20,7 @@ final class StylistModel: Model, Content {
     @OptionalField(key: "name")
     var name: String?
 
-    @Siblings(through: StylistPhoto.self, from: \.$stylist, to: \.$photo)
+    @Siblings(through: MakeuperPhoto.self, from: \.$makeuper, to: \.$photo)
     var photos: [PlatformFileModel]
     
     init() { }
@@ -31,4 +31,4 @@ final class StylistModel: Model, Content {
     }
 }
 
-extension StylistModel: HumanModel { typealias MyType = Stylist }
+extension MakeuperModel: HumanModel { typealias MyType = Makeuper }
