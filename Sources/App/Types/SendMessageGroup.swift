@@ -38,13 +38,14 @@ enum SendMessageGroup {
     case array(_ elements: [SendMessage])
     case builder
     case list(_ content: MessageListType)
+    case orderBuilder(_ stylistNodeId: UUID, _ makeuperNodeId: UUID)
     
 //    struct MessagesInfo {
 //        var messages: [SendMessage] = []
 //        var isStatic: Bool
 //    }
     
-    mutating func getSendMessages(in node: Node, app: Application, _ user: User, _ payload: NodePayload?) -> Future<[SendMessage]> {
+    mutating func getSendMessages(in node: Node, app: Application, _ user: User, _ payload: NodePayload?) throws -> Future<[SendMessage]> {
         let result: Future<[SendMessage]>
         
         switch self {
@@ -142,6 +143,27 @@ enum SendMessageGroup {
             }
             
             result = app.eventLoopGroup.future(arr)
+
+        case let .orderBuilder(stylistNodeId, makeuperNodeId):
+            
+            var keyboard: Keyboard = [[
+                try .init(text: "Стилист", action: .callback, eventPayload: .toNode(stylistNodeId)),
+                try .init(text: "Визажист", action: .callback, eventPayload: .toNode(makeuperNodeId))
+            ]]
+            
+            if let payload = payload,
+               case let .orderBuilder(stylistId, makeuperId) = payload,
+               stylistId != nil,
+               makeuperId != nil {
+                keyboard.buttons.safeAppend([
+                    try .init(text: "Отправить", action: .callback, eventPayload: .createOrder)
+                ])
+            }
+            
+            
+            result = app.eventLoopGroup.future([
+                .init(text: "Ваш заказ:\nСтилист: $STYLIST\nВизажист: $MAKEUPER", keyboard: keyboard)
+            ])
         }
 
         return result
@@ -166,7 +188,7 @@ enum SendMessageGroup {
     
     static private func addNavigationButtons(_ messages: [SendMessage], _ user: User) -> [SendMessage] {
         if !user.history.isEmpty, let lastMessage = messages.last {
-            lastMessage.keyboard.buttons.safeAppend([ try! .init(text: "Pop", action: .callback, eventPayload: .back) ])
+            lastMessage.keyboard.buttons.safeAppend([ try! .init(text: "🔙 Назад", action: .callback, eventPayload: .back) ])
         }
         return messages
     }
@@ -231,6 +253,8 @@ extension SendMessageGroup: Codable {
         case builder
         case elements
         case listType
+        case orderBuilderStylistNodeId
+        case orderBuilderMakeuperNodeId
     }
 
     internal init(from decoder: Decoder) throws {
@@ -250,6 +274,13 @@ extension SendMessageGroup: Codable {
             self = .list(type)
             return
         }
+        if container.allKeys.contains(.orderBuilderStylistNodeId), try container.decodeNil(forKey: .orderBuilderStylistNodeId) == false,
+           container.allKeys.contains(.orderBuilderMakeuperNodeId), try container.decodeNil(forKey: .orderBuilderMakeuperNodeId) == false {
+            let stylistNodeId = try container.decode(UUID.self, forKey: .orderBuilderStylistNodeId)
+            let makeuperNodeId = try container.decode(UUID.self, forKey: .orderBuilderMakeuperNodeId)
+            self = .orderBuilder(stylistNodeId, makeuperNodeId)
+            return
+        }
         throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown enum case"))
     }
 
@@ -263,6 +294,9 @@ extension SendMessageGroup: Codable {
             try container.encode("builder", forKey: .builder)
         case let .list(type):
             try container.encode(type, forKey: .listType)
+        case let .orderBuilder(stylistNodeId, makeuperNodeId):
+            try container.encode(stylistNodeId, forKey: .orderBuilderStylistNodeId)
+            try container.encode(makeuperNodeId, forKey: .orderBuilderMakeuperNodeId)
         }
     }
 

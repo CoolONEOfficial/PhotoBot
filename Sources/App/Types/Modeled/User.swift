@@ -110,17 +110,17 @@ extension User {
     
     func moveToNode<T: PlatformObject & Replyable>(
         _ nodeId: UUID, payload: NodePayload? = nil,
-        to replyable: T, with bot: Bot, on database: Database,
+        to replyable: T, with bot: Bot,
         app: Application, saveMove: Bool = true
     ) -> Future<[Message]> {
-        Node.find(nodeId, on: database).flatMap { node in
-            try! self.moveToNode(node, payload: payload, to: replyable, with: bot, on: database, app: app, saveMove: saveMove)
+        Node.find(nodeId, on: app.db).flatMap { node in
+            try! self.moveToNode(node, payload: payload, to: replyable, with: bot, app: app, saveMove: saveMove)
         }
     }
     
     func moveToNode<T: PlatformObject & Replyable>(
         _ node: Node, payload: NodePayload? = nil,
-        to replyable: T, with bot: Bot, on database: Database,
+        to replyable: T, with bot: Bot,
         app: Application, saveMove: Bool = true
     ) throws -> Future<[Message]> {
         
@@ -133,21 +133,21 @@ extension User {
         self.nodePayload = payload
         self.nodeId = node.id!
         
-        return try self.toModel().saveWithId(on: database).flatMap { (id) -> Future<[Message]> in
+        return try self.toModel().saveWithId(on: app.db).flatMap { (id) -> Future<[Message]> in
             self.id = id
             return try! replyable.replyNode(with: bot, user: self, node: node, payload: payload, app: app)!
         }
     }
     
-    func pop<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, on database: Database, app: Application) -> Future<[Message]>? {
+    func pop<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, app: Application) -> Future<[Message]>? {
         var counter = 0
-        return pop(to: replyable, with: bot, on: database, app: app) { _ in
+        return pop(to: replyable, with: bot, app: app) { _ in
             counter += 1
             return counter == 1
         }
     }
     
-    func pop<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, on database: Database, app: Application, while whileCompletion: (HistoryEntry) -> Bool) -> Future<[Message]>? {
+    func pop<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, app: Application, while whileCompletion: (HistoryEntry) -> Bool) -> Future<[Message]>? {
         guard let lastHistoryEntry = history.last else { return nil }
         for entry in history {
             if whileCompletion(entry) {
@@ -156,7 +156,7 @@ extension User {
                 break
             }
         }
-        return moveToNode(lastHistoryEntry.nodeId, payload: lastHistoryEntry.nodePayload, to: replyable, with: bot, on: database, app: app, saveMove: false)
+        return moveToNode(lastHistoryEntry.nodeId, payload: lastHistoryEntry.nodePayload, to: replyable, with: bot, app: app, saveMove: false)
     }
 }
 

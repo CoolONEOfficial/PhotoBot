@@ -25,7 +25,7 @@ class Node {
     enum EntryPoint: String, Codable {
         case welcome
         case welcomeGuest
-        case orderContructor
+        case orderBuilder
     }
 
     var entryPoint: EntryPoint?
@@ -82,14 +82,14 @@ extension Node: ModeledType {
 
 extension Node {
     public static func find(
-        _ action: NodeAction.`Type`,
+        actionType: NodeAction.`Type`,
         on database: Database
     ) -> Future<Node> {
-        Model.find(action, on: database).flatMapThrowing { try $0.toMyType() }
+        Model.find(actionType, on: database).flatMapThrowing { try $0.toMyType() }
     }
     
     public static func find(
-        _ entryPoint: EntryPoint,
+        entryPoint: EntryPoint,
         on database: Database
     ) -> Future<Node> {
         Model.find(entryPoint, on: database).flatMapThrowing { try! $0.toMyType() }

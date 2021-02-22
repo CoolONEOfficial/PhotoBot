@@ -146,7 +146,7 @@ func mainGroup(_ app: Application) throws -> UUID {
         ]
     ).toModel().saveWithId(on: app.db).wait()
     
-    let orderMainNodeId = try orderConstructorGroup(app)
+    let orderMainNodeId = try orderBuilderGroup(app)
     
 //        try Node(
 //            systemic: true,
@@ -173,26 +173,21 @@ func mainGroup(_ app: Application) throws -> UUID {
     ).toModel().saveWithId(on: app.db).wait()
 }
 
-func orderConstructorGroup(_ app: Application) throws -> UUID {
+func orderBuilderGroup(_ app: Application) throws -> UUID {
     let stylistNodeId = try Node(
-        name: "Order constructor stylist node",
+        name: "Order builder stylist node",
         messagesGroup: .list(.stylists)
     ).toModel().saveWithId(on: app.db).wait()
     
     let makeuperNodeId = try Node(
-        name: "Order constructor makeuper node",
+        name: "Order builder makeuper node",
         messagesGroup: .list(.makeupers)
     ).toModel().saveWithId(on: app.db).wait()
     
     return try Node(
-        name: "Order constructor main node",
-        messagesGroup: [
-            .init(text: "Ваш заказ:\nСтилист: $STYLIST\nВизажист: $MAKEUPER", keyboard: [[
-                .init(text: "Стилист", action: .callback, eventPayload: .toNode(stylistNodeId)),
-                .init(text: "Визажист", action: .callback, eventPayload: .toNode(makeuperNodeId))
-            ]])
-        ],
-        entryPoint: .orderContructor
+        name: "Order builder main node",
+        messagesGroup: .orderBuilder(stylistNodeId, makeuperNodeId),
+        entryPoint: .orderBuilder
     ).toModel().saveWithId(on: app.db).wait()
 }
 

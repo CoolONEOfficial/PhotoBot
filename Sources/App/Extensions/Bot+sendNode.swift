@@ -10,7 +10,7 @@ import Vapor
 
 extension Bot {
     func sendNode<R: Replyable, Tg, Vk>(to replyable: R, user: User, node: Node, payload: NodePayload?, platform: Platform<Tg, Vk>, app: Application) throws -> Future<[Botter.Message]> {
-        node.messagesGroup.getSendMessages(in: node, app: app, user, payload).throwingFlatMap { messages in
+        try node.messagesGroup.getSendMessages(in: node, app: app, user, payload).throwingFlatMap { messages in
             var future: Future<[Botter.Message]> = app.eventLoopGroup.future([])
             
             for params in messages {

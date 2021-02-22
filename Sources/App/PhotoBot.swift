@@ -181,36 +181,40 @@ class PhotoBot {
             if let eventPayload: EventPayload = try? event.decodeData() {
                 switch eventPayload {
                 case let .editText(messageId):
-                    nextFuture = Node.find(.messageEdit, on: self.app.db).throwingFlatMap { node in
-                        try user.moveToNode(node, payload: .editText(messageId: messageId), to: event, with: self.bot, on: self.app.db, app: self.app)
+                    nextFuture = Node.find(actionType: .messageEdit, on: self.app.db).throwingFlatMap { node in
+                        try user.moveToNode(node, payload: .editText(messageId: messageId), to: event, with: self.bot, app: self.app)
                     }
                     replyText = "Move"
 
                 case let .createNode(type):
-                    nextFuture = Node.find(.createNode, on: self.app.db).throwingFlatMap { node in
-                        try user.moveToNode(node, payload: .build(type: type), to: event, with: self.bot, on: self.app.db, app: self.app)
+                    nextFuture = Node.find(actionType: .createNode, on: self.app.db).throwingFlatMap { node in
+                        try user.moveToNode(node, payload: .build(type: type), to: event, with: self.bot, app: self.app)
                     }
                     replyText = "Move"
 
                 case let .selectStylist(stylistId):
-                    nextFuture = Node.find(.orderContructor, on: self.app.db).throwingFlatMap { node in
-                        try user.moveToNode(node, payload: .orderConstructor(with: user.history.last?.nodePayload, stylistId: stylistId), to: event, with: self.bot, on: self.app.db, app: self.app, saveMove: false)
+                    nextFuture = Node.find(entryPoint: .orderBuilder, on: self.app.db).throwingFlatMap { node in
+                        try user.moveToNode(node, payload: .orderBuilder(with: user.history.last?.nodePayload, stylistId: stylistId), to: event, with: self.bot, app: self.app, saveMove: false)
                     }
                     replyText = "Selected"
                     
                 case let .selectMakeuper(makeuperId):
-                    nextFuture = Node.find(.orderContructor, on: self.app.db).throwingFlatMap { node in
-                        try user.moveToNode(node, payload: .orderConstructor(with: user.history.last?.nodePayload, makeuperId: makeuperId), to: event, with: self.bot, on: self.app.db, app: self.app, saveMove: false)
+                    nextFuture = Node.find(entryPoint: .orderBuilder, on: self.app.db).throwingFlatMap { node in
+                        try user.moveToNode(node, payload: .orderBuilder(with: user.history.last?.nodePayload, makeuperId: makeuperId), to: event, with: self.bot, app: self.app, saveMove: false)
                     }
                     replyText = "Selected"
 
                 case .back:
-                    nextFuture = user.pop(to: event, with: self.bot, on: self.app.db, app: self.app)
+                    nextFuture = user.pop(to: event, with: self.bot, app: self.app)
                     replyText = "Pop"
 
                 case let .toNode(id, saveMoveToHistory):
-                    nextFuture = user.moveToNode(id, to: event, with: self.bot, on: self.app.db, app: self.app, saveMove: saveMoveToHistory)
+                    nextFuture = user.moveToNode(id, to: event, with: self.bot, app: self.app, saveMove: saveMoveToHistory)
                     replyText = "Move"
+                
+                case .createOrder:
+                    nextFuture = user.pop(to: event, with: self.bot, app: self.app) { _ in true }
+                    replyText = "Created"
 
                 case .nextPage, .previousPage:
                     var pageIndex: Int
@@ -221,14 +225,14 @@ class PhotoBot {
                     }
                     
                     if case .nextPage = eventPayload {
-                        replyText = "Next"
+                        replyText = "👉 Следующая"
                         pageIndex += 1
                     } else {
                         pageIndex -= 1
-                        replyText = "Prev"
+                        replyText = "👈 Предыдущая"
                     }
 
-                    nextFuture = user.moveToNode(user.nodeId!, payload: .page(at: pageIndex), to: event, with: self.bot, on: self.app.db, app: self.app, saveMove: false)
+                    nextFuture = user.moveToNode(user.nodeId!, payload: .page(at: pageIndex), to: event, with: self.bot, app: self.app, saveMove: false)
                 }
             } else {
                 nextFuture = nil
@@ -266,10 +270,10 @@ class PhotoBot {
                                     guard let successNodeId = action.action else { return self.app.eventLoopGroup.future(nil) }
                                     switch successNodeId {
                                     case let .moveToNode(nodeId):
-                                        future = user.moveToNode(nodeId, to: message, with: self.bot, on: self.app.db, app: self.app)
+                                        future = user.moveToNode(nodeId, to: message, with: self.bot, app: self.app)
                                         
                                     case .pop:
-                                        future = user.pop(to: message, with: self.bot, on: self.app.db, app: self.app)
+                                        future = user.pop(to: message, with: self.bot, app: self.app)
 
                                     case .moveToBuilder(let builderType):
                                         future = self.moveToBuilder(builderType, user: user, nodeId: nodeId, message: message, text: text)
@@ -284,8 +288,8 @@ class PhotoBot {
                             return nextFuture ?? self.app.eventLoopGroup.future(nil)
                         }
                 } else {
-                    return Node.find(.welcomeGuest, on: self.app.db).throwingFlatMap { node in
-                        try user.moveToNode(node, to: message, with: self.bot, on: self.app.db, app: self.app).map { Optional($0) }
+                    return Node.find(entryPoint: .welcomeGuest, on: self.app.db).throwingFlatMap { node in
+                        try user.moveToNode(node, to: message, with: self.bot, app: self.app).map { Optional($0) }
                     }
                 }
             }
@@ -367,7 +371,7 @@ class PhotoBot {
                 } else {
                     future = try? message.reply(from: self.bot, params: .init(text: "Failed to crete model"), app: self.app).map { _ in () }
                 }
-                return future.flatMap { _ in user.pop(to: message, with: self.bot, on: self.app.db, app: self.app)
+                return future.flatMap { _ in user.pop(to: message, with: self.bot, app: self.app)
                     { $0.nodeId != nodeId } }
                 
             case .checkFailed:
@@ -378,7 +382,7 @@ class PhotoBot {
             payloadObject = [:]
         }
         
-        return user.moveToNode(nodeId, payload: .build(type: builderType, object: payloadObject), to: message, with: self.bot, on: self.app.db, app: self.app)
+        return user.moveToNode(nodeId, payload: .build(type: builderType, object: payloadObject), to: message, with: self.bot, app: self.app)
     }
 
     enum HandleActionError: Error {

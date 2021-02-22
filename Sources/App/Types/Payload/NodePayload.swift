@@ -12,18 +12,18 @@ enum NodePayload: Codable {
     case editText(messageId: Int)
     case build(type: BuildableType, object: [String: AnyCodable] = [:])
     case page(at: Int)
-    case orderConstructor(stylistId: UUID?, makeuperId: UUID?)
+    case orderBuilder(stylistId: UUID?, makeuperId: UUID?)
 }
 
 extension NodePayload {
-    static func orderConstructor(with oldPayload: NodePayload?, stylistId: UUID? = nil, makeuperId: UUID? = nil) -> Self {
-        if case let .orderConstructor(_stylistId, _makeuperId) = oldPayload {
-            return .orderConstructor(
+    static func orderBuilder(with oldPayload: NodePayload?, stylistId: UUID? = nil, makeuperId: UUID? = nil) -> Self {
+        if case let .orderBuilder(_stylistId, _makeuperId) = oldPayload {
+            return .orderBuilder(
                 stylistId: stylistId ?? _stylistId,
                 makeuperId: makeuperId ?? _makeuperId
             )
         }
-        return .orderConstructor(stylistId: stylistId, makeuperId: makeuperId)
+        return .orderBuilder(stylistId: stylistId, makeuperId: makeuperId)
     }
 }
 
@@ -34,8 +34,8 @@ extension NodePayload {
         case createBuildableType
         case createBuildableObject
         case pageAt
-        case orderConstructorStylistId
-        case orderConstructorMakeuperId
+        case orderBuilderStylistId
+        case orderBuilderMakeuperId
     }
 
     internal init(from decoder: Decoder) throws {
@@ -57,10 +57,10 @@ extension NodePayload {
             self = .page(at: num)
             return
         }
-        if container.allKeys.contains(.orderConstructorStylistId) || container.allKeys.contains(.orderConstructorMakeuperId) {
-            let stylistId = try? container.decode(UUID.self, forKey: .orderConstructorStylistId)
-            let makeuperId = try? container.decode(UUID.self, forKey: .orderConstructorMakeuperId)
-            self = .orderConstructor(stylistId: stylistId, makeuperId: makeuperId)
+        if container.allKeys.contains(.orderBuilderStylistId) || container.allKeys.contains(.orderBuilderMakeuperId) {
+            let stylistId = try? container.decode(UUID.self, forKey: .orderBuilderStylistId)
+            let makeuperId = try? container.decode(UUID.self, forKey: .orderBuilderMakeuperId)
+            self = .orderBuilder(stylistId: stylistId, makeuperId: makeuperId)
             return
         }
         throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown enum case"))
@@ -80,9 +80,9 @@ extension NodePayload {
         case let .page(num):
             try container.encode(num, forKey: .pageAt)
 
-        case let .orderConstructor(stylistId, makeuperId):
-            try container.encode(stylistId, forKey: .orderConstructorStylistId)
-            try container.encode(makeuperId, forKey: .orderConstructorMakeuperId)
+        case let .orderBuilder(stylistId, makeuperId):
+            try container.encode(stylistId, forKey: .orderBuilderStylistId)
+            try container.encode(makeuperId, forKey: .orderBuilderMakeuperId)
         }
     }
 

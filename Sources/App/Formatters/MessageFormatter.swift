@@ -28,7 +28,7 @@ class MessageFormatter {
         ]
 
         var future = app.eventLoopGroup.future(replacingDict)
-        if case let .orderConstructor(stylistId, makeuperId) = user.nodePayload {
+        if case let .orderBuilder(stylistId, makeuperId) = user.nodePayload {
             if let stylistId = stylistId {
                 future = future.flatMap { string in
                     StylistModel.find(stylistId, on: app.db).map { stylist in
