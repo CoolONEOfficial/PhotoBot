@@ -7,7 +7,7 @@ import AnyCodable
 extension NodeAction.Action {
 
     enum CodingKeys: String, CodingKey {
-        case moveToNode
+        case pushTarget
         case moveToBuilder
         case pop
         case id
@@ -17,10 +17,9 @@ extension NodeAction.Action {
     internal init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        if container.allKeys.contains(.moveToNode), try container.decodeNil(forKey: .moveToNode) == false {
-            let associatedValues = try container.nestedContainer(keyedBy: CodingKeys.self, forKey: .moveToNode)
-            let id = try associatedValues.decode(UUID.self, forKey: .id)
-            self = .moveToNode(id: id)
+        if container.allKeys.contains(.pushTarget), try container.decodeNil(forKey: .pushTarget) == false {
+            let target = try container.decode(PushTarget.self, forKey: .pushTarget)
+            self = .push(target)
             return
         }
         if container.allKeys.contains(.moveToBuilder), try container.decodeNil(forKey: .moveToBuilder) == false {
@@ -40,9 +39,8 @@ extension NodeAction.Action {
         var container = encoder.container(keyedBy: CodingKeys.self)
 
         switch self {
-        case let .moveToNode(id):
-            var associatedValues = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .moveToNode)
-            try associatedValues.encode(id, forKey: .id)
+        case let .push(target):
+            try container.encode(target, forKey: .pushTarget)
         case let .moveToBuilder(of):
             var associatedValues = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .moveToBuilder)
             try associatedValues.encode(of, forKey: .of)

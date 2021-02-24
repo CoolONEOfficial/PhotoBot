@@ -9,7 +9,7 @@ import Fluent
 import Vapor
 import Botter
 
-final class NodeModel: Model, Content {
+final class NodeModel: SchemedModel, Content {
     static let schema = "nodes"
     
     @ID(key: .id)
@@ -42,19 +42,21 @@ final class NodeModel: Model, Content {
     }
     
     public static func find(
-        _ action: NodeAction.`Type`,
+        _ target: PushTarget,
         on database: Database
     ) -> Future<NodeModel> {
-        query(on: database).filter(.sql(raw: "action->>\'type\'"), .equal, .enumCase(action.rawValue)).first()
-            .unwrap(or: PhotoBotError.node_by_action_not_found)
-    }
-    
-    public static func find(
-        _ entryPoint: Node.EntryPoint,
-        on database: Database
-    ) -> Future<NodeModel> {
-        query(on: database).filter(\.$entryPoint == .enumCase(entryPoint.rawValue)).first()
-            .unwrap(or: PhotoBotError.node_by_entry_point_not_found)
+        switch target {
+        case let .id(id):
+            return find(id, on: database).unwrap(or: PhotoBotError.nodeByIdNotFound)
+            
+        case let .entryPoint(entryPoint):
+            return query(on: database).filter(\.$entryPoint == .enumCase(entryPoint.rawValue)).first()
+                .unwrap(or: PhotoBotError.nodeByEntryPointNotFound)
+        
+        case let .action(action):
+            return query(on: database).filter(.sql(raw: "action->>\'type\'"), .equal, .enumCase(action.rawValue)).first()
+                .unwrap(or: PhotoBotError.nodeByActionNotFound)
+        }
     }
 }
 

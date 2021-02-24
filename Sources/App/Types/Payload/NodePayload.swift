@@ -8,24 +8,55 @@
 import Foundation
 import AnyCodable
 
+struct OrderBuilderState: Codable {
+    var stylistId: UUID?
+    var makeuperId: UUID?
+    var studioId: UUID?
+}
+
+//struct CheckoutState: Codable {
+//    var orderBuilderState: OrderBuilderState
+//    var promotion: Promotion
+//}
+
+extension OrderBuilderState {
+    init(with oldPayload: NodePayload?, stylistId: UUID? = nil, makeuperId: UUID? = nil, studioId: UUID? = nil) {
+        if case let .orderBuilder(state) = oldPayload {
+            self.init(
+                stylistId: stylistId ?? state.stylistId,
+                makeuperId: makeuperId ?? state.makeuperId,
+                studioId: studioId ?? state.studioId
+            )
+        } else {
+            self.init(
+                stylistId: stylistId,
+                makeuperId: makeuperId,
+                studioId: studioId
+            )
+        }
+    }
+}
+
 enum NodePayload: Codable {
     case editText(messageId: Int)
     case build(type: BuildableType, object: [String: AnyCodable] = [:])
     case page(at: Int)
-    case orderBuilder(stylistId: UUID?, makeuperId: UUID?)
+    case orderBuilder(OrderBuilderState)
+    //case checkout(CheckoutState)
 }
 
-extension NodePayload {
-    static func orderBuilder(with oldPayload: NodePayload?, stylistId: UUID? = nil, makeuperId: UUID? = nil) -> Self {
-        if case let .orderBuilder(_stylistId, _makeuperId) = oldPayload {
-            return .orderBuilder(
-                stylistId: stylistId ?? _stylistId,
-                makeuperId: makeuperId ?? _makeuperId
-            )
-        }
-        return .orderBuilder(stylistId: stylistId, makeuperId: makeuperId)
-    }
-}
+//extension NodePayload {
+//    static func orderBuilder(with oldPayload: NodePayload?, stylistId: UUID? = nil, makeuperId: UUID? = nil, studioId: UUID? = nil) -> Self {
+//        if case let .orderBuilder(_stylistId, _makeuperId, _studioId) = oldPayload {
+//            return .orderBuilder(
+//                stylistId: stylistId ?? _stylistId,
+//                makeuperId: makeuperId ?? _makeuperId,
+//                studioId: studioId ?? _studioId
+//            )
+//        }
+//        return .orderBuilder(stylistId: stylistId, makeuperId: makeuperId, studioId: studioId)
+//    }
+//}
 
 extension NodePayload {
 
@@ -34,8 +65,8 @@ extension NodePayload {
         case createBuildableType
         case createBuildableObject
         case pageAt
-        case orderBuilderStylistId
-        case orderBuilderMakeuperId
+        case orderBuilderState
+       // case checkoutState
     }
 
     internal init(from decoder: Decoder) throws {
@@ -57,12 +88,16 @@ extension NodePayload {
             self = .page(at: num)
             return
         }
-        if container.allKeys.contains(.orderBuilderStylistId) || container.allKeys.contains(.orderBuilderMakeuperId) {
-            let stylistId = try? container.decode(UUID.self, forKey: .orderBuilderStylistId)
-            let makeuperId = try? container.decode(UUID.self, forKey: .orderBuilderMakeuperId)
-            self = .orderBuilder(stylistId: stylistId, makeuperId: makeuperId)
+        if container.allKeys.contains(.orderBuilderState) {
+            let state = try container.decode(OrderBuilderState.self, forKey: .orderBuilderState)
+            self = .orderBuilder(state)
             return
         }
+//        if container.allKeys.contains(.checkoutState) {
+//            let state = try container.decode(CheckoutState.self, forKey: .checkoutState)
+//            self = .checkout(state)
+//            return
+//        }
         throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown enum case"))
     }
 
@@ -80,9 +115,11 @@ extension NodePayload {
         case let .page(num):
             try container.encode(num, forKey: .pageAt)
 
-        case let .orderBuilder(stylistId, makeuperId):
-            try container.encode(stylistId, forKey: .orderBuilderStylistId)
-            try container.encode(makeuperId, forKey: .orderBuilderMakeuperId)
+        case let .orderBuilder(state):
+            try container.encode(state, forKey: .orderBuilderState)
+        
+//        case let .checkout(checkout):
+//            try container.encode(checkout, forKey: .checkoutState)
         }
     }
 

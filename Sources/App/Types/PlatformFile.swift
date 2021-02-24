@@ -49,14 +49,14 @@ extension PlatformFile: ModeledType {
         _platformEntries.isValid
     }
     
-    func toModel() throws -> Model {
-        guard let platform = platformEntries else {
+    func saveModel(app: Application) throws -> EventLoopFuture<PlatformFileModel> {
+        guard isValid, let platform = platformEntries else {
             throw ModeledTypeError.validationError(self)
         }
         let model = self.model ?? .init()
         model.type = type
         model.platformEntries = platform
-        return model
+        return model.save(on: app.db).map { model }
     }
 }
 
@@ -67,4 +67,11 @@ extension PlatformFile {
         return .init(type: type, content: .fileId(.init(platformEntries)))
     }
     
+}
+
+extension Array where Element == PlatformFile {
+    func attach<From: Model, Through: Model>(to: SiblingsProperty<From, PlatformFileModel, Through>, app: Application) throws -> Future<Void> {
+        try map { try $0.saveModel(app: app) }.flatten(on: app.eventLoopGroup.next())
+            .flatMap { to.attach($0, on: app.db) }
+    }
 }

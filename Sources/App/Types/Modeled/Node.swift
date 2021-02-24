@@ -26,6 +26,11 @@ class Node {
         case welcome
         case welcomeGuest
         case orderBuilder
+        case orderBuilderStylist
+        case orderBuilderStudio
+        case orderBuilderMakeuper
+        case orderCheckout
+        case orderFinish
     }
 
     var entryPoint: EntryPoint?
@@ -65,8 +70,8 @@ extension Node: ModeledType {
         _name.isValid
     }
     
-    func toModel() throws -> Model {
-        guard let name = name else {
+    func saveModel(app: Application) throws -> EventLoopFuture<NodeModel> {
+        guard isValid, let name = name else {
             throw ModeledTypeError.validationError(self)
         }
         let model = self.model ?? .init()
@@ -76,46 +81,52 @@ extension Node: ModeledType {
         model.messagesGroup = messagesGroup
         model.entryPoint = entryPoint
         model.action = action
-        return model
+        return model.save(on: app.db).map { model }
     }
 }
 
 extension Node {
     public static func find(
-        actionType: NodeAction.`Type`,
+        _ target: PushTarget,
         on database: Database
     ) -> Future<Node> {
-        Model.find(actionType, on: database).flatMapThrowing { try $0.toMyType() }
+        Model.find(target, on: database).flatMapThrowing { try $0.toMyType() }
     }
     
-    public static func find(
-        entryPoint: EntryPoint,
+    public static func findId(
+        _ target: PushTarget,
         on database: Database
-    ) -> Future<Node> {
-        Model.find(entryPoint, on: database).flatMapThrowing { try! $0.toMyType() }
+    ) -> Future<UUID> {
+        Model.find(target, on: database).map(\.id!)
     }
     
-//    func editableMessages(_ user: User, canEditText: Bool) -> [SendMessage]? {
-//        if case var .array(messages) = messagesGroup {
-////            if !systemic, user.isValid {
-////                for (index, params) in messages.enumerated() {
-////                    params.keyboard.buttons.insert([
-////                        try! Button(
-////                            text: "Edit text",
-////                            action: .callback,
-////                            eventPayload: .editText(messageId: index)
-////                        )
-//////                        try! Button( TODO: node creation
-//////                            text: "Add node",
-//////                            action: .callback,
-//////                            eventPayload: .createNode(type: .node)
-//////                        )
-////                    ], at: 0)
-////                    messages[index] = params
-////                }
-////            }
-//            return messages
+    
+//    public static func find(
+//        entryPoint: EntryPoint,
+//        on database: Database
+//    ) -> Future<Node> {
+//        Model.find(entryPoint, on: database).flatMapThrowing { try! $0.toMyType() }
+//    }
+//
+//    public static func findId(
+//        entryPoint: EntryPoint,
+//        on database: Database
+//    ) -> Future<UUID> {
+//        Self.find(entryPoint: entryPoint, on: database).map(\.id!)
+//    }
+    
+//    public static func findId(
+//        targets: [PushTarget],
+//        app: Application
+//    ) -> Future<[PushTarget: UUID]> {
+//        targets.map { target in
+//            Self.findId(target, on: app.db)
+//        }.flatten(on: app.eventLoopGroup.next()).map { ids in
+//            ids.enumerated().reduce([EntryPoint: UUID]()) { map, entry in
+//                var map = map
+//                map[targets[entry.offset]] = entry.element
+//                return map
+//            }
 //        }
-//        return nil
 //    }
 }

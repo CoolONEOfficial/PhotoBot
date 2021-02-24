@@ -72,23 +72,18 @@ private func configurePostgres(_ app: Application) throws {
         let test = try PlatformFile(platform: [
             .tg("AgACAgQAAxkDAAIHjGAyWdeuTYimywkuaJsCk6cnPBw_AAKIqDEb84k9Ulm1-biSJET0czAfGwAEAQADAgADbQADE8MBAAEeBA"),
             .vk("photo-119092254_457239065")
-        ], type: .photo).toModel()
-        try test.saveWithId(on: app.db).wait()
+        ], type: .photo).toModel(app: app).wait()
         
-        try Array(1...20).map {
-            let stylistModel = try Stylist(
-                name: "Stylist \($0)", photos: [try test.toMyType()]
-            ).toModel()
-            try stylistModel.saveWithId(on: app.db).wait()
-            try stylistModel.$photos.attach(test, on: app.db).wait()
+        for num in 1...20 {
+            try Stylist(
+                name: "Stylist \(num)", photos: [try test.toMyType()]
+            ).toModel(app: app).wait()
         }
         
-        try Array(1...20).map {
-            let makeuperModel = try Makeuper(
-                name: "Makeuper \($0)", photos: [try test.toMyType()]
-            ).toModel()
-            try makeuperModel.saveWithId(on: app.db).wait()
-            try makeuperModel.$photos.attach(test, on: app.db).wait()
+        for num in 1...20 {
+            try Makeuper(
+                name: "Makeuper \(num)", photos: [try test.toMyType()]
+            ).toModel(app: app).wait()
         }
 
         let showcaseNodeId = try Node(
@@ -98,7 +93,7 @@ private func configurePostgres(_ app: Application) throws {
                     .init(text: "Перейти в главное меню", action: .callback, eventPayload: .toNode(welcomeNodeId))
                 ]])
             ]
-        ).toModel().saveWithId(on: app.db).wait()
+        ).toModelWithId(app: app).wait()
         
         try Node(
             name: "Welcome guest node",
@@ -110,14 +105,14 @@ private func configurePostgres(_ app: Application) throws {
             ],
             //action: .init(.setName, success: .moveToNode(id: showcaseNodeId), failure: "Wrong name, please try again.")
             entryPoint: .welcomeGuest
-        ).toModel().saveWithId(on: app.db).wait()
+        ).toModelWithId(app: app).wait()
         
         try Node(
             systemic: true,
             name: "Изменить текст сообщения",
             messagesGroup: [ .init(text: "Пришли мне новый текст") ],
             action: .init(.messageEdit, success: .pop)
-        ).toModel().saveWithId(on: app.db).wait()
+        ).toModelWithId(app: app).wait()
         
     }
 }
@@ -129,7 +124,7 @@ func mainGroup(_ app: Application) throws -> UUID {
             .init(text: "Пришли мне прямую ссылку.")
         ],
         action: .init(.uploadPhoto)
-    ).toModel().saveWithId(on: app.db).wait()
+    ).toModelWithId(app: app).wait()
     
     let aboutNodeId = try Node(
         name: "About node",
@@ -137,14 +132,14 @@ func mainGroup(_ app: Application) throws -> UUID {
             .init(text: "Test message here."),
             .init(text: "And other message.")
         ]
-    ).toModel().saveWithId(on: app.db).wait()
+    ).toModelWithId(app: app).wait()
     
     let portfolioNodeId = try Node(
         name: "Portfolio node",
         messagesGroup: [
             .init(text: "Test message here.")
         ]
-    ).toModel().saveWithId(on: app.db).wait()
+    ).toModelWithId(app: app).wait()
     
     let orderMainNodeId = try orderBuilderGroup(app)
     
@@ -170,25 +165,25 @@ func mainGroup(_ app: Application) throws -> UUID {
             ])
         ],
         entryPoint: .welcome
-    ).toModel().saveWithId(on: app.db).wait()
+    ).toModelWithId(app: app).wait()
 }
 
 func orderBuilderGroup(_ app: Application) throws -> UUID {
     let stylistNodeId = try Node(
         name: "Order builder stylist node",
         messagesGroup: .list(.stylists)
-    ).toModel().saveWithId(on: app.db).wait()
+    ).toModelWithId(app: app).wait()
     
     let makeuperNodeId = try Node(
         name: "Order builder makeuper node",
         messagesGroup: .list(.makeupers)
-    ).toModel().saveWithId(on: app.db).wait()
+    ).toModelWithId(app: app).wait()
     
     return try Node(
         name: "Order builder main node",
         messagesGroup: .orderBuilder(stylistNodeId, makeuperNodeId),
         entryPoint: .orderBuilder
-    ).toModel().saveWithId(on: app.db).wait()
+    ).toModelWithId(app: app).wait()
 }
 
 func tgSettings(_ app: Application) -> Telegrammer.Bot.Settings {

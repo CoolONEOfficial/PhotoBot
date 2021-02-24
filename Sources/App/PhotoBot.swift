@@ -175,32 +175,38 @@ class PhotoBot {
         
         let userFuture = User.findOrCreate(from: event, on: app.db, bot: bot, app: app).throwingFlatMap { user -> Future<[Botter.Message]> in
             
-            let replyText: String
-            let nextFuture: Future<[Botter.Message]>?
+            var replyText: String = "Not handled"
+            var nextFuture: Future<[Botter.Message]>? = nil
             
             if let eventPayload: EventPayload = try? event.decodeData() {
                 switch eventPayload {
                 case let .editText(messageId):
-                    nextFuture = Node.find(actionType: .messageEdit, on: self.app.db).throwingFlatMap { node in
-                        try user.moveToNode(node, payload: .editText(messageId: messageId), to: event, with: self.bot, app: self.app)
+                    nextFuture = Node.find(.action(.messageEdit), on: self.app.db).throwingFlatMap { node in
+                        try user.push(node, payload: .editText(messageId: messageId), to: event, with: self.bot, app: self.app)
                     }
                     replyText = "Move"
 
                 case let .createNode(type):
-                    nextFuture = Node.find(actionType: .createNode, on: self.app.db).throwingFlatMap { node in
-                        try user.moveToNode(node, payload: .build(type: type), to: event, with: self.bot, app: self.app)
+                    nextFuture = Node.find(.action(.createNode), on: self.app.db).throwingFlatMap { node in
+                        try user.push(node, payload: .build(type: type), to: event, with: self.bot, app: self.app)
                     }
                     replyText = "Move"
 
                 case let .selectStylist(stylistId):
-                    nextFuture = Node.find(entryPoint: .orderBuilder, on: self.app.db).throwingFlatMap { node in
-                        try user.moveToNode(node, payload: .orderBuilder(with: user.history.last?.nodePayload, stylistId: stylistId), to: event, with: self.bot, app: self.app, saveMove: false)
+                    nextFuture = Node.find(.entryPoint(.orderBuilder), on: self.app.db).throwingFlatMap { node in
+                        try user.push(node, payload: .orderBuilder(.init(with: user.history.last?.nodePayload, stylistId: stylistId)), to: event, with: self.bot, app: self.app, saveMove: false)
                     }
                     replyText = "Selected"
                     
                 case let .selectMakeuper(makeuperId):
-                    nextFuture = Node.find(entryPoint: .orderBuilder, on: self.app.db).throwingFlatMap { node in
-                        try user.moveToNode(node, payload: .orderBuilder(with: user.history.last?.nodePayload, makeuperId: makeuperId), to: event, with: self.bot, app: self.app, saveMove: false)
+                    nextFuture = Node.find(.entryPoint(.orderBuilder), on: self.app.db).throwingFlatMap { node in
+                        try user.push(node, payload: .orderBuilder(.init(with: user.history.last?.nodePayload, makeuperId: makeuperId)), to: event, with: self.bot, app: self.app, saveMove: false)
+                    }
+                    replyText = "Selected"
+                    
+                case let .selectStudio(studioId):
+                    nextFuture = Node.find(.entryPoint(.orderBuilder), on: self.app.db).throwingFlatMap { node in
+                        try user.push(node, payload: .orderBuilder(.init(with: user.history.last?.nodePayload, studioId: studioId)), to: event, with: self.bot, app: self.app, saveMove: false)
                     }
                     replyText = "Selected"
 
@@ -208,13 +214,18 @@ class PhotoBot {
                     nextFuture = user.pop(to: event, with: self.bot, app: self.app)
                     replyText = "Pop"
 
-                case let .toNode(id, saveMoveToHistory):
-                    nextFuture = user.moveToNode(id, to: event, with: self.bot, app: self.app, saveMove: saveMoveToHistory)
+                case let .push(target, saveMoveToHistory):
+                    nextFuture = user.push(target, to: event, with: self.bot, app: self.app, saveMove: saveMoveToHistory)
                     replyText = "Move"
                 
+                case .toCheckout:
+                    //guard case let .page(index) = user.nodePayload else { break }
+                    nextFuture = user.push(.entryPoint(.orderCheckout), to: event, with: self.bot, app: self.app)
+                    replyText = "Move"
+                    
                 case .createOrder:
-                    nextFuture = user.pop(to: event, with: self.bot, app: self.app) { _ in true }
-                    replyText = "Created"
+                    nextFuture = user.push(.entryPoint(.orderFinish), to: event, with: self.bot, app: self.app)
+                    replyText = "Move"
 
                 case .nextPage, .previousPage:
                     var pageIndex: Int
@@ -232,11 +243,8 @@ class PhotoBot {
                         replyText = "👈 Предыдущая"
                     }
 
-                    nextFuture = user.moveToNode(user.nodeId!, payload: .page(at: pageIndex), to: event, with: self.bot, app: self.app, saveMove: false)
+                    nextFuture = user.push(.id(user.nodeId!), payload: .page(at: pageIndex), to: event, with: self.bot, app: self.app, saveMove: false)
                 }
-            } else {
-                nextFuture = nil
-                replyText = "Not handled"
             }
             
             var futureArr: [EventLoopFuture<[Botter.Message]>] = [
@@ -259,7 +267,7 @@ class PhotoBot {
             .throwingFlatMap { user -> Future<[Botter.Message]?> in
                 if let nodeId = user.nodeId {
                     return NodeModel.find(nodeId, on: self.app.db)
-                        .unwrap(or: PhotoBotError.node_by_id_not_found)
+                        .unwrap(or: PhotoBotError.nodeByIdNotFound)
                         .throwingFlatMap { node -> Future<[Botter.Message]?> in
                             let nextFuture: Future<[Botter.Message]?>?
                             
@@ -269,8 +277,8 @@ class PhotoBot {
                                 
                                     guard let successNodeId = action.action else { return self.app.eventLoopGroup.future(nil) }
                                     switch successNodeId {
-                                    case let .moveToNode(nodeId):
-                                        future = user.moveToNode(nodeId, to: message, with: self.bot, app: self.app)
+                                    case let .push(target):
+                                        future = user.push(target, to: message, with: self.bot, app: self.app)
                                         
                                     case .pop:
                                         future = user.pop(to: message, with: self.bot, app: self.app)
@@ -288,8 +296,8 @@ class PhotoBot {
                             return nextFuture ?? self.app.eventLoopGroup.future(nil)
                         }
                 } else {
-                    return Node.find(entryPoint: .welcomeGuest, on: self.app.db).throwingFlatMap { node in
-                        try user.moveToNode(node, to: message, with: self.bot, app: self.app).map { Optional($0) }
+                    return Node.find(.entryPoint(.welcomeGuest), on: self.app.db).throwingFlatMap { node in
+                        try user.push(node, to: message, with: self.bot, app: self.app).map { Optional($0) }
                     }
                 }
             }
@@ -366,8 +374,8 @@ class PhotoBot {
                 
             case .notFound:
                 let future: Future<Void>?
-                if let model = try? Node(from: NodeModel(from: NodeBuildable(from: payloadObject))).toModel() {
-                    future = model.save(on: self.app.db)
+                if let modelFuture = try? Node(from: NodeModel(from: NodeBuildable(from: payloadObject))).saveModel(app: app) {
+                    future = modelFuture.map { _ in () }
                 } else {
                     future = try? message.reply(from: self.bot, params: .init(text: "Failed to crete model"), app: self.app).map { _ in () }
                 }
@@ -382,7 +390,7 @@ class PhotoBot {
             payloadObject = [:]
         }
         
-        return user.moveToNode(nodeId, payload: .build(type: builderType, object: payloadObject), to: message, with: self.bot, app: self.app)
+        return user.push(.id(nodeId), payload: .build(type: builderType, object: payloadObject), to: message, with: self.bot, app: self.app)
     }
 
     enum HandleActionError: Error {
@@ -405,14 +413,12 @@ class PhotoBot {
 
                 node.messagesGroup.updateText(at: messageId, text: text)
                 
-                let nodeModel = try node.toModel()
-                return nodeModel.save(on: self.app.db)
+                return try node.saveModel(app: self.app).map { _ in () }
             }
 
         case .setName:
             user.name = message.text
-            let userModel = try user.toModel()
-            return userModel.save(on: app.db).throwingFlatMap {
+            return try user.saveModel(app: app).throwingFlatMap { _ in
                 try message.reply(from: self.bot, params: .init(text: "Good, \(user.name!)"), app: self.app).map { _ in () }
             }
 
@@ -461,7 +467,7 @@ class PhotoBot {
                         .map { _ in platform.to(attachment.attachmentId) }
                 }
             }.flatten(on: app.eventLoopGroup.next()).throwingFlatMap { platformEntries in
-                try PlatformFile(platform: platformEntries, type: .photo).toModel().saveWithId(on: self.app.db).throwingFlatMap { savedId in
+                try PlatformFile(platform: platformEntries, type: .photo).saveModelReturningId(app: self.app).throwingFlatMap { savedId in
                     try message.reply(from: self.bot, params: .init(text: "локальный id: \(savedId)"), app: self.app)
                         .map { _ in () }
                 }
@@ -482,9 +488,9 @@ extension Botter.Button {
 }
 
 enum PhotoBotError: Error {
-    case node_by_entry_point_not_found
-    case node_by_action_not_found
-    case node_by_id_not_found
+    case nodeByEntryPointNotFound
+    case nodeByActionNotFound
+    case nodeByIdNotFound
 }
 
 func strType(of value: Any) -> String {

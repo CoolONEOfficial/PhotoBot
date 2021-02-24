@@ -11,7 +11,7 @@ struct CreateStylists: Migration {
     func prepare(on database: Database) -> EventLoopFuture<Void> {
         return database.schema(StylistModel.schema)
             .id()
-            .field("name", .string)
+            .field("name", .string, .required)
             .create()
     }
 

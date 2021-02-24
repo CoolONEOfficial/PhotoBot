@@ -11,7 +11,7 @@ import Vapor
 import Botter
 import ValidatedPropertyKit
 
-final class MakeuperModel: Model, Content {
+final class MakeuperModel: SchemedModel, Content {
     static let schema = "makeupers"
     
     @ID(key: .id)
@@ -31,4 +31,8 @@ final class MakeuperModel: Model, Content {
     }
 }
 
-extension MakeuperModel: HumanModel { typealias MyType = Makeuper }
+extension MakeuperModel: EmployeeModel {
+    typealias MyType = Makeuper
+    
+    var photoSiblings: PhotoSiblings { $photos }
+}

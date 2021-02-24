@@ -12,7 +12,7 @@ import Vapor
 import Fluent
 import AnyCodable
 
-class Human<Model: HumanModel> {
+class Employee<Model: EmployeeModel, PhotoModel: Fluent.Model> {
 
     var id: UUID?
     
@@ -23,6 +23,8 @@ class Human<Model: HumanModel> {
     var photos: [PlatformFile]?
     
     private let model: Model?
+    
+    // TODO: contact info (vk or tg id/username)
     
     init(name: String? = nil, photos: [PlatformFile]) {
         self.id = nil
@@ -42,15 +44,20 @@ class Human<Model: HumanModel> {
     
 }
 
-extension Human: ModeledType {
-    func toModel() throws -> Model {
+extension Employee: PhotoModeledType {}
+
+extension Employee: ModeledType {
+    func saveModel(app: Application) throws -> EventLoopFuture<Model> {
         guard isValid else {
             throw ModeledTypeError.validationError(self)
         }
         let model = self.model ?? .init()
         model.id = id
         model.name = name
-        return model
+        
+        return model.save(on: app.db).throwingFlatMap { () -> Future<Model> in
+            try self.photos?.attach(to: model.photoSiblings, app: app).map { model } ?? app.eventLoopGroup.future(model)
+        }
     }
     
     var isValid: Bool {

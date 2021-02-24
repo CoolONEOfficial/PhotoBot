@@ -16,6 +16,7 @@ class MessageFormatter {
         case user = "$USER"
         case stylist = "$STYLIST"
         case makeuper = "$MAKEUPER"
+        case studio = "$STUDIO"
     }
     
     func format(_ string: String, user: User, app: Application) -> Future<String> {
@@ -24,12 +25,13 @@ class MessageFormatter {
         var replacingDict: [ReplacingKey: String] = [
             .user: user.name ?? nope,
             .stylist: notSelected,
-            .makeuper: notSelected
+            .makeuper: notSelected,
+            .studio: notSelected
         ]
 
         var future = app.eventLoopGroup.future(replacingDict)
-        if case let .orderBuilder(stylistId, makeuperId) = user.nodePayload {
-            if let stylistId = stylistId {
+        if case let .orderBuilder(state) = user.nodePayload {
+            if let stylistId = state.stylistId {
                 future = future.flatMap { string in
                     StylistModel.find(stylistId, on: app.db).map { stylist in
                         if let stylistName = stylist?.name {
@@ -39,11 +41,21 @@ class MessageFormatter {
                     }
                 }
             }
-            if let makeuperId = makeuperId {
+            if let makeuperId = state.makeuperId {
                 future = future.flatMap { string in
                     MakeuperModel.find(makeuperId, on: app.db).map { makeuper in
                         if let makeuperName = makeuper?.name {
                             replacingDict[.makeuper] = makeuperName
+                        }
+                        return replacingDict
+                    }
+                }
+            }
+            if let studioId = state.studioId {
+                future = future.flatMap { string in
+                    StudioModel.find(studioId, on: app.db).map { studio in
+                        if let studioName = studio?.name {
+                            replacingDict[.studio] = studioName
                         }
                         return replacingDict
                     }
@@ -56,5 +68,11 @@ class MessageFormatter {
                 string.replacingOccurrences(of: entry.key.rawValue, with: entry.value)
             }
         }
+    }
+}
+
+extension String {
+    static func replacing(by key: MessageFormatter.ReplacingKey) -> Self {
+        key.rawValue
     }
 }

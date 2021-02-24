@@ -8,26 +8,27 @@
 import Foundation
 import AnyCodable
 
+enum NodeActionType: String, Codable {
+    case messageEdit
+    case setName
+    case buildType
+    case createNode
+    case uploadPhoto
+}
+
 struct NodeAction: Codable {
-    enum `Type`: String, Codable {
-        case messageEdit
-        case setName
-        case buildType
-        case createNode
-        case uploadPhoto
-    }
     
-    let type: Type
+    let type: NodeActionType
     
     enum Action: AutoCodable {
-        case moveToNode(id: UUID)
+        case push(_ target: PushTarget)
         case moveToBuilder(of: BuildableType)
         case pop
     }
     
     let action: Action?
     
-    init(_ type: Type, success action: Action? = nil) {
+    init(_ type: NodeActionType, success action: Action? = nil) {
         self.type = type
         self.action = action
     }

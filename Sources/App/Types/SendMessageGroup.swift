@@ -12,6 +12,7 @@ import Fluent
 
 enum SendMessageGroupError: Error {
     case invalidPayload
+    case nodesNotFound
 }
 
 extension NSObject {
@@ -32,13 +33,15 @@ enum MessageListType: String, Codable {
     case portfolio
     case stylists
     case makeupers
+    case studios
 }
 
 enum SendMessageGroup {
     case array(_ elements: [SendMessage])
     case builder
     case list(_ content: MessageListType)
-    case orderBuilder(_ stylistNodeId: UUID, _ makeuperNodeId: UUID)
+    case orderBuilder
+    case orderCheckout
     
 //    struct MessagesInfo {
 //        var messages: [SendMessage] = []
@@ -126,6 +129,26 @@ enum SendMessageGroup {
                         .map { Self.addPageButtons($0, startIndex, endIndex, count) }
                     }
                 }
+                
+            case .studios:
+                let model = StudioModel.self
+                result = model.query(on: app.db).count().flatMap { count in
+                    model.query(on: app.db).range(startIndex ..< endIndex).all().flatMap { studios in
+                        studios.enumerated().map { (index, studio) -> Future<SendMessage> in
+                            studio.$photos.get(on: app.db).flatMapThrowing { photos in
+                                SendMessage(
+                                    text: studio.name,
+                                    keyboard: [ [
+                                        try Button(text: "Выбрать", action: .callback, eventPayload: .selectStudio(id: try studio.requireID()))
+                                    ] ],
+                                    attachments: try photos.compactMap { try $0.toMyType().fileInfo }
+                                )
+                            }
+                        }
+                        .flatten(on: app.eventLoopGroup.next())
+                        .map { Self.addPageButtons($0, startIndex, endIndex, count) }
+                    }
+                }
             }
             
         case .builder:
@@ -144,26 +167,65 @@ enum SendMessageGroup {
             
             result = app.eventLoopGroup.future(arr)
 
-        case let .orderBuilder(stylistNodeId, makeuperNodeId):
+        case .orderBuilder:
             
             var keyboard: Keyboard = [[
-                try .init(text: "Стилист", action: .callback, eventPayload: .toNode(stylistNodeId)),
-                try .init(text: "Визажист", action: .callback, eventPayload: .toNode(makeuperNodeId))
+                try .init(text: "Стилист", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderStylist))),
+                try .init(text: "Визажист", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderMakeuper))),
+                try .init(text: "Студия", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderStudio)))
             ]]
             
             if let payload = payload,
-               case let .orderBuilder(stylistId, makeuperId) = payload,
-               stylistId != nil,
-               makeuperId != nil {
+               case let .orderBuilder(state) = payload,
+               state.stylistId != nil,
+               state.makeuperId != nil,
+               state.studioId != nil {
                 keyboard.buttons.safeAppend([
-                    try .init(text: "Отправить", action: .callback, eventPayload: .createOrder)
+                    try .init(text: "К завершению", action: .callback, eventPayload: .push(.entryPoint(.orderCheckout)))
                 ])
             }
             
+            result = app.eventLoopGroup.future([
+                .init(text: "Ваш заказ:\nСтилист: $STYLIST\nВизажист: $MAKEUPER\nСтудия: $STUDIO", keyboard: keyboard)
+            ])
+            
+//            result = Node.findId(entryPoints: [
+//                .orderBuilderStylist,
+//                .orderBuilderStudio,
+//                .orderBuilderMakeuper,
+//                .orderCheckout
+//            ], app: app).flatMapThrowing { nodeIds in
+//
+//
+//            }
+            
+        case .orderCheckout:
+            
+            let keyboard: Keyboard = [[
+                try .init(text: "Подтвердить", action: .callback, eventPayload: .createOrder)
+            ]]
+            
+//            if let payload = payload {
+//                keyboard.buttons.safeAppend([
+//                    try .init(text: "Акции", action: .callback, eventPayload: .createOrder)
+//                ])
+//            }
             
             result = app.eventLoopGroup.future([
-                .init(text: "Ваш заказ:\nСтилист: $STYLIST\nВизажист: $MAKEUPER", keyboard: keyboard)
+                .init(text: "Итого:\nСтилист: " + .replacing(by: .user)
+                        + "\nВизажист: " + .replacing(by: .makeuper)
+                        + "\nСтудия: " + .replacing(by: .studio)
+                        + "\nСумма: \(123) р.", keyboard: keyboard)
             ])
+            
+//            result = Node.findId(entryPoints: [
+//                .orderFinish
+//            ], app: app).flatMapThrowing { nodeIds in
+//
+//
+//
+//            }
+
         }
 
         return result
@@ -253,8 +315,8 @@ extension SendMessageGroup: Codable {
         case builder
         case elements
         case listType
-        case orderBuilderStylistNodeId
-        case orderBuilderMakeuperNodeId
+        case orderBuilder
+        case orderCheckout
     }
 
     internal init(from decoder: Decoder) throws {
@@ -274,11 +336,12 @@ extension SendMessageGroup: Codable {
             self = .list(type)
             return
         }
-        if container.allKeys.contains(.orderBuilderStylistNodeId), try container.decodeNil(forKey: .orderBuilderStylistNodeId) == false,
-           container.allKeys.contains(.orderBuilderMakeuperNodeId), try container.decodeNil(forKey: .orderBuilderMakeuperNodeId) == false {
-            let stylistNodeId = try container.decode(UUID.self, forKey: .orderBuilderStylistNodeId)
-            let makeuperNodeId = try container.decode(UUID.self, forKey: .orderBuilderMakeuperNodeId)
-            self = .orderBuilder(stylistNodeId, makeuperNodeId)
+        if container.allKeys.contains(.orderBuilder), try container.decodeNil(forKey: .orderBuilder) == false {
+            self = .orderBuilder
+            return
+        }
+        if container.allKeys.contains(.orderCheckout), try container.decodeNil(forKey: .orderCheckout) == false {
+            self = .orderCheckout
             return
         }
         throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown enum case"))
@@ -294,9 +357,10 @@ extension SendMessageGroup: Codable {
             try container.encode("builder", forKey: .builder)
         case let .list(type):
             try container.encode(type, forKey: .listType)
-        case let .orderBuilder(stylistNodeId, makeuperNodeId):
-            try container.encode(stylistNodeId, forKey: .orderBuilderStylistNodeId)
-            try container.encode(makeuperNodeId, forKey: .orderBuilderMakeuperNodeId)
+        case .orderBuilder:
+            try container.encode(true, forKey: .orderBuilder)
+        case .orderCheckout:
+            try container.encode(true, forKey: .orderCheckout)
         }
     }
 

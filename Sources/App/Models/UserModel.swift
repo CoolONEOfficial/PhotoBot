@@ -10,7 +10,7 @@ import Vapor
 import Botter
 import ValidatedPropertyKit
 
-final class UserModel: Model, Content {
+final class UserModel: SchemedModel, Content {
     static let schema = "users"
     
     @ID(key: .id)

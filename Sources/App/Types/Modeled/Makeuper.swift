@@ -12,5 +12,5 @@ import Vapor
 import Fluent
 import AnyCodable
 
-class Makeuper: Human<MakeuperModel> {
+class Makeuper: Employee<MakeuperModel, MakeuperPhoto> {
 }

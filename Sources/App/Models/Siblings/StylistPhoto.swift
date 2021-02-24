@@ -9,8 +9,8 @@ import Foundation
 import Fluent
 import Vapor
 
-final class StylistPhoto: Model {
-    static let schema = "stylist+platform_files"
+final class StylistPhoto: SchemedModel {
+    static let schema = "stylists+platform_files"
 
     @ID(key: .id)
     var id: UUID?

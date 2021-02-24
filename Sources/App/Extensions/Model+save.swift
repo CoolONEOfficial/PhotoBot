@@ -10,6 +10,6 @@ import Botter
 
 extension Model {
     public func saveWithId(on database: Database) -> Future<Self.IDValue> {
-        save(on: database).map { self.id! }
+        save(on: database).flatMapThrowing { try self.requireID() }
     }
 }

@@ -69,7 +69,7 @@ extension User: ModeledType {
         _name.isValid
     }
     
-    func toModel() throws -> Model {
+    func saveModel(app: Application) throws -> EventLoopFuture<UserModel> {
         guard isValid else {
             throw ModeledTypeError.validationError(self)
         }
@@ -81,7 +81,7 @@ extension User: ModeledType {
         model.tgId = tgId
         model.vkId = vkId
         model.name = name
-        return model
+        return model.save(on: app.db).map { model }
     }
 }
 
@@ -108,17 +108,17 @@ extension User {
         case replacing
     }
     
-    func moveToNode<T: PlatformObject & Replyable>(
-        _ nodeId: UUID, payload: NodePayload? = nil,
+    func push<T: PlatformObject & Replyable>(
+        _ target: PushTarget, payload: NodePayload? = nil,
         to replyable: T, with bot: Bot,
         app: Application, saveMove: Bool = true
     ) -> Future<[Message]> {
-        Node.find(nodeId, on: app.db).flatMap { node in
-            try! self.moveToNode(node, payload: payload, to: replyable, with: bot, app: app, saveMove: saveMove)
+        Node.find(target, on: app.db).flatMap { node in
+            try! self.push(node, payload: payload, to: replyable, with: bot, app: app, saveMove: saveMove)
         }
     }
     
-    func moveToNode<T: PlatformObject & Replyable>(
+    func push<T: PlatformObject & Replyable>(
         _ node: Node, payload: NodePayload? = nil,
         to replyable: T, with bot: Bot,
         app: Application, saveMove: Bool = true
@@ -133,7 +133,7 @@ extension User {
         self.nodePayload = payload
         self.nodeId = node.id!
         
-        return try self.toModel().saveWithId(on: app.db).flatMap { (id) -> Future<[Message]> in
+        return try self.saveModelReturningId(app: app).flatMap { (id) -> Future<[Message]> in
             self.id = id
             return try! replyable.replyNode(with: bot, user: self, node: node, payload: payload, app: app)!
         }
@@ -156,7 +156,7 @@ extension User {
                 break
             }
         }
-        return moveToNode(lastHistoryEntry.nodeId, payload: lastHistoryEntry.nodePayload, to: replyable, with: bot, app: app, saveMove: false)
+        return push(.id(lastHistoryEntry.nodeId), payload: lastHistoryEntry.nodePayload, to: replyable, with: bot, app: app, saveMove: false)
     }
 }
 

@@ -10,7 +10,7 @@ import Botter
 import Fluent
 import Vapor
 
-final class PlatformFileModel: Model, Content {
+final class PlatformFileModel: SchemedModel, Content {
     static let schema = "platform_files"
     
     @ID(key: .id)

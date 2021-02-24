@@ -8,6 +8,7 @@
 import Foundation
 import Fluent
 import Botter
+import Vapor
 
 enum ModeledTypeError: Error {
     case validationError(_ type: Any)
@@ -18,9 +19,15 @@ protocol ModeledType {
     
     init(from model: Model) throws
     
-    func toModel() throws -> Model
+    func saveModel(app: Application) throws -> Future<Model>
     
     var isValid: Bool { get }
+}
+
+extension ModeledType {
+    func saveModelReturningId(app: Application) throws -> Future<Model.IDValue> {
+        try saveModel(app: app).flatMapThrowing { try $0.requireID() }
+    }
 }
 
 extension ModeledType where Model.MyType == Self {

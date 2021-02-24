@@ -12,12 +12,14 @@ enum EventPayload {
     case createNode(type: BuildableType)
     case selectStylist(id: UUID)
     case selectMakeuper(id: UUID)
+    case selectStudio(id: UUID)
+    case toCheckout
     case createOrder
     
     // MARK: Navigation
     
     case back
-    case toNode(UUID, Bool = true)
+    case push(PushTarget, Bool = true)
     case previousPage
     case nextPage
 }
@@ -29,9 +31,11 @@ extension EventPayload: Codable {
         case createNode
         case selectStylist = "selStylist"
         case selectMakeuper = "selMakeuper"
+        case selectStudio = "selStudio"
+        case toCheckout
         case createOrder
         case back
-        case toNode
+        case push
         case previousPage
         case nextPage
         case messageId
@@ -66,6 +70,16 @@ extension EventPayload: Codable {
             self = .selectMakeuper(id: id)
             return
         }
+        if container.allKeys.contains(.selectStudio), try container.decodeNil(forKey: .selectStudio) == false {
+            let associatedValues = try container.nestedContainer(keyedBy: CodingKeys.self, forKey: .selectStudio)
+            let id = try associatedValues.decode(UUID.self, forKey: .id)
+            self = .selectStudio(id: id)
+            return
+        }
+        if container.allKeys.contains(.toCheckout), try container.decodeNil(forKey: .toCheckout) == false {
+            self = .toCheckout
+            return
+        }
         if container.allKeys.contains(.createOrder), try container.decodeNil(forKey: .createOrder) == false {
             self = .createOrder
             return
@@ -74,11 +88,11 @@ extension EventPayload: Codable {
             self = .back
             return
         }
-        if container.allKeys.contains(.toNode), try container.decodeNil(forKey: .toNode) == false {
-            var associatedValues = try container.nestedUnkeyedContainer(forKey: .toNode)
-            let associatedValue0 = try associatedValues.decode(UUID.self)
-            let associatedValue1 = try associatedValues.decode(Bool.self)
-            self = .toNode(associatedValue0, associatedValue1)
+        if container.allKeys.contains(.push), try container.decodeNil(forKey: .push) == false {
+            var associatedValues = try container.nestedUnkeyedContainer(forKey: .push)
+            let target = try associatedValues.decode(PushTarget.self)
+            let saveToHistory = try associatedValues.decode(Bool.self)
+            self = .push(target, saveToHistory)
             return
         }
         if container.allKeys.contains(.previousPage), try container.decodeNil(forKey: .previousPage) == false {
@@ -108,12 +122,17 @@ extension EventPayload: Codable {
         case let .selectMakeuper(id):
             var associatedValues = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .selectMakeuper)
             try associatedValues.encode(id, forKey: .id)
+        case let .selectStudio(id):
+            var associatedValues = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .selectStudio)
+            try associatedValues.encode(id, forKey: .id)
+        case .toCheckout:
+            try container.encode(true, forKey: .toCheckout)
         case .createOrder:
-            _ = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .createOrder)
+            try container.encode(true, forKey: .createOrder)
         case .back:
             _ = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .back)
-        case let .toNode(associatedValue0, associatedValue1):
-            var associatedValues = container.nestedUnkeyedContainer(forKey: .toNode)
+        case let .push(associatedValue0, associatedValue1):
+            var associatedValues = container.nestedUnkeyedContainer(forKey: .push)
             try associatedValues.encode(associatedValue0)
             try associatedValues.encode(associatedValue1)
         case .previousPage:
@@ -123,4 +142,45 @@ extension EventPayload: Codable {
         }
     }
 
+}
+
+enum PushTarget {
+    case id(UUID)
+    case entryPoint(Node.EntryPoint)
+    case action(NodeActionType)
+}
+
+enum PushTargetError: Error {
+    case decodeFailed
+}
+
+extension PushTarget: Codable {
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        
+        if let id = try? container.decode(UUID.self) {
+            self = .id(id)
+        } else if let entryPoint = try? container.decode(Node.EntryPoint.self) {
+            self = .entryPoint(entryPoint)
+        } else if let action = try? container.decode(NodeActionType.self) {
+            self = .action(action)
+        } else {
+            throw PushTargetError.decodeFailed
+        }
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        
+        switch self {
+        case let .entryPoint(entryPoint):
+            try container.encode(entryPoint)
+        
+        case let .id(id):
+            try container.encode(id)
+        
+        case let .action(action):
+            try container.encode(action)
+        }
+    }
 }
