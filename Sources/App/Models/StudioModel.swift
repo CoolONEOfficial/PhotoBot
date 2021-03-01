@@ -9,35 +9,35 @@ import Fluent
 import Vapor
 import Botter
 
-final class StudioModel: SchemedModel, Content {
+final class StudioModel: Model, StudioProtocol {
     static let schema = "studios"
+    
+    typealias TwinType = Studio
     
     @ID(key: .id)
     var id: UUID?
     
     @Field(key: "name")
-    var name: String
+    var name: String?
     
     @Field(key: "description")
-    var description: String
+    var description: String?
     
     @Field(key: "address")
-    var address: String
+    var address: String?
     
     @Siblings(through: StudioPhoto.self, from: \.$studio, to: \.$photo)
-    var photos: [PlatformFileModel]
+    var _photos: [PlatformFileModel]
+    
+    var photos: [PlatformFileModel]? {
+        get { _photos }
+        set { fatalError("Siblings must be attached manually") }
+    }
+    
+    var photosSiblings: AttachableFileSiblings<StudioModel, StudioPhoto>? { $_photos }
     
     @Field(key: "coords")
-    var coords: Coords
+    var coords: Coords?
 
-    init() { }
-
-    init(id: UUID? = nil, name: String, address: String, coords: Coords) {
-        self.id = id
-        self.name = name
-        self.address = address
-        self.coords = coords
-    }
+    required init() { }
 }
-
-extension StudioModel: TypedModel { typealias MyType = Studio }

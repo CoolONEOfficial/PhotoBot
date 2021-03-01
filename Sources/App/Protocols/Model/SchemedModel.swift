@@ -7,6 +7,6 @@
 
 import Fluent
 
-protocol SchemedModel: Model {
-    static var schema: String { get }
-}
+//protocol Model: Model {
+//    static var schema: String { get }
+//}

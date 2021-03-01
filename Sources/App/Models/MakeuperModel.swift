@@ -11,28 +11,31 @@ import Vapor
 import Botter
 import ValidatedPropertyKit
 
-final class MakeuperModel: SchemedModel, Content {
-    static let schema = "makeupers"
+final class MakeuperModel: Model, MakeuperProtocol {
+    typealias TwinType = Makeuper
+
+    static var schema: String  = "makeupers"
     
     @ID(key: .id)
     var id: UUID?
-
+    
     @OptionalField(key: "name")
     var name: String?
-
-    @Siblings(through: MakeuperPhoto.self, from: \.$makeuper, to: \.$photo)
-    var photos: [PlatformFileModel]
     
-    init() { }
+    @Siblings(through: MakeuperPhoto.self, from: \.$makeuper, to: \.$photo)
+    var _photos: [PlatformFileModel]
+    
+    var photosSiblings: AttachableFileSiblings<MakeuperModel, MakeuperPhoto>? { $_photos }
 
-    init(id: UUID? = nil, name: String? = nil) throws {
-        self.id = id
-        self.name = name
+    var photos: [PlatformFileModel]? {
+        get { _photos }
+        set { _photos = newValue?.compactMap { $0 } ?? [] }
     }
+    
+    required init() {}
 }
 
-extension MakeuperModel: EmployeeModel {
-    typealias MyType = Makeuper
+extension MakeuperModel {
     
-    var photoSiblings: PhotoSiblings { $photos }
+    typealias PhotoModel = MakeuperPhoto
 }

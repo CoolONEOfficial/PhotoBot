@@ -9,37 +9,39 @@ import Fluent
 import Vapor
 import Botter
 
-final class NodeModel: SchemedModel, Content {
+final class NodeModel: Model, NodeProtocol {
     static let schema = "nodes"
+    
+    typealias TwinType = Node
     
     @ID(key: .id)
     var id: UUID?
     
     @Field(key: "systemic")
-    var systemic: Bool
+    var systemic: Bool?
     
     @Field(key: "name")
-    var name: String
+    var name: String?
     
     @Field(key: "messages")
-    var messagesGroup: SendMessageGroup
+    var messagesGroup: SendMessageGroup?
     
     @OptionalField(key: "entry_point")
-    var entryPoint: Node.EntryPoint?
+    var entryPoint: EntryPoint?
     
     @OptionalField(key: "action")
     var action: NodeAction?
 
-    init() { }
-
-    init(id: UUID? = nil, systemic: Bool = false, name: String, messagesGroup: SendMessageGroup, entryPoint: Node.EntryPoint? = nil, action: NodeAction? = nil) {
-        self.id = id
-        self.systemic = systemic
-        self.name = name
-        self.messagesGroup = messagesGroup
-        self.entryPoint = entryPoint
-        self.action = action
-    }
+    required init() { }
+//
+//    init(id: UUID? = nil, systemic: Bool = false, name: String, messagesGroup: SendMessageGroup, entryPoint: Node.EntryPoint? = nil, action: NodeAction? = nil) {
+//        self.id = id
+//        self.systemic = systemic
+//        self.name = name
+//        self.messagesGroup = messagesGroup
+//        self.entryPoint = entryPoint
+//        self.action = action
+//    }
     
     public static func find(
         _ target: PushTarget,
@@ -60,4 +62,4 @@ final class NodeModel: SchemedModel, Content {
     }
 }
 
-extension NodeModel: TypedModel { typealias MyType = Node }
+//extension NodeModel: TypedModel { typealias MyType = Node }

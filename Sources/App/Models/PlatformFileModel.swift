@@ -10,8 +10,10 @@ import Botter
 import Fluent
 import Vapor
 
-final class PlatformFileModel: SchemedModel, Content {
+final class PlatformFileModel: Model, PlatformFileProtocol {
     static let schema = "platform_files"
+    
+    typealias TwinType = PlatformFile
     
     @ID(key: .id)
     var id: UUID?
@@ -23,10 +25,10 @@ final class PlatformFileModel: SchemedModel, Content {
     var makeupers: [MakeuperModel]
     
     @Field(key: "platform_entries")
-    var platformEntries: [PlatformFile.Entry]
+    var platformEntries: [Entry]?
     
     @Field(key: "type")
-    var type: FileInfoType
+    var type: FileInfoType?
+    
+    required init() {}
 }
-
-extension PlatformFileModel: TypedModel { typealias MyType = PlatformFile }

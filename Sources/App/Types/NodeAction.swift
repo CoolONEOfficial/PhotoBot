@@ -21,7 +21,7 @@ struct NodeAction: Codable {
     let type: NodeActionType
     
     enum Action: AutoCodable {
-        case push(_ target: PushTarget)
+        case push(target: PushTarget)
         case moveToBuilder(of: BuildableType)
         case pop
     }

@@ -9,7 +9,7 @@ import Foundation
 import Fluent
 import Vapor
 
-final class StylistPhoto: SchemedModel {
+final class StylistPhoto: Model {
     static let schema = "stylists+platform_files"
 
     @ID(key: .id)
@@ -25,6 +25,7 @@ final class StylistPhoto: SchemedModel {
 
     init(id: UUID? = nil, stylist: StylistModel, photo: PlatformFileModel) throws {
         self.id = id
+        
         self.$stylist.id = try stylist.requireID()
         self.$photo.id = try photo.requireID()
     }

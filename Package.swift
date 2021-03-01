@@ -12,7 +12,7 @@ let package = Package(
         .package(url: "https://github.com/vapor/fluent.git", from: "4.0.0"),
         .package(url: "https://github.com/vapor/fluent-postgres-driver.git", from: "2.0.0"),
         .package(path: "../Botter"),
-        .package(url: "https://github.com/SvenTiigi/ValidatedPropertyKit.git", from: "0.0.4"),
+        .package(url: "https://github.com/SvenTiigi/ValidatedPropertyKit.git", .exact("0.0.4")),
     ],
     targets: [
         .target(

@@ -9,7 +9,7 @@ import Foundation
 import Fluent
 import Vapor
 
-final class StudioPhoto: SchemedModel {
+final class StudioPhoto: Model {
     static let schema = "studios+platform_files"
 
     @ID(key: .id)

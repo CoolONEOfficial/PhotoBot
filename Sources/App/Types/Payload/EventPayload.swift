@@ -146,7 +146,7 @@ extension EventPayload: Codable {
 
 enum PushTarget {
     case id(UUID)
-    case entryPoint(Node.EntryPoint)
+    case entryPoint(EntryPoint)
     case action(NodeActionType)
 }
 
@@ -160,7 +160,7 @@ extension PushTarget: Codable {
         
         if let id = try? container.decode(UUID.self) {
             self = .id(id)
-        } else if let entryPoint = try? container.decode(Node.EntryPoint.self) {
+        } else if let entryPoint = try? container.decode(EntryPoint.self) {
             self = .entryPoint(entryPoint)
         } else if let action = try? container.decode(NodeActionType.self) {
             self = .action(action)

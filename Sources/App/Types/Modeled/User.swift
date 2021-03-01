@@ -12,16 +12,14 @@ import Vapor
 import Fluent
 import AnyCodable
 
-class User {
+final class User: UserProtocol {
+    
+    typealias TwinType = UserModel
     
     var id: UUID?
     
-    struct HistoryEntry: Codable {
-        let nodeId: UUID
-        let nodePayload: NodePayload?
-    }
-    
-    var history: [HistoryEntry]
+    @Validated(.nonEmpty)
+    var history: [UserHistoryEntry]?
 
     var nodeId: UUID?
     
@@ -34,36 +32,38 @@ class User {
     @Validated(.greater(1)) // .isLetters &&
     var name: String?
     
-    private let model: Model?
+    required init() {}
     
-    init(history: [HistoryEntry] = [], nodeId: UUID? = nil, nodePayload: NodePayload, vkId: Int64? = nil, tgId: Int64? = nil, name: String? = nil) {
-        id = nil
-        model = nil
-        self.history = history
-        self.nodeId = nodeId
-        self.nodePayload = nodePayload
-        self.vkId = vkId
-        self.tgId = tgId
-        self.name = name
-    }
-    
-    // MARK: - Modeled Type
-
-    required init(from model: Model) {
-        self.model = model
-        id = model.id
-        history = model.history
-        nodeId = model.$node.id
-        nodePayload = model.nodePayload
-        vkId = model.vkId
-        tgId = model.tgId
-        name = model.name
-    }
+//    private let model: Model?
+//
+//    init(history: [HistoryEntry] = [], nodeId: UUID? = nil, nodePayload: NodePayload, vkId: Int64? = nil, tgId: Int64? = nil, name: String? = nil) {
+//        id = nil
+//        model = nil
+//        self.history = history
+//        self.nodeId = nodeId
+//        self.nodePayload = nodePayload
+//        self.vkId = vkId
+//        self.tgId = tgId
+//        self.name = name
+//    }
+//
+//    // MARK: - Modeled Type
+//
+//    required init(from model: Model) {
+//        self.model = model
+//        id = model.id
+//        history = model.history
+//        nodeId = model.$node.id
+//        nodePayload = model.nodePayload
+//        vkId = model.vkId
+//        tgId = model.tgId
+//        name = model.name
+//    }
 
 }
 
 extension User: ModeledType {
-    typealias Model = UserModel
+    //typealias Model = UserModel
     
     var isValid: Bool {
         _name.isValid
@@ -73,15 +73,7 @@ extension User: ModeledType {
         guard isValid else {
             throw ModeledTypeError.validationError(self)
         }
-        let model = self.model ?? .init()
-        model.id = id
-        model.history = history
-        model.$node.id = nodeId
-        model.nodePayload = nodePayload
-        model.tgId = tgId
-        model.vkId = vkId
-        model.name = name
-        return model.save(on: app.db).map { model }
+        return try TwinType.create(other: self, app: app)
     }
 }
 
@@ -92,14 +84,18 @@ extension User {
         bot: Bot,
         app: Application
     ) -> Future<User> {
-        Model.findOrCreate(from: from, bot: bot, on: database, app: app).map { try! $0.toMyType() }
+        TwinType.findOrCreate(from: from, bot: bot, on: database, app: app).throwingFlatMap { try User.create(other: $0, app: app) }
     }
     
     public static func find<T: PlatformObject & Replyable>(
         _ replyable: T,
-        on database: Database
+        on database: Database,
+        app: Application
     ) -> Future<User?> {
-        Model.find(replyable, on: database).map { try! $0?.toMyType() }
+        TwinType.find(replyable, on: database).throwingFlatMap { model in
+            guard let model = model else { return app.eventLoopGroup.future(nil) }
+            return try User.create(other: model, app: app).map { Optional($0) }
+        }
     }
     
     enum HistoryAction {
@@ -113,7 +109,7 @@ extension User {
         to replyable: T, with bot: Bot,
         app: Application, saveMove: Bool = true
     ) -> Future<[Message]> {
-        Node.find(target, on: app.db).flatMap { node in
+        Node.find(target, app: app).flatMap { node in
             try! self.push(node, payload: payload, to: replyable, with: bot, app: app, saveMove: saveMove)
         }
     }
@@ -125,9 +121,9 @@ extension User {
     ) throws -> Future<[Message]> {
         
         if node.entryPoint == .welcome {
-            history.removeAll()
+            history?.removeAll()
         } else if saveMove, let oldNodeId = self.nodeId {
-            history.append(.init(nodeId: oldNodeId, nodePayload: nodePayload))
+            history?.append(.init(nodeId: oldNodeId, nodePayload: nodePayload))
         }
 
         self.nodePayload = payload
@@ -147,11 +143,11 @@ extension User {
         }
     }
     
-    func pop<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, app: Application, while whileCompletion: (HistoryEntry) -> Bool) -> Future<[Message]>? {
-        guard let lastHistoryEntry = history.last else { return nil }
-        for entry in history {
+    func pop<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, app: Application, while whileCompletion: (UserHistoryEntry) -> Bool) -> Future<[Message]>? {
+        guard let lastHistoryEntry = history?.last else { return nil }
+        for entry in history ?? [] {
             if whileCompletion(entry) {
-                history.removeLast()
+                history?.removeLast()
             } else {
                 break
             }

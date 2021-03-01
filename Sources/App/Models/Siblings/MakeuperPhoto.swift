@@ -1,6 +1,6 @@
 //
 //  File.swift
-//  
+//
 //
 //  Created by Nickolay Truhin on 22.02.2021.
 //
@@ -9,7 +9,7 @@ import Foundation
 import Fluent
 import Vapor
 
-final class MakeuperPhoto: SchemedModel {
+final class MakeuperPhoto: Model {
     static let schema = "makeupers+platform_files"
 
     @ID(key: .id)

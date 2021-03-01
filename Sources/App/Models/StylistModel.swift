@@ -11,29 +11,32 @@ import Vapor
 import Botter
 import ValidatedPropertyKit
 
-final class StylistModel: SchemedModel, Content {
-    static let schema = "stylists"
+final class StylistModel: Model, StylistProtocol {
+
+    typealias TwinType = Stylist
+    
+    static var schema: String  = "stylists"
     
     @ID(key: .id)
     var id: UUID?
-
+    
     @OptionalField(key: "name")
     var name: String?
-
-    @Siblings(through: StylistPhoto.self, from: \.$stylist, to: \.$photo)
-    var photos: [PlatformFileModel]
     
-    init() { }
+    @Siblings(through: StylistPhoto.self, from: \.$stylist, to: \.$photo)
+    var _photos: [PlatformFileModel]
 
-    init(id: UUID? = nil, name: String? = nil) throws {
-        self.id = id
-        self.name = name
+    var photos: [PlatformFileModel]? {
+        get { _photos }
+        set { fatalError("Siblings must be attached manually") }
     }
+
+    var photosSiblings: AttachableFileSiblings<StylistModel, StylistPhoto>? { $_photos }
+    
+    required init() {}
 }
 
-extension StylistModel: EmployeeModel {
-    typealias MyType = Stylist
-    typealias PhotoModel = StylistPhoto
+extension StylistModel {
     
-    var photoSiblings: PhotoSiblings { $photos }
+    typealias PhotoModel = StylistPhoto
 }

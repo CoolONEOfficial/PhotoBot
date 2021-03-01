@@ -9,7 +9,7 @@ import Foundation
 import Botter
 import Vapor
 import Fluent
-
+//
 enum SendMessageGroupError: Error {
     case invalidPayload
     case nodesNotFound
@@ -54,7 +54,7 @@ enum SendMessageGroup {
         switch self {
         case var .array(arr):
             
-            if !node.systemic, user.isValid {
+            if !(node.systemic ?? false), user.isValid {
                 for (index, params) in arr.enumerated() {
                     params.keyboard.buttons.insert([
                         try! Button(
@@ -91,18 +91,26 @@ enum SendMessageGroup {
                 result = app.eventLoopGroup.future([])
                 
             case .makeupers:
-                let model = MakeuperModel.self
-                result = model.query(on: app.db).count().flatMap { count in
-                    model.query(on: app.db).range(startIndex ..< endIndex).all().flatMap { humans in
+                result = MakeuperModel.query(on: app.db).count().flatMap { count in
+                    MakeuperModel.query(on: app.db).range(startIndex ..< endIndex).all().flatMap { humans in
                         humans.enumerated().map { (index, human) -> Future<SendMessage> in
-                            human.$photos.get(on: app.db).flatMapThrowing { photos in
-                                SendMessage(
-                                    text: human.name,
-                                    keyboard: [ [
-                                        try Button(text: "Выбрать", action: .callback, eventPayload: .selectMakeuper(id: try human.requireID()))
-                                    ] ],
-                                    attachments: try photos.compactMap { try $0.toMyType().fileInfo }
-                                )
+                            human.$_photos.get(on: app.db).throwingFlatMap { photos -> Future<SendMessage> in
+                                try photos.map { try PlatformFile.create(other: $0, app: app) }
+                                    .flatten(on: app.eventLoopGroup.next())
+                                    .flatMapThrowing { attachments -> SendMessage in
+                                        SendMessage(
+                                            text: human.name,
+                                            keyboard: [ [
+                                                try Button(
+                                                    text: "Выбрать",
+                                                    action: .callback,
+                                                    eventPayload: .selectMakeuper(id: try human.requireID())
+                                                )
+                                            ] ],
+                                            attachments: attachments.compactMap { $0.fileInfo }
+                                        )
+
+                                    }
                             }
                         }
                         .flatten(on: app.eventLoopGroup.next())
@@ -115,14 +123,23 @@ enum SendMessageGroup {
                 result = model.query(on: app.db).count().flatMap { count in
                     model.query(on: app.db).range(startIndex ..< endIndex).all().flatMap { humans in
                         humans.enumerated().map { (index, human) -> Future<SendMessage> in
-                            human.$photos.get(on: app.db).flatMapThrowing { photos in
-                                SendMessage(
-                                    text: human.name,
-                                    keyboard: [ [
-                                        try Button(text: "Выбрать", action: .callback, eventPayload: .selectStylist(id: try human.requireID()))
-                                    ] ],
-                                    attachments: try photos.compactMap { try $0.toMyType().fileInfo }
-                                )
+                            human.$_photos.get(on: app.db).throwingFlatMap { photos -> Future<SendMessage> in
+                                try photos.map { try PlatformFile.create(other: $0, app: app) }
+                                    .flatten(on: app.eventLoopGroup.next())
+                                    .flatMapThrowing { attachments -> SendMessage in
+                                        SendMessage(
+                                            text: human.name,
+                                            keyboard: [ [
+                                                try Button(
+                                                    text: "Выбрать",
+                                                    action: .callback,
+                                                    eventPayload: .selectStylist(id: try human.requireID())
+                                                )
+                                            ] ],
+                                            attachments: attachments.compactMap { $0.fileInfo }
+                                        )
+
+                                    }
                             }
                         }
                         .flatten(on: app.eventLoopGroup.next())
@@ -135,15 +152,33 @@ enum SendMessageGroup {
                 result = model.query(on: app.db).count().flatMap { count in
                     model.query(on: app.db).range(startIndex ..< endIndex).all().flatMap { studios in
                         studios.enumerated().map { (index, studio) -> Future<SendMessage> in
-                            studio.$photos.get(on: app.db).flatMapThrowing { photos in
-                                SendMessage(
-                                    text: studio.name,
-                                    keyboard: [ [
-                                        try Button(text: "Выбрать", action: .callback, eventPayload: .selectStudio(id: try studio.requireID()))
-                                    ] ],
-                                    attachments: try photos.compactMap { try $0.toMyType().fileInfo }
-                                )
+                            studio.$_photos.get(on: app.db).throwingFlatMap { photos -> Future<SendMessage> in
+                                try photos.map { try PlatformFile.create(other: $0, app: app) }
+                                    .flatten(on: app.eventLoopGroup.next())
+                                    .flatMapThrowing { attachments -> SendMessage in
+                                        SendMessage(
+                                            text: studio.name,
+                                            keyboard: [ [
+                                                try Button(
+                                                    text: "Выбрать",
+                                                    action: .callback,
+                                                    eventPayload: .selectStudio(id: try studio.requireID())
+                                                )
+                                            ] ],
+                                            attachments: attachments.compactMap { $0.fileInfo }
+                                        )
+
+                                    }
                             }
+//                            studio.$_photos.get(on: app.db).flatMapThrowing { photos in
+//                                SendMessage(
+//                                    text: studio.name,
+//                                    keyboard: [ [
+//                                        try Button(text: "Выбрать", action: .callback, eventPayload: .selectStudio(id: try studio.requireID()))
+//                                    ] ],
+//                                    attachments: photos.compactMap { PlatformFile(other: $0).fileInfo }
+//                                )
+//                            }
                         }
                         .flatten(on: app.eventLoopGroup.next())
                         .map { Self.addPageButtons($0, startIndex, endIndex, count) }
@@ -249,7 +284,7 @@ enum SendMessageGroup {
     }
     
     static private func addNavigationButtons(_ messages: [SendMessage], _ user: User) -> [SendMessage] {
-        if !user.history.isEmpty, let lastMessage = messages.last {
+        if !(user.history?.isEmpty ?? true), let lastMessage = messages.last {
             lastMessage.keyboard.buttons.safeAppend([ try! .init(text: "🔙 Назад", action: .callback, eventPayload: .back) ])
         }
         return messages

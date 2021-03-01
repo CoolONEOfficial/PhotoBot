@@ -2,7 +2,7 @@
 //  File.swift
 //  
 //
-//  Created by Nickolay Truhin on 22.02.2021.
+//  Created by Nickolay Truhin on 24.02.2021.
 //
 
 import Foundation
@@ -11,35 +11,26 @@ import Botter
 import Vapor
 import Fluent
 
-final class Studio: StudioProtocol {
+final class Promotion: PromotionProtocol {
     
-    typealias TwinType = StudioModel
+    typealias TwinType = PromotionModel
     
     var id: UUID?
     
+    @Validated(.nonEmpty)
     var name: String?
     
+    @Validated(.nonEmpty)
     var description: String?
     
-    var address: String?
-
-    var coords: Coords?
-
-    @Validated(.nonEmpty)
-    var photos: [PlatformFileModel]?
-
     required init() {}
     
 }
 
-extension Studio: PhotoModeledType {
-    typealias PhotoModel = StudioPhoto
-}
-
-extension Studio: ModeledType {
-
+extension Promotion: ModeledType {
+    
     var isValid: Bool {
-        _photos.isValid
+        _name.isValid
     }
     
     func saveModel(app: Application) throws -> Future<TwinType> {

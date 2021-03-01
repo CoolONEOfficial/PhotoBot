@@ -10,17 +10,24 @@ import Vapor
 import Botter
 import ValidatedPropertyKit
 
-final class UserModel: SchemedModel, Content {
+final class UserModel: Model, UserProtocol {
+    typealias TwinType = User
+    
     static let schema = "users"
     
     @ID(key: .id)
     var id: UUID?
     
     @Field(key: "history")
-    var history: [User.HistoryEntry]
+    var history: [UserHistoryEntry]?
     
     @OptionalParent(key: "node_id")
     var node: NodeModel?
+    
+    var nodeId: UUID? {
+        get { self.$node.id }
+        set { self.$node.id = newValue }
+    }
     
     @OptionalField(key: "node_payload")
     var nodePayload: NodePayload?
@@ -34,26 +41,32 @@ final class UserModel: SchemedModel, Content {
     @OptionalField(key: "name")
     var name: String?
     
-    init() { }
-
-    init(id: UUID? = nil, node: NodeModel? = nil, history: [User.HistoryEntry] = [], tgId: Int64? = nil, vkId: Int64? = nil, name: String? = nil) throws {
-        self.id = id
-        self.vkId = vkId
-        self.tgId = tgId
-        self.name = name
-        if let node = node {
-            self.$node.id = try node.requireID()
-        }
-        self.history = history
-    }
+    required init() { }
     
-    convenience init(from user: Botter.User) throws {
+//    init(id: UUID? = nil, node: NodeModel? = nil, history: [User.HistoryEntry] = [], tgId: Int64? = nil, vkId: Int64? = nil, name: String? = nil) throws {
+//        self.id = id
+//        self.vkId = vkId
+//        self.tgId = tgId
+//        self.name = name
+//        if let node = node {
+//            self.$node.id = try node.requireID()
+//        }
+//        self.history = history
+//    }
+//
+}
+
+//extension UserModel: TypedModel { typealias MyType = User }
+
+extension UserModel {
+    
+    static func create(from user: Botter.User, app: Application) throws -> Future<UserModel> {
         let name = user.firstName
         switch user.platform {
         case .tg:
-            try self.init(tgId: user.id, name: name)
+            return try UserModel.create(tgId: user.id, name: name, app: app)
         case .vk:
-            try self.init(vkId: user.id, name: name)
+            return try UserModel.create(vkId: user.id, name: name, app: app)
         }
     }
     
@@ -63,13 +76,14 @@ final class UserModel: SchemedModel, Content {
         on database: Database,
         app: Application
     ) -> Future<UserModel> {
-        find(instance, on: database).flatMap { user in
-            if let user = user {
-                return app.eventLoopGroup.next().makeSucceededFuture(user)
+        find(instance, on: database).flatMap { model in
+            if let model = model {
+                return app.eventLoopGroup.next().makeSucceededFuture(model)
             } else {
-                return try! bot.getUser(from: instance, app: app)!.flatMap { user -> Future<UserModel> in
-                    let userModel = try! UserModel(from: user)
-                    return userModel.save(on: database).transform(to: userModel)
+                return try! bot.getUser(from: instance, app: app)!.throwingFlatMap { botterUser -> Future<UserModel> in
+                    try UserModel.create(from: botterUser, app: app).flatMap {
+                        $0.save(on: database).transform(to: $0)
+                    }
                 }
             }
         }
@@ -92,5 +106,3 @@ final class UserModel: SchemedModel, Content {
         }
     }
 }
-
-extension UserModel: TypedModel { typealias MyType = User }

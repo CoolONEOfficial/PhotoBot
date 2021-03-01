@@ -1,6 +1,6 @@
 //
 //  File.swift
-//  
+//
 //
 //  Created by Nickolay Truhin on 31.01.2021.
 //
@@ -14,10 +14,10 @@ struct OrderBuilderState: Codable {
     var studioId: UUID?
 }
 
-//struct CheckoutState: Codable {
-//    var orderBuilderState: OrderBuilderState
-//    var promotion: Promotion
-//}
+struct CheckoutState: Codable {
+    var orderBuilderState: OrderBuilderState
+    var promotions: [UUID]
+}
 
 extension OrderBuilderState {
     init(with oldPayload: NodePayload?, stylistId: UUID? = nil, makeuperId: UUID? = nil, studioId: UUID? = nil) {
@@ -42,7 +42,7 @@ enum NodePayload: Codable {
     case build(type: BuildableType, object: [String: AnyCodable] = [:])
     case page(at: Int)
     case orderBuilder(OrderBuilderState)
-    //case checkout(CheckoutState)
+    case checkout(CheckoutState)
 }
 
 //extension NodePayload {
@@ -66,7 +66,7 @@ extension NodePayload {
         case createBuildableObject
         case pageAt
         case orderBuilderState
-       // case checkoutState
+        case checkoutState
     }
 
     internal init(from decoder: Decoder) throws {
@@ -93,11 +93,11 @@ extension NodePayload {
             self = .orderBuilder(state)
             return
         }
-//        if container.allKeys.contains(.checkoutState) {
-//            let state = try container.decode(CheckoutState.self, forKey: .checkoutState)
-//            self = .checkout(state)
-//            return
-//        }
+        if container.allKeys.contains(.checkoutState) {
+            let state = try container.decode(CheckoutState.self, forKey: .checkoutState)
+            self = .checkout(state)
+            return
+        }
         throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown enum case"))
     }
 
@@ -118,8 +118,8 @@ extension NodePayload {
         case let .orderBuilder(state):
             try container.encode(state, forKey: .orderBuilderState)
         
-//        case let .checkout(checkout):
-//            try container.encode(checkout, forKey: .checkoutState)
+        case let .checkout(checkout):
+            try container.encode(checkout, forKey: .checkoutState)
         }
     }
 

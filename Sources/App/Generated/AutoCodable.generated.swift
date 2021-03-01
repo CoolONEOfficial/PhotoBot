@@ -7,19 +7,20 @@ import AnyCodable
 extension NodeAction.Action {
 
     enum CodingKeys: String, CodingKey {
-        case pushTarget
+        case push
         case moveToBuilder
         case pop
-        case id
+        case target
         case of
     }
 
     internal init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        if container.allKeys.contains(.pushTarget), try container.decodeNil(forKey: .pushTarget) == false {
-            let target = try container.decode(PushTarget.self, forKey: .pushTarget)
-            self = .push(target)
+        if container.allKeys.contains(.push), try container.decodeNil(forKey: .push) == false {
+            let associatedValues = try container.nestedContainer(keyedBy: CodingKeys.self, forKey: .push)
+            let target = try associatedValues.decode(PushTarget.self, forKey: .target)
+            self = .push(target: target)
             return
         }
         if container.allKeys.contains(.moveToBuilder), try container.decodeNil(forKey: .moveToBuilder) == false {
@@ -40,7 +41,8 @@ extension NodeAction.Action {
 
         switch self {
         case let .push(target):
-            try container.encode(target, forKey: .pushTarget)
+            var associatedValues = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .push)
+            try associatedValues.encode(target, forKey: .target)
         case let .moveToBuilder(of):
             var associatedValues = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .moveToBuilder)
             try associatedValues.encode(of, forKey: .of)
