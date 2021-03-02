@@ -50,11 +50,11 @@ extension PlatformFile: ModeledType {
         _platformEntries.isValid
     }
     
-    func saveModel(app: Application) throws -> EventLoopFuture<PlatformFileModel> {
+    func save(app: Application) throws -> EventLoopFuture<PlatformFileModel> {
         guard isValid else {
             throw ModeledTypeError.validationError(self)
         }
-        return try TwinType.create(other: self, app: app)
+        return TwinType.create(other: self, app: app)
     }
 }
 

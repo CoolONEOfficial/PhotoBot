@@ -42,52 +42,10 @@ final class UserModel: Model, UserProtocol {
     var name: String?
     
     required init() { }
-    
-//    init(id: UUID? = nil, node: NodeModel? = nil, history: [User.HistoryEntry] = [], tgId: Int64? = nil, vkId: Int64? = nil, name: String? = nil) throws {
-//        self.id = id
-//        self.vkId = vkId
-//        self.tgId = tgId
-//        self.name = name
-//        if let node = node {
-//            self.$node.id = try node.requireID()
-//        }
-//        self.history = history
-//    }
-//
+
 }
 
-//extension UserModel: TypedModel { typealias MyType = User }
-
 extension UserModel {
-    
-    static func create(from user: Botter.User, app: Application) throws -> Future<UserModel> {
-        let name = user.firstName
-        switch user.platform {
-        case .tg:
-            return try UserModel.create(tgId: user.id, name: name, app: app)
-        case .vk:
-            return try UserModel.create(vkId: user.id, name: name, app: app)
-        }
-    }
-    
-    public static func findOrCreate<T: PlatformObject & Replyable & UserFetchable>(
-        from instance: T,
-        bot: Bot,
-        on database: Database,
-        app: Application
-    ) -> Future<UserModel> {
-        find(instance, on: database).flatMap { model in
-            if let model = model {
-                return app.eventLoopGroup.next().makeSucceededFuture(model)
-            } else {
-                return try! bot.getUser(from: instance, app: app)!.throwingFlatMap { botterUser -> Future<UserModel> in
-                    try UserModel.create(from: botterUser, app: app).flatMap {
-                        $0.save(on: database).transform(to: $0)
-                    }
-                }
-            }
-        }
-    }
     
     public static func find<T: PlatformObject & Replyable>(
         _ platformReplyable: T,

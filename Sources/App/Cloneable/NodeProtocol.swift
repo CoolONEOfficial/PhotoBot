@@ -30,15 +30,15 @@ protocol NodeProtocol: Cloneable where TwinType: NodeProtocol {
     var action: NodeAction? { get set }
     
     init()
-    static func create(id: UUID?, systemic: Bool?, name: String?, messagesGroup: SendMessageGroup?, entryPoint: EntryPoint?, action: NodeAction?, app: Application) throws -> Future<Self>
+    static func create(id: UUID?, systemic: Bool?, name: String?, messagesGroup: SendMessageGroup?, entryPoint: EntryPoint?, action: NodeAction?, app: Application) -> Future<Self>
 }
 
 extension NodeProtocol {
-    static func create(other: TwinType, app: Application) throws -> Future<Self> {
-        try Self.create(id: other.id, systemic: other.systemic, name: other.name, messagesGroup: other.messagesGroup, entryPoint: other.entryPoint, action: other.action, app: app)
+    static func create(other: TwinType, app: Application) -> Future<Self> {
+        Self.create(id: other.id, systemic: other.systemic, name: other.name, messagesGroup: other.messagesGroup, entryPoint: other.entryPoint, action: other.action, app: app)
     }
     
-    static func create(id: UUID? = nil, systemic: Bool? = false, name: String?, messagesGroup: SendMessageGroup?, entryPoint: EntryPoint? = nil, action: NodeAction? = nil, app: Application) throws -> Future<Self> {
+    static func create(id: UUID? = nil, systemic: Bool? = false, name: String?, messagesGroup: SendMessageGroup?, entryPoint: EntryPoint? = nil, action: NodeAction? = nil, app: Application) -> Future<Self> {
         let instance = Self.init()
         instance.id = id
         instance.systemic = systemic

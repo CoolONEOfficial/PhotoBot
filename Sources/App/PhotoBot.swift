@@ -173,7 +173,7 @@ class PhotoBot {
     func handleEvent(_ update: Botter.Update, _ context: Botter.BotContext?) throws {
         guard case let .event(event) = update.content else { return }
         
-        let userFuture = User.findOrCreate(from: event, on: app.db, bot: bot, app: app).throwingFlatMap { user -> Future<[Botter.Message]> in
+        let userFuture = User.findOrCreate(from: event, bot: bot, app: app).throwingFlatMap { user -> Future<[Botter.Message]> in
             
             var replyText: String = "Not handled"
             var nextFuture: Future<[Botter.Message]>? = nil
@@ -263,7 +263,7 @@ class PhotoBot {
     func handleText(_ update: Botter.Update, _ context: Botter.BotContext?) throws {
         guard case let .message(message) = update.content, let text = message.text else { return }
         
-        let userFuture = User.findOrCreate(from: message, on: app.db, bot: bot, app: app)
+        let userFuture = User.findOrCreate(from: message, bot: bot, app: app)
             .throwingFlatMap { user -> Future<[Botter.Message]?> in
                 if let nodeId = user.nodeId {
                     return NodeModel.find(nodeId, on: self.app.db)
@@ -374,7 +374,7 @@ class PhotoBot {
                 
             case .notFound:
                 let future: Future<Void>?
-                if let modelFuture = try? Node.create(other: NodeModel(from: NodeBuildable(from: payloadObject)), app: app).throwingFlatMap { try $0.saveModel(app: self.app).transform(to: $0) } {
+                if let modelFuture = try? Node.create(other: NodeModel(from: NodeBuildable(from: payloadObject)), app: app).throwingFlatMap { try $0.save(app: self.app).transform(to: $0) } {
                     future = modelFuture.map { _ in () }
                 } else {
                     future = try? message.reply(from: self.bot, params: .init(text: "Failed to crete model"), app: self.app).map { _ in () }
@@ -413,12 +413,12 @@ class PhotoBot {
 
                 node.messagesGroup?.updateText(at: messageId, text: text)
                 
-                return try node.saveModel(app: self.app).map { _ in () }
+                return try node.save(app: self.app).map { _ in () }
             }
 
         case .setName:
             user.name = message.text
-            return try user.saveModel(app: app).throwingFlatMap { _ in
+            return try user.save(app: app).throwingFlatMap { _ in
                 try message.reply(from: self.bot, params: .init(text: "Good, \(user.name!)"), app: self.app).map { _ in () }
             }
 
@@ -467,7 +467,7 @@ class PhotoBot {
                         .map { _ in platform.to(attachment.attachmentId) }
                 }
             }.flatten(on: app.eventLoopGroup.next()).flatMap { platformEntries in
-                PlatformFile.create(platformEntries: platformEntries, type: .photo, app: self.app).throwingFlatMap { try $0.saveModelReturningId(app: self.app) }.throwingFlatMap { savedId in
+                PlatformFile.create(platformEntries: platformEntries, type: .photo, app: self.app).throwingFlatMap { try $0.saveReturningId(app: self.app) }.throwingFlatMap { savedId in
                     try message.reply(from: self.bot, params: .init(text: "локальный id: \(savedId)"), app: self.app)
                         .map { _ in () }
                 }

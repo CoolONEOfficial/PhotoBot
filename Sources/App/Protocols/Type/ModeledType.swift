@@ -18,7 +18,7 @@ enum ModeledTypeError: Error {
 protocol ModeledType: Cloneable where TwinType: Model {
     //associatedtype Model: TypedModel & Cloneable
     
-    func saveModel(app: Application) throws -> Future<TwinType>
+    func save(app: Application) throws -> Future<TwinType>
     
     var isValid: Bool { get }
 }
@@ -26,8 +26,8 @@ protocol ModeledType: Cloneable where TwinType: Model {
 extension ModeledType {
     var isValid: Bool { true }
     
-    func saveModelReturningId(app: Application) throws -> Future<TwinType.IDValue> {
-        try saveModel(app: app).flatMapThrowing { try $0.requireID() }
+    func saveReturningId(app: Application) throws -> Future<TwinType.IDValue> {
+        try save(app: app).flatMapThrowing { try $0.requireID() }
     }
 }
 

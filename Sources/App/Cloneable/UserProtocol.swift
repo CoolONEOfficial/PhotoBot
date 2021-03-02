@@ -26,15 +26,15 @@ protocol UserProtocol: Cloneable where TwinType: UserProtocol {
     var name: String? { get set }
     
     init()
-    static func create(id: UUID?, history: [UserHistoryEntry]?, nodeId: UUID?, nodePayload: NodePayload?, vkId: Int64?, tgId: Int64?, name: String?, app: Application) throws -> Future<Self>
+    static func create(id: UUID?, history: [UserHistoryEntry]?, nodeId: UUID?, nodePayload: NodePayload?, vkId: Int64?, tgId: Int64?, name: String?, app: Application) -> Future<Self>
 }
 
 extension UserProtocol {
-    static func create(other: TwinType, app: Application) throws -> Future<Self> {
-        try Self.create(id: other.id, history: other.history, nodeId: other.nodeId, nodePayload: other.nodePayload, vkId: other.vkId, tgId: other.tgId, name: other.name, app: app)
+    static func create(other: TwinType, app: Application) -> Future<Self> {
+        Self.create(id: other.id, history: other.history, nodeId: other.nodeId, nodePayload: other.nodePayload, vkId: other.vkId, tgId: other.tgId, name: other.name, app: app)
     }
     
-    static func create(id: UUID? = nil, history: [UserHistoryEntry]? = nil, nodeId: UUID? = nil, nodePayload: NodePayload? = nil, vkId: Int64? = nil, tgId: Int64? = nil, name: String?, app: Application) throws -> Future<Self> {
+    static func create(id: UUID? = nil, history: [UserHistoryEntry]? = nil, nodeId: UUID? = nil, nodePayload: NodePayload? = nil, vkId: Int64? = nil, tgId: Int64? = nil, name: String?, app: Application) -> Future<Self> {
         let instance = Self.init()
         instance.id = id
         instance.history = history

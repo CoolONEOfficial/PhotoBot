@@ -77,18 +77,18 @@ private func configurePostgres(_ app: Application) throws {
         let test = try PlatformFile.create(platformEntries: [
             .tg("AgACAgQAAxkDAAIHjGAyWdeuTYimywkuaJsCk6cnPBw_AAKIqDEb84k9Ulm1-biSJET0czAfGwAEAQADAgADbQADE8MBAAEeBA"),
             .vk("photo-119092254_457239065")
-        ], type: .photo, app: app).throwingFlatMap { try $0.saveModel(app: app) }.wait()
+        ], type: .photo, app: app).throwingFlatMap { try $0.save(app: app) }.wait()
         
         for num in 1...20 {
             try Stylist.create(
                 name: "Stylist \(num)", photos: [test], app: app
-            ).throwingFlatMap { try $0.saveModel(app: app) }.wait()
+            ).throwingFlatMap { try $0.save(app: app) }.wait()
         }
         
         for num in 1...20 {
             try Makeuper.create(
                 name: "Makeuper \(num)", photos: [test], app: app
-            ).throwingFlatMap { try $0.saveModel(app: app) }.wait()
+            ).throwingFlatMap { try $0.save(app: app) }.wait()
         }
         
         for num in 1...3 {
@@ -96,7 +96,7 @@ private func configurePostgres(_ app: Application) throws {
                 name: "Promo \(num)",
                 description: "Promo desc",
                 app: app
-            ).throwingFlatMap { try $0.saveModel(app: app) }.wait()
+            ).throwingFlatMap { try $0.save(app: app) }.wait()
         }
         
         for num in 1...3 {
@@ -106,7 +106,7 @@ private func configurePostgres(_ app: Application) throws {
                 address: "adsdsad",
                 coords: .init(lat: 0, long: 0),
                 photos: [test], app: app
-            ).throwingFlatMap { try $0.saveModel(app: app) }.wait()
+            ).throwingFlatMap { try $0.save(app: app) }.wait()
         }
 
         let showcaseNodeId = try Node.create(
@@ -116,7 +116,7 @@ private func configurePostgres(_ app: Application) throws {
                     .init(text: "Перейти в главное меню", action: .callback, eventPayload: .push(.entryPoint(.welcome)))
                 ]])
             ], app: app
-        ).throwingFlatMap { try $0.saveModelReturningId(app: app) }.wait()
+        ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
         
         try Node.create(
             name: "Welcome guest node",
@@ -128,14 +128,14 @@ private func configurePostgres(_ app: Application) throws {
             ],
             //action: .init(.setName, success: .push(id: showcaseNodeId), failure: "Wrong name, please try again.")
             entryPoint: .welcomeGuest, app: app
-        ).throwingFlatMap { try $0.saveModelReturningId(app: app) }.wait()
+        ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
         
         try Node.create(
             systemic: true,
             name: "Change static node text node",
             messagesGroup: [ .init(text: "Пришли мне новый текст") ],
             action: .init(.messageEdit, success: .pop), app: app
-        ).throwingFlatMap { try $0.saveModelReturningId(app: app) }.wait()
+        ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
         
     }
 }
@@ -147,7 +147,7 @@ func mainGroup(_ app: Application) throws -> UUID {
             .init(text: "Пришли мне прямую ссылку.")
         ],
         action: .init(.uploadPhoto), app: app
-    ).throwingFlatMap { try $0.saveModelReturningId(app: app) }.wait()
+    ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
     
     let aboutNodeId = try Node.create(
         name: "About node",
@@ -155,14 +155,14 @@ func mainGroup(_ app: Application) throws -> UUID {
             .init(text: "Test message here."),
             .init(text: "And other message.")
         ], app: app
-    ).throwingFlatMap { try $0.saveModelReturningId(app: app) }.wait()
+    ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
     
     let portfolioNodeId = try Node.create(
         name: "Portfolio node",
         messagesGroup: [
             .init(text: "Test message here.")
         ], app: app
-    ).throwingFlatMap { try $0.saveModelReturningId(app: app) }.wait()
+    ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
     
     let orderMainNodeId = try orderBuilderGroup(app)
 
@@ -181,7 +181,7 @@ func mainGroup(_ app: Application) throws -> UUID {
             ])
         ],
         entryPoint: .welcome, app: app
-    ).throwingFlatMap { try $0.saveModelReturningId(app: app) }.wait()
+    ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
 }
 
 func orderBuilderGroup(_ app: Application) throws -> UUID {
@@ -189,19 +189,19 @@ func orderBuilderGroup(_ app: Application) throws -> UUID {
         name: "Order builder stylist node",
         messagesGroup: .list(.stylists),
         entryPoint: .orderBuilderStylist, app: app
-    ).throwingFlatMap { try $0.saveModelReturningId(app: app) }.wait()
+    ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
     
     let makeuperNodeId = try Node.create(
         name: "Order builder makeuper node",
         messagesGroup: .list(.makeupers),
         entryPoint: .orderBuilderMakeuper, app: app
-    ).throwingFlatMap { try $0.saveModelReturningId(app: app) }.wait()
+    ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
     
     let studioNodeId = try Node.create(
         name: "Order builder studio node",
         messagesGroup: .list(.studios),
         entryPoint: .orderBuilderStudio, app: app
-    ).throwingFlatMap { try $0.saveModelReturningId(app: app) }.wait()
+    ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
     
     let finishNodeId = try Node.create(
         name: "Order finish node",
@@ -209,19 +209,19 @@ func orderBuilderGroup(_ app: Application) throws -> UUID {
             .init(text: "Заказ успешно создан, в ближайшее время с Вами свяжется @$ADMIN")
         ],
         entryPoint: .orderFinish, app: app
-    ).throwingFlatMap { try $0.saveModelReturningId(app: app) }.wait()
+    ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
 
     try Node.create(
         name: "Order checkout node",
         messagesGroup: .orderCheckout,
         entryPoint: .orderCheckout, app: app
-    ).throwingFlatMap { try $0.saveModelReturningId(app: app) }.wait()
+    ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
     
     return try Node.create(
         name: "Order builder main node",
         messagesGroup: .orderBuilder,
         entryPoint: .orderBuilder, app: app
-    ).throwingFlatMap { try $0.saveModelReturningId(app: app) }.wait()
+    ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
 }
 
 func tgSettings(_ app: Application) -> Telegrammer.Bot.Settings {

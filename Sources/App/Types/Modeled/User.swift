@@ -69,32 +69,54 @@ extension User: ModeledType {
         _name.isValid
     }
     
-    func saveModel(app: Application) throws -> EventLoopFuture<UserModel> {
+    func save(app: Application) throws -> EventLoopFuture<UserModel> {
         guard isValid else {
             throw ModeledTypeError.validationError(self)
         }
-        return try TwinType.create(other: self, app: app)
+        return TwinType.create(other: self, app: app)
     }
 }
 
 extension User {
+//    public static func findOrCreate<T: PlatformObject & Replyable & UserFetchable>(
+//        from: T,
+//        on database: Database,
+//        bot: Bot,
+//        app: Application
+//    ) -> Future<User> {
+//        TwinType.findOrCreate(from: from, bot: bot, on: database, app: app).flatMap { User.create(other: $0, app: app) }
+//    }
+    
+    static func create(from user: Botter.User, app: Application) -> Future<User> {
+        let name = user.firstName
+        switch user.platform {
+        case .tg:
+            return User.create(tgId: user.id, name: name, app: app)
+        case .vk:
+            return User.create(vkId: user.id, name: name, app: app)
+        }
+    }
+    
+    static func find<T: PlatformObject & Replyable>(
+        _ platformReplyable: T,
+        app: Application
+    ) -> Future<User?> {
+        TwinType.find(platformReplyable, on: app.db).optionalFlatMap { User.create(other: $0, app: app) }
+    }
+    
     public static func findOrCreate<T: PlatformObject & Replyable & UserFetchable>(
-        from: T,
-        on database: Database,
+        from instance: T,
         bot: Bot,
         app: Application
     ) -> Future<User> {
-        TwinType.findOrCreate(from: from, bot: bot, on: database, app: app).throwingFlatMap { try User.create(other: $0, app: app) }
-    }
-    
-    public static func find<T: PlatformObject & Replyable>(
-        _ replyable: T,
-        on database: Database,
-        app: Application
-    ) -> Future<User?> {
-        TwinType.find(replyable, on: database).throwingFlatMap { model in
-            guard let model = model else { return app.eventLoopGroup.future(nil) }
-            return try User.create(other: model, app: app).map { Optional($0) }
+        Self.find(instance, app: app).flatMap { model in
+            if let model = model {
+                return app.eventLoopGroup.next().makeSucceededFuture(model)
+            } else {
+                return try! bot.getUser(from: instance, app: app)!.flatMap { botterUser -> Future<User> in
+                    Self.create(from: botterUser, app: app)
+                }
+            }
         }
     }
     
@@ -129,7 +151,7 @@ extension User {
         self.nodePayload = payload
         self.nodeId = node.id!
         
-        return try self.saveModelReturningId(app: app).flatMap { (id) -> Future<[Message]> in
+        return try self.saveReturningId(app: app).flatMap { (id) -> Future<[Message]> in
             self.id = id
             return try! replyable.replyNode(with: bot, user: self, node: node, payload: payload, app: app)!
         }

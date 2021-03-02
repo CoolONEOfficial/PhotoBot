@@ -23,8 +23,8 @@ protocol StylistProtocol: PhotosProtocol, Cloneable where TwinType: StylistProto
 }
 
 extension StylistProtocol {
-    static func create(other: TwinType, app: Application) throws -> Future<Self> {
-        try Self.create(id: other.id, name: other.name, photos: other.photos, app: app)
+    static func create(other: TwinType, app: Application) -> Future<Self> {
+        Self.create(id: other.id, name: other.name, photos: other.photos, app: app)
     }
     
     static func create(id: UUID? = nil, name: String?, photos: [PlatformFileModel]?, app: Application) -> Future<Self> {

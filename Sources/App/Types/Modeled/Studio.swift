@@ -42,10 +42,10 @@ extension Studio: ModeledType {
         _photos.isValid
     }
     
-    func saveModel(app: Application) throws -> Future<TwinType> {
+    func save(app: Application) throws -> Future<TwinType> {
         guard isValid else {
             throw ModeledTypeError.validationError(self)
         }
-        return try TwinType.create(other: self, app: app)
+        return TwinType.create(other: self, app: app)
     }
 }

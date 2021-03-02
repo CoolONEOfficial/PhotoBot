@@ -39,11 +39,11 @@ extension Stylist: ModeledType {
         _name.isValid && _photos.isValid
     }
 
-    func saveModel(app: Application) throws -> EventLoopFuture<TwinType> {
+    func save(app: Application) throws -> EventLoopFuture<TwinType> {
         guard isValid else {
             throw ModeledTypeError.validationError(self)
         }
-        return try TwinType.create(other: self, app: app)
+        return TwinType.create(other: self, app: app)
     }
 }
 

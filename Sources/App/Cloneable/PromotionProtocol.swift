@@ -20,7 +20,7 @@ protocol PromotionProtocol: Cloneable where TwinType: PromotionProtocol {
 }
 
 extension PromotionProtocol {
-    static func create(other: TwinType, app: Application) throws -> Future<Self> {
+    static func create(other: TwinType, app: Application) -> Future<Self> {
         Self.create(id: other.id, name: other.name, description: other.description, app: app)
     }
     
