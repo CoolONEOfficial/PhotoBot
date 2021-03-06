@@ -17,9 +17,8 @@ final class User: UserProtocol {
     typealias TwinType = UserModel
     
     var id: UUID?
-    
-    @Validated(.nonEmpty)
-    var history: [UserHistoryEntry]?
+
+    var history: [UserHistoryEntry] = []
 
     var nodeId: UUID?
     
@@ -33,37 +32,10 @@ final class User: UserProtocol {
     var name: String?
     
     required init() {}
-    
-//    private let model: Model?
-//
-//    init(history: [HistoryEntry] = [], nodeId: UUID? = nil, nodePayload: NodePayload, vkId: Int64? = nil, tgId: Int64? = nil, name: String? = nil) {
-//        id = nil
-//        model = nil
-//        self.history = history
-//        self.nodeId = nodeId
-//        self.nodePayload = nodePayload
-//        self.vkId = vkId
-//        self.tgId = tgId
-//        self.name = name
-//    }
-//
-//    // MARK: - Modeled Type
-//
-//    required init(from model: Model) {
-//        self.model = model
-//        id = model.id
-//        history = model.history
-//        nodeId = model.$node.id
-//        nodePayload = model.nodePayload
-//        vkId = model.vkId
-//        tgId = model.tgId
-//        name = model.name
-//    }
 
 }
 
 extension User: ModeledType {
-    //typealias Model = UserModel
     
     var isValid: Bool {
         _name.isValid
@@ -78,15 +50,7 @@ extension User: ModeledType {
 }
 
 extension User {
-//    public static func findOrCreate<T: PlatformObject & Replyable & UserFetchable>(
-//        from: T,
-//        on database: Database,
-//        bot: Bot,
-//        app: Application
-//    ) -> Future<User> {
-//        TwinType.findOrCreate(from: from, bot: bot, on: database, app: app).flatMap { User.create(other: $0, app: app) }
-//    }
-    
+
     static func create(from user: Botter.User, app: Application) -> Future<User> {
         let name = user.firstName
         switch user.platform {
@@ -143,38 +107,47 @@ extension User {
     ) throws -> Future<[Message]> {
         
         if node.entryPoint == .welcome {
-            history?.removeAll()
+            history.removeAll()
         } else if saveMove, let oldNodeId = self.nodeId {
-            history?.append(.init(nodeId: oldNodeId, nodePayload: nodePayload))
+            history.append(.init(nodeId: oldNodeId, nodePayload: nodePayload))
         }
 
         self.nodePayload = payload
         self.nodeId = node.id!
         
-        return try self.saveReturningId(app: app).flatMap { (id) -> Future<[Message]> in
+        return try self.saveReturningId(app: app).throwingFlatMap { (id) -> Future<[Message]> in
             self.id = id
-            return try! replyable.replyNode(with: bot, user: self, node: node, payload: payload, app: app)!
+            return try replyable.replyNode(with: bot, user: self, node: node, payload: payload, app: app)!
         }
     }
     
-    func pop<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, app: Application) -> Future<[Message]>? {
+    func popToMain<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, app: Application) throws -> Future<[Message]> {
+        try pop(to: replyable, with: bot, app: app) { _ in true }
+    }
+
+    func pop<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, app: Application) throws -> Future<[Message]> {
         var counter = 0
-        return pop(to: replyable, with: bot, app: app) { _ in
+        return try pop(to: replyable, with: bot, app: app) { _ in
             counter += 1
             return counter == 1
         }
     }
     
-    func pop<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, app: Application, while whileCompletion: (UserHistoryEntry) -> Bool) -> Future<[Message]>? {
-        guard let lastHistoryEntry = history?.last else { return nil }
-        for entry in history ?? [] {
-            if whileCompletion(entry) {
-                history?.removeLast()
+    enum PopError: Error {
+        case noHistory
+    }
+    
+    func pop<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, app: Application, while whileCompletion: (UserHistoryEntry) -> Bool) throws -> Future<[Message]> {
+        guard !history.isEmpty else { throw PopError.noHistory }
+        for (index, entry) in history.enumerated().reversed() {
+            if whileCompletion(entry), index != 0 {
+                history.removeLast()
             } else {
                 break
             }
         }
-        return push(.id(lastHistoryEntry.nodeId), payload: lastHistoryEntry.nodePayload, to: replyable, with: bot, app: app, saveMove: false)
+        let newestHistoryEntry = history.last!
+        return push(.id(newestHistoryEntry.nodeId), payload: newestHistoryEntry.nodePayload, to: replyable, with: bot, app: app, saveMove: false)
     }
 }
 

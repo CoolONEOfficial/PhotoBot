@@ -12,55 +12,41 @@ import Botter
 class MessageFormatter {
     static let shared = MessageFormatter()
     
+    private init() {}
+    
     enum ReplacingKey: String {
         case user = "$USER"
         case stylist = "$STYLIST"
         case makeuper = "$MAKEUPER"
         case studio = "$STUDIO"
+        case price = "$PRICE"
+        case admin = "$ADMIN"
     }
     
-    func format(_ string: String, user: User, app: Application) -> Future<String> {
+    typealias ReplacingDict = [ReplacingKey: String]
+    
+    func format(_ string: String, platform: AnyPlatform, user: User, app: Application) -> Future<String> {
         let nope = "<nope>"
         let notSelected = "Не выбран"
-        var replacingDict: [ReplacingKey: String] = [
+        
+        let replacingDict: ReplacingDict = [
             .user: user.name ?? nope,
             .stylist: notSelected,
             .makeuper: notSelected,
-            .studio: notSelected
+            .studio: notSelected,
+            .price: "0",
+            .admin: Application.adminNickname(for: platform)
         ]
 
         var future = app.eventLoopGroup.future(replacingDict)
-        if case let .orderBuilder(state) = user.nodePayload {
-            if let stylistId = state.stylistId {
-                future = future.flatMap { string in
-                    StylistModel.find(stylistId, on: app.db).map { stylist in
-                        if let stylistName = stylist?.name {
-                            replacingDict[.stylist] = stylistName
-                        }
-                        return replacingDict
-                    }
-                }
-            }
-            if let makeuperId = state.makeuperId {
-                future = future.flatMap { string in
-                    MakeuperModel.find(makeuperId, on: app.db).map { makeuper in
-                        if let makeuperName = makeuper?.name {
-                            replacingDict[.makeuper] = makeuperName
-                        }
-                        return replacingDict
-                    }
-                }
-            }
-            if let studioId = state.studioId {
-                future = future.flatMap { string in
-                    StudioModel.find(studioId, on: app.db).map { studio in
-                        if let studioName = studio?.name {
-                            replacingDict[.studio] = studioName
-                        }
-                        return replacingDict
-                    }
-                }
-            }
+        switch user.nodePayload {
+        case let .checkout(state):
+            future = handleOrderState(state: state.orderBuilderState, replacingDict: replacingDict, app: app, future: future)
+
+        case let .orderBuilder(state):
+            future = handleOrderState(state: state, replacingDict: replacingDict, app: app, future: future)
+            
+        default: break
         }
 
         return future.map { dict in
@@ -68,6 +54,43 @@ class MessageFormatter {
                 string.replacingOccurrences(of: entry.key.rawValue, with: entry.value)
             }
         }
+    }
+    
+    private func handleOrderState(state: OrderState, replacingDict: [ReplacingKey: String], app: Application, future: Future<ReplacingDict>) -> Future<ReplacingDict> {
+        var future = future
+        var replacingDict = replacingDict
+        if let stylistId = state.stylistId {
+            future = future.flatMap { string in
+                StylistModel.find(stylistId, on: app.db).map { stylist in
+                    if let stylistName = stylist?.name {
+                        replacingDict[.stylist] = stylistName
+                    }
+                    return replacingDict
+                }
+            }
+        }
+        if let makeuperId = state.makeuperId {
+            future = future.flatMap { string in
+                MakeuperModel.find(makeuperId, on: app.db).map { makeuper in
+                    if let makeuperName = makeuper?.name {
+                        replacingDict[.makeuper] = makeuperName
+                    }
+                    return replacingDict
+                }
+            }
+        }
+        if let studioId = state.studioId {
+            future = future.flatMap { string in
+                StudioModel.find(studioId, on: app.db).map { studio in
+                    if let studioName = studio?.name {
+                        replacingDict[.studio] = studioName
+                    }
+                    return replacingDict
+                }
+            }
+        }
+        replacingDict[.price] = .init(state.price)
+        return future
     }
 }
 

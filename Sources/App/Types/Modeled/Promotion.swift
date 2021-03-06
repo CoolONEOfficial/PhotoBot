@@ -22,7 +22,11 @@ final class Promotion: PromotionProtocol {
     
     @Validated(.nonEmpty)
     var description: String?
+
+    var impact: PromotionImpact?
     
+    var condition: PromotionCondition?
+
     required init() {}
     
 }

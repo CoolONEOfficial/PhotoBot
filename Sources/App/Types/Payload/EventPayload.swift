@@ -19,7 +19,7 @@ enum EventPayload {
     // MARK: Navigation
     
     case back
-    case push(PushTarget, Bool = true)
+    case push(PushTarget, payload: NodePayload? = nil, saveToHistory: Bool = true)
     case previousPage
     case nextPage
 }
@@ -91,8 +91,9 @@ extension EventPayload: Codable {
         if container.allKeys.contains(.push), try container.decodeNil(forKey: .push) == false {
             var associatedValues = try container.nestedUnkeyedContainer(forKey: .push)
             let target = try associatedValues.decode(PushTarget.self)
+            let nodePayload = try associatedValues.decodeIfPresent(NodePayload.self)
             let saveToHistory = try associatedValues.decode(Bool.self)
-            self = .push(target, saveToHistory)
+            self = .push(target, payload: nodePayload, saveToHistory: saveToHistory)
             return
         }
         if container.allKeys.contains(.previousPage), try container.decodeNil(forKey: .previousPage) == false {
@@ -131,10 +132,11 @@ extension EventPayload: Codable {
             try container.encode(true, forKey: .createOrder)
         case .back:
             _ = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .back)
-        case let .push(associatedValue0, associatedValue1):
+        case let .push(associatedValue0, associatedValue1, associatedValue2):
             var associatedValues = container.nestedUnkeyedContainer(forKey: .push)
             try associatedValues.encode(associatedValue0)
             try associatedValues.encode(associatedValue1)
+            try associatedValues.encode(associatedValue2)
         case .previousPage:
             _ = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .previousPage)
         case .nextPage:

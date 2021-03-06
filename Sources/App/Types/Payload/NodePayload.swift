@@ -7,31 +7,37 @@
 
 import Foundation
 import AnyCodable
+import Botter
 
-struct OrderBuilderState: Codable {
+struct OrderState: Codable {
     var stylistId: UUID?
     var makeuperId: UUID?
     var studioId: UUID?
+    var price: Int
 }
 
 struct CheckoutState: Codable {
-    var orderBuilderState: OrderBuilderState
-    var promotions: [UUID]
+    var orderBuilderState: OrderState
+    var promotions: [UUID] = []
 }
 
-extension OrderBuilderState {
-    init(with oldPayload: NodePayload?, stylistId: UUID? = nil, makeuperId: UUID? = nil, studioId: UUID? = nil) {
+extension OrderState {
+    init(with oldPayload: NodePayload?, stylist: Stylist? = nil, makeuper: Makeuper? = nil, studio: Studio? = nil) {
+        let priceables: [Priceable?] = [ stylist, makeuper, studio ]
+        let appendingPrice = priceables.compactMap { $0?.price }.reduce(0, +)
         if case let .orderBuilder(state) = oldPayload {
             self.init(
-                stylistId: stylistId ?? state.stylistId,
-                makeuperId: makeuperId ?? state.makeuperId,
-                studioId: studioId ?? state.studioId
+                stylistId: stylist?.id ?? state.stylistId,
+                makeuperId: makeuper?.id ?? state.makeuperId,
+                studioId: studio?.id ?? state.studioId,
+                price: state.price + appendingPrice
             )
         } else {
             self.init(
-                stylistId: stylistId,
-                makeuperId: makeuperId,
-                studioId: studioId
+                stylistId: stylist?.id,
+                makeuperId: makeuper?.id,
+                studioId: studio?.id,
+                price: appendingPrice
             )
         }
     }
@@ -41,7 +47,7 @@ enum NodePayload: Codable {
     case editText(messageId: Int)
     case build(type: BuildableType, object: [String: AnyCodable] = [:])
     case page(at: Int)
-    case orderBuilder(OrderBuilderState)
+    case orderBuilder(OrderState)
     case checkout(CheckoutState)
 }
 
@@ -89,7 +95,7 @@ extension NodePayload {
             return
         }
         if container.allKeys.contains(.orderBuilderState) {
-            let state = try container.decode(OrderBuilderState.self, forKey: .orderBuilderState)
+            let state = try container.decode(OrderState.self, forKey: .orderBuilderState)
             self = .orderBuilder(state)
             return
         }

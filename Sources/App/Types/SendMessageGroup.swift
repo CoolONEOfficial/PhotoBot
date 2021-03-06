@@ -43,12 +43,7 @@ enum SendMessageGroup {
     case orderBuilder
     case orderCheckout
     
-//    struct MessagesInfo {
-//        var messages: [SendMessage] = []
-//        var isStatic: Bool
-//    }
-    
-    mutating func getSendMessages(in node: Node, app: Application, _ user: User, _ payload: NodePayload?) throws -> Future<[SendMessage]> {
+    mutating func getSendMessages(platform: AnyPlatform, in node: Node, app: Application, _ user: User, _ payload: NodePayload?) throws -> Future<[SendMessage]> {
         let result: Future<[SendMessage]>
         
         switch self {
@@ -99,7 +94,7 @@ enum SendMessageGroup {
                                     .flatten(on: app.eventLoopGroup.next())
                                     .flatMapThrowing { attachments -> SendMessage in
                                         SendMessage(
-                                            text: human.name,
+                                            text: "\(human.name ?? "")\n\(human.price) р./ч.",
                                             keyboard: [ [
                                                 try Button(
                                                     text: "Выбрать",
@@ -128,7 +123,7 @@ enum SendMessageGroup {
                                     .flatten(on: app.eventLoopGroup.next())
                                     .flatMapThrowing { attachments -> SendMessage in
                                         SendMessage(
-                                            text: human.name,
+                                            text: "\(human.name ?? "")\n\(human.price) р./ч.",
                                             keyboard: [ [
                                                 try Button(
                                                     text: "Выбрать",
@@ -157,7 +152,7 @@ enum SendMessageGroup {
                                     .flatten(on: app.eventLoopGroup.next())
                                     .flatMapThrowing { attachments -> SendMessage in
                                         SendMessage(
-                                            text: studio.name,
+                                            text: "\(studio.name ?? "")\n\(studio.price) р./ч.",
                                             keyboard: [ [
                                                 try Button(
                                                     text: "Выбрать",
@@ -170,15 +165,6 @@ enum SendMessageGroup {
 
                                     }
                             }
-//                            studio.$_photos.get(on: app.db).flatMapThrowing { photos in
-//                                SendMessage(
-//                                    text: studio.name,
-//                                    keyboard: [ [
-//                                        try Button(text: "Выбрать", action: .callback, eventPayload: .selectStudio(id: try studio.requireID()))
-//                                    ] ],
-//                                    attachments: photos.compactMap { PlatformFile(other: $0).fileInfo }
-//                                )
-//                            }
                         }
                         .flatten(on: app.eventLoopGroup.next())
                         .map { Self.addPageButtons($0, startIndex, endIndex, count) }
@@ -216,23 +202,16 @@ enum SendMessageGroup {
                state.makeuperId != nil,
                state.studioId != nil {
                 keyboard.buttons.safeAppend([
-                    try .init(text: "К завершению", action: .callback, eventPayload: .push(.entryPoint(.orderCheckout)))
+                    try .init(text: "К завершению", action: .callback, eventPayload: .push(.entryPoint(.orderCheckout), payload: .checkout(.init(orderBuilderState: state))))
                 ])
             }
             
             result = app.eventLoopGroup.future([
-                .init(text: "Ваш заказ:\nСтилист: $STYLIST\nВизажист: $MAKEUPER\nСтудия: $STUDIO", keyboard: keyboard)
+                .init(text: "Ваш заказ:\nСтилист: " + .replacing(by: .stylist)
+                        + "\nВизажист: " + .replacing(by: .makeuper)
+                        + "\nСтудия: " + .replacing(by: .studio)
+                        + "\nСумма: " + .replacing(by: .price) + " р.", keyboard: keyboard)
             ])
-            
-//            result = Node.findId(entryPoints: [
-//                .orderBuilderStylist,
-//                .orderBuilderStudio,
-//                .orderBuilderMakeuper,
-//                .orderCheckout
-//            ], app: app).flatMapThrowing { nodeIds in
-//
-//
-//            }
             
         case .orderCheckout:
             
@@ -240,32 +219,18 @@ enum SendMessageGroup {
                 try .init(text: "Подтвердить", action: .callback, eventPayload: .createOrder)
             ]]
             
-//            if let payload = payload {
-//                keyboard.buttons.safeAppend([
-//                    try .init(text: "Акции", action: .callback, eventPayload: .createOrder)
-//                ])
-//            }
-            
             result = app.eventLoopGroup.future([
-                .init(text: "Итого:\nСтилист: " + .replacing(by: .user)
+                .init(text: "Итого:\nСтилист: " + .replacing(by: .stylist)
                         + "\nВизажист: " + .replacing(by: .makeuper)
                         + "\nСтудия: " + .replacing(by: .studio)
-                        + "\nСумма: \(123) р.", keyboard: keyboard)
+                        + "\nСумма: " + .replacing(by: .price) + " р.", keyboard: keyboard)
             ])
-            
-//            result = Node.findId(entryPoints: [
-//                .orderFinish
-//            ], app: app).flatMapThrowing { nodeIds in
-//
-//
-//
-//            }
 
         }
 
         return result
             .map { Self.addNavigationButtons($0, user) }
-            .flatMapEach(on: app.eventLoopGroup.next()) { Self.formatMessage($0, user, app: app) }
+            .flatMapEach(on: app.eventLoopGroup.next()) { Self.formatMessage(platform: platform, $0, user, app: app) }
     }
     
     static private func addPageButtons(_ messages: [SendMessage], _ startIndex: Int, _ endIndex: Int, _ count: Int) -> [SendMessage] {
@@ -284,15 +249,15 @@ enum SendMessageGroup {
     }
     
     static private func addNavigationButtons(_ messages: [SendMessage], _ user: User) -> [SendMessage] {
-        if !(user.history?.isEmpty ?? true), let lastMessage = messages.last {
+        if !user.history.isEmpty, let lastMessage = messages.last {
             lastMessage.keyboard.buttons.safeAppend([ try! .init(text: "🔙 Назад", action: .callback, eventPayload: .back) ])
         }
         return messages
     }
     
-    static private func formatMessage(_ message: SendMessage, _ user: User, app: Application) -> Future<SendMessage> {
+    static private func formatMessage(platform: AnyPlatform, _ message: SendMessage, _ user: User, app: Application) -> Future<SendMessage> {
         if let text = message.text {
-            return MessageFormatter.shared.format(text, user: user, app: app).map { text in
+            return MessageFormatter.shared.format(text, platform: platform, user: user, app: app).map { text in
                 message.text = text
                 return message
             }

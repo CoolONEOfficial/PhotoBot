@@ -14,6 +14,17 @@ extension Application {
     static let vkBufferUserId = Int64(Environment.get("VK_BUFFER_USER_ID")!)!
     static let vkAdminNickname: String = Environment.get("VK_ADMIN_NICKNAME")!
     static let tgAdminNickname: String = Environment.get("TG_ADMIN_NICKNAME")!
+    
+    static func adminNickname(for platform: AnyPlatform) -> String {
+        switch platform {
+        case .vk:
+            return Self.vkAdminNickname
+            
+        case .tg:
+            return Self.tgAdminNickname
+        }
+    }
+    
     static let vkToken = Environment.get("VK_GROUP_TOKEN")!
     static let vkGroupId: UInt64? = {
         if let groupIdStr = Environment.get("VK_GROUP_ID"),
@@ -42,7 +53,8 @@ public func configure(_ app: Application) throws {
 
 private func configurePostgres(_ app: Application) throws {
     app.databases.use(try .postgres(url: Application.databaseURL), as: .psql)
-
+    
+    app.migrations.add(CreateEventPayloads())
     app.migrations.add(CreateNodes())
     app.migrations.add(CreateUsers())
     app.migrations.add(CreatePlatformFiles())
@@ -81,13 +93,13 @@ private func configurePostgres(_ app: Application) throws {
         
         for num in 1...20 {
             try Stylist.create(
-                name: "Stylist \(num)", photos: [test], app: app
+                name: "Stylist \(num)", photos: [test], price: 123, app: app
             ).throwingFlatMap { try $0.save(app: app) }.wait()
         }
         
         for num in 1...20 {
             try Makeuper.create(
-                name: "Makeuper \(num)", photos: [test], app: app
+                name: "Makeuper \(num)", photos: [test], price: 123, app: app
             ).throwingFlatMap { try $0.save(app: app) }.wait()
         }
         
@@ -95,6 +107,8 @@ private func configurePostgres(_ app: Application) throws {
             try Promotion.create(
                 name: "Promo \(num)",
                 description: "Promo desc",
+                impact: .fixed(100),
+                condition: .and([ .numeric(.price, .more, 500) ]),
                 app: app
             ).throwingFlatMap { try $0.save(app: app) }.wait()
         }
@@ -105,7 +119,7 @@ private func configurePostgres(_ app: Application) throws {
                 description: "Studio desc",
                 address: "adsdsad",
                 coords: .init(lat: 0, long: 0),
-                photos: [test], app: app
+                photos: [test], price: 123, app: app
             ).throwingFlatMap { try $0.save(app: app) }.wait()
         }
 
@@ -203,14 +217,6 @@ func orderBuilderGroup(_ app: Application) throws -> UUID {
         entryPoint: .orderBuilderStudio, app: app
     ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
     
-    let finishNodeId = try Node.create(
-        name: "Order finish node",
-        messagesGroup: [
-            .init(text: "Заказ успешно создан, в ближайшее время с Вами свяжется @$ADMIN")
-        ],
-        entryPoint: .orderFinish, app: app
-    ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
-
     try Node.create(
         name: "Order checkout node",
         messagesGroup: .orderCheckout,

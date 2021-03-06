@@ -27,10 +27,13 @@ final class MakeuperModel: Model, MakeuperProtocol {
     
     var photosSiblings: AttachableFileSiblings<MakeuperModel, MakeuperPhoto>? { $_photos }
 
-    var photos: [PlatformFileModel]? {
+    var photos: [PlatformFileModel] {
         get { _photos }
-        set { _photos = newValue?.compactMap { $0 } ?? [] }
+        set { _photos = newValue.compactMap { $0 } }
     }
+    
+    @Field(key: "price")
+    var price: Int
     
     required init() {}
 }

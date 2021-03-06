@@ -16,7 +16,6 @@ enum ModeledTypeError: Error {
 }
 
 protocol ModeledType: Cloneable where TwinType: Model {
-    //associatedtype Model: TypedModel & Cloneable
     
     func save(app: Application) throws -> Future<TwinType>
     
@@ -30,14 +29,3 @@ extension ModeledType {
         try save(app: app).flatMapThrowing { try $0.requireID() }
     }
 }
-
-//extension ModeledType where TwinType.MyType == Self {
-//    static func find(
-//        _ id: Self.TwinType.IDValue,
-//        on database: Database
-//    ) -> Future<Self> {
-//        TwinType.find(id, on: database).map {
-//            try! $0!.toMyType()
-//        }
-//    }
-//}

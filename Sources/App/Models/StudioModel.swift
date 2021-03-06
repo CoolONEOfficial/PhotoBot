@@ -29,12 +29,15 @@ final class StudioModel: Model, StudioProtocol {
     @Siblings(through: StudioPhoto.self, from: \.$studio, to: \.$photo)
     var _photos: [PlatformFileModel]
     
-    var photos: [PlatformFileModel]? {
+    var photos: [PlatformFileModel] {
         get { _photos }
         set { fatalError("Siblings must be attached manually") }
     }
     
     var photosSiblings: AttachableFileSiblings<StudioModel, StudioPhoto>? { $_photos }
+    
+    @Field(key: "price")
+    var price: Int
     
     @Field(key: "coords")
     var coords: Coords?

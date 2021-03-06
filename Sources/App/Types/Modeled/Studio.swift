@@ -25,9 +25,10 @@ final class Studio: StudioProtocol {
 
     var coords: Coords?
 
-    @Validated(.nonEmpty)
-    var photos: [PlatformFileModel]?
+    var photos: [PlatformFileModel] = []
 
+    var price: Int = 0
+    
     required init() {}
     
 }
@@ -39,7 +40,7 @@ extension Studio: PhotoModeledType {
 extension Studio: ModeledType {
 
     var isValid: Bool {
-        _photos.isValid
+        true//_photos.isValid
     }
     
     func save(app: Application) throws -> Future<TwinType> {

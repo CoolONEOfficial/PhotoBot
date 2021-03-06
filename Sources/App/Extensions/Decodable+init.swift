@@ -16,6 +16,10 @@ extension Decodable {
     init(from dict: [String: AnyCodable]) throws {
         try self.init(from: dict.unwrapped)
     }
+
+    init(from string: String) throws {
+        self = try JSONDecoder.snakeCased.decode(Self.self, from: .init(string: string))
+    }
 }
 
 extension Dictionary where Value == AnyCodable {

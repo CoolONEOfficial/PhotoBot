@@ -7,6 +7,7 @@
 
 import Botter
 import Vkontakter
+import Vapor
 import Foundation
 
 extension Botter.Button {
@@ -14,3 +15,11 @@ extension Botter.Button {
         try self.init(text: text, action: action, color: color, data: eventPayload)
     }
 }
+
+//static func create(text: String, action: Action, color: Vkontakter.Button.Color? = nil, eventPayload: EventPayload?, app: Application) -> Future<Self> {
+//    guard let eventPayload = eventPayload else {
+//        return app.eventLoopGroup.future(.init(text: text, action: action, color: color))
+//    }
+//    return EventPayloadModel(eventPayload).saveWithId(on: app.db).flatMapThrowing { id in
+//        try Self.init(text: text, action: action, color: color, data: id)
+//    }

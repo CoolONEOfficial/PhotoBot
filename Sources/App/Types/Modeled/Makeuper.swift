@@ -21,12 +21,11 @@ final class Makeuper: MakeuperProtocol {
     @Validated(.isLetters && .greater(1) && .less(25))
     var name: String?
 
-    @Validated(.nonEmpty)
-    var photos: [PlatformFileModel]?
+    var photos: [PlatformFileModel] = []
+    
+    var price: Int = 0
 
     required init() {}
-
-    // TODO: contact info (vk or tg id/username)
 
 }
 
@@ -36,7 +35,7 @@ extension Makeuper: PhotoModeledType {
 
 extension Makeuper: ModeledType {
     var isValid: Bool {
-        _name.isValid && _photos.isValid
+        _name.isValid //&& _photos.isValid
     }
 
     func save(app: Application) throws -> EventLoopFuture<TwinType> {

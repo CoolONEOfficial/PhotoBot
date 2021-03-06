@@ -14,7 +14,7 @@ struct CreateUsers: Migration {
             .field("name", .string)
             .field("vk_id", .int64)
             .field("tg_id", .int64)
-            .field("history", .array(of: .json))
+            .field("history", .array(of: .json), .required)
             .field("node_id", .uuid, .references(NodeModel.schema, "id"))
             .field("node_payload", .json)
             .unique(on: "vk_id", "tg_id")

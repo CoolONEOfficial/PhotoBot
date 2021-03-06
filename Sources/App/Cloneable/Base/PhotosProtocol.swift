@@ -15,11 +15,15 @@ protocol PhotosProtocol: class {
     associatedtype SiblingModel: Model
     associatedtype PhotoModel: Model
     
-    var photos: [PlatformFileModel]? { get set }
+    var photos: [PlatformFileModel] { get set }
     var photosSiblings: AttachableFileSiblings<SiblingModel, PhotoModel>? { get }
 }
 
 extension PhotosProtocol {
+    func getPhotos(app: Application) -> Future<[PlatformFileModel]> {
+        photosSiblings?.get(on: app.db) ?? app.eventLoopGroup.future(photos)
+    }
+
     var photosSiblings: AttachableFileSiblings<SiblingModel, PhotoModel>? { nil }
     
     func attachPhotos(photos: [PlatformFileModel]?, app: Application) throws -> Future<Void> {

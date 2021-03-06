@@ -38,7 +38,7 @@ public extension Validation where Value: StringProtocol {
     ///
     /// - Parameter comparableValue: The Comparable value
     /// - Returns: The Validation
-    static func lessOrEqual(_ comparableValue: UInt) -> Validation {
+    static func lessOrEqual(_ comparableValue: Int) -> Validation {
         return .init { value in
             if value.count <= comparableValue {
                 return .success
@@ -52,7 +52,7 @@ public extension Validation where Value: StringProtocol {
     ///
     /// - Parameter comparableValue: The Comparable value
     /// - Returns: The Validation
-    static func greater(_ comparableValue: UInt) -> Validation {
+    static func greater(_ comparableValue: Int) -> Validation {
         return .init { value in
             if value.count > comparableValue {
                 return .success
@@ -66,7 +66,7 @@ public extension Validation where Value: StringProtocol {
     ///
     /// - Parameter comparableValue: The Comparable value
     /// - Returns: The Validation
-    static func greaterOrEqual(_ comparableValue: UInt) -> Validation {
+    static func greaterOrEqual(_ comparableValue: Int) -> Validation {
         return .init { value in
             if value.count >= comparableValue {
                 return .success

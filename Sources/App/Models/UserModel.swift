@@ -19,7 +19,7 @@ final class UserModel: Model, UserProtocol {
     var id: UUID?
     
     @Field(key: "history")
-    var history: [UserHistoryEntry]?
+    var history: [UserHistoryEntry]
     
     @OptionalParent(key: "node_id")
     var node: NodeModel?

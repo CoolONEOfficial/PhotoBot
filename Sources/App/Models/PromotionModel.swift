@@ -21,6 +21,12 @@ final class PromotionModel: Model, PromotionProtocol {
 
     @Field(key: "description")
     var description: String?
+    
+    @Field(key: "impact")
+    var impact: PromotionImpact?
+    
+    @Field(key: "condition")
+    var condition: PromotionCondition?
 
     required init() { }
 }

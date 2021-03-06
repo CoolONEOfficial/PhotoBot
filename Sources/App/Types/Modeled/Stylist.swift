@@ -21,8 +21,9 @@ final class Stylist: StylistProtocol {
     @Validated(.greater(1))
     var name: String?
 
-    @Validated(.nonEmpty)
-    var photos: [PlatformFileModel]?
+    var photos: [PlatformFileModel] = []
+    
+    var price: Int = 0
 
     required init() {}
 
@@ -36,7 +37,7 @@ extension Stylist: PhotoModeledType {
 
 extension Stylist: ModeledType {
     var isValid: Bool {
-        _name.isValid && _photos.isValid
+        _name.isValid// && _photos.isValid
     }
 
     func save(app: Application) throws -> EventLoopFuture<TwinType> {

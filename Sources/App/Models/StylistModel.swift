@@ -26,7 +26,10 @@ final class StylistModel: Model, StylistProtocol {
     @Siblings(through: StylistPhoto.self, from: \.$stylist, to: \.$photo)
     var _photos: [PlatformFileModel]
 
-    var photos: [PlatformFileModel]? {
+    @Field(key: "price")
+    var price: Int
+
+    var photos: [PlatformFileModel] {
         get { _photos }
         set { fatalError("Siblings must be attached manually") }
     }
