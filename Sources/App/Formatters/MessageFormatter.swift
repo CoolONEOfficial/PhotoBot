@@ -41,7 +41,7 @@ class MessageFormatter {
         var future = app.eventLoopGroup.future(replacingDict)
         switch user.nodePayload {
         case let .checkout(state):
-            future = handleOrderState(state: state.orderBuilderState, replacingDict: replacingDict, app: app, future: future)
+            future = handleOrderState(state: state.order, replacingDict: replacingDict, app: app, future: future)
 
         case let .orderBuilder(state):
             future = handleOrderState(state: state, replacingDict: replacingDict, app: app, future: future)

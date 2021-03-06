@@ -223,10 +223,15 @@ class PhotoBot {
             
         case .createOrder:
             replyText = "Move"
-            return MessageFormatter.shared.format("Заказ успешно создан, в ближайшее время с Вами свяжется @" + .replacing(by: .admin), platform: event.platform.any, user: user, app: app)
+            
+            guard case let .checkout(checkoutState) = user.nodePayload else { throw HandleActionError.payloadInvalid }
+            
+            return OrderModel.create(checkoutState: checkoutState, app: app).flatMap { _ in
+                MessageFormatter.shared.format("Заказ успешно создан, в ближайшее время с Вами свяжется @" + .replacing(by: .admin), platform: event.platform.any, user: user, app: self.app)
                 .throwingFlatMap { message in
-                try event.replyMessage(from: self.bot, params: .init(text: message), app: self.app).throwingFlatMap { message in
-                    try user.popToMain(to: event, with: self.bot, app: self.app)
+                    try event.replyMessage(from: self.bot, params: .init(text: message), app: self.app).throwingFlatMap { message in
+                        try user.popToMain(to: event, with: self.bot, app: self.app)
+                    }
                 }
             }
             

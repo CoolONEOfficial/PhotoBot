@@ -17,7 +17,7 @@ struct OrderState: Codable {
 }
 
 struct CheckoutState: Codable {
-    var orderBuilderState: OrderState
+    var order: OrderState
     var promotions: [UUID] = []
 }
 

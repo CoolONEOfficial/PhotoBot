@@ -24,24 +24,6 @@ final class PlatformFile: PlatformFileProtocol {
     
     required init() {}
     
-//    private let model: Model?
-//
-//    init(platform: [Entry], type: FileInfoType) {
-//        self.model = nil
-//        self.id = nil
-//        self.type = type
-//        self.platformEntries = platform
-//    }
-    
-    // MARK: Modeled Type
-//
-//    required init(from model: Model) throws {
-//        self.model = model
-//        self.id = try model.requireID()
-//        self.type = model.type
-//        self.platformEntries = model.platformEntries
-//    }
-    
 }
 
 extension PlatformFile: ModeledType {

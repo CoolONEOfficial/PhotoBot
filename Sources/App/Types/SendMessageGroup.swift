@@ -202,7 +202,7 @@ enum SendMessageGroup {
                state.makeuperId != nil,
                state.studioId != nil {
                 keyboard.buttons.safeAppend([
-                    try .init(text: "К завершению", action: .callback, eventPayload: .push(.entryPoint(.orderCheckout), payload: .checkout(.init(orderBuilderState: state))))
+                    try .init(text: "К завершению", action: .callback, eventPayload: .push(.entryPoint(.orderCheckout), payload: .checkout(.init(order: state))))
                 ])
             }
             

@@ -54,17 +54,21 @@ public func configure(_ app: Application) throws {
 private func configurePostgres(_ app: Application) throws {
     app.databases.use(try .postgres(url: Application.databaseURL), as: .psql)
     
-    app.migrations.add(CreateEventPayloads())
-    app.migrations.add(CreateNodes())
-    app.migrations.add(CreateUsers())
-    app.migrations.add(CreatePlatformFiles())
-    app.migrations.add(CreateStylists())
-    app.migrations.add(CreateStylistPhotos())
-    app.migrations.add(CreateMakeupers())
-    app.migrations.add(CreateMakeuperPhotos())
-    app.migrations.add(CreateStudios())
-    app.migrations.add(CreatePromotions())
-    app.migrations.add(CreateStudioPhotos())
+    app.migrations.add([
+        CreateEventPayloads(),
+        CreateNodes(),
+        CreateUsers(),
+        CreatePlatformFiles(),
+        CreateStylists(),
+        CreateStylistPhotos(),
+        CreateMakeupers(),
+        CreateMakeuperPhotos(),
+        CreateStudios(),
+        CreatePromotions(),
+        CreateStudioPhotos(),
+        CreateOrders()
+    ])
+
     if app.environment == .development {
         try app.autoMigrate().wait()
     }
@@ -79,8 +83,6 @@ private func configurePostgres(_ app: Application) throws {
 //    } else {
 //        print("Ok, just start with previous db state")
 //    }
-    
-    
     
     if try NodeModel.query(on: app.db).count().wait() == 0 {
         
