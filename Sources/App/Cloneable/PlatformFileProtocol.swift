@@ -11,7 +11,7 @@ import Fluent
 import Botter
 
 protocol PlatformFileProtocol: Cloneable where TwinType: PlatformFileProtocol {
-    typealias Entry = Platform<String, String>
+    typealias Entry = TypedPlatform<String>
     
     var id: UUID? { get set }
     var platformEntries: [Entry]? { get set }

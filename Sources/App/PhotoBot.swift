@@ -163,7 +163,7 @@ class PhotoBot {
 //
 //    }
     
-    func handleError<T: Botter.Replyable & PlatformObject>(_ platformReplyable: T, err: Error) {
+    func handleError<T: Botter.InputReplyable & PlatformObject>(_ platformReplyable: T, err: Error) {
         try? platformReplyable.replyMessage(from: bot, params: .init(text: "Error: \(err)"), app: app)
         #if DEBUG
         print("Error: \(err)")
@@ -226,15 +226,32 @@ class PhotoBot {
             
             guard case let .checkout(checkoutState) = user.nodePayload else { throw HandleActionError.payloadInvalid }
             
-            return OrderModel.create(checkoutState: checkoutState, app: app).flatMap { _ in
-                MessageFormatter.shared.format("Заказ успешно создан, в ближайшее время с Вами свяжется @" + .replacing(by: .admin), platform: event.platform.any, user: user, app: self.app)
+            let platform = event.platform.any
+            
+            return OrderModel.create(checkoutState: checkoutState, app: app).flatMap { [self] _ in
+                MessageFormatter.shared.format("Заказ успешно создан, в ближайшее время с Вами свяжется @" + .replacing(by: .admin), platform: platform, user: user, app: app)
                 .throwingFlatMap { message in
-                    try event.replyMessage(from: self.bot, params: .init(text: message), app: self.app).throwingFlatMap { message in
-                        try user.popToMain(to: event, with: self.bot, app: self.app)
+                    try event.replyMessage(from: bot, params: .init(text: message), app: app).map { [$0] }
+                }
+            }.throwingFlatMap { [self] messages in
+                try user.popToMain(to: event, with: bot, app: app).map { messages + $0 }
+            }.throwingFlatMap { [self] messages in
+                try UserModel.find(
+                    destination: .username("cooloneofficial"),//Application.adminNickname(for: platform)),
+                    platform: platform,
+                    on: app.db
+                ).throwingFlatMap { user in
+                    if let id = user?.platformIds.firstValue(platform: platform)?.id {
+                        return try bot.sendMessage(params: .init(
+                            destination: .init(platform: platform, id: id),
+                            text: "Новый заказ был создан."
+                        ), platform: platform, app: app).map { messages + [$0] }
+                    } else {
+                        return app.eventLoopGroup.future(messages)
                     }
                 }
             }
-            
+
         case .nextPage, .previousPage:
             var pageIndex: Int
             if case let .page(index) = user.nodePayload {
@@ -258,7 +275,7 @@ class PhotoBot {
     func handleEvent(_ update: Botter.Update, _ context: Botter.BotContext?) throws {
         guard case let .event(event) = update.content else { return }
         
-        let userFuture = User.findOrCreate(from: event, bot: bot, app: app).throwingFlatMap { user -> Future<[Botter.Message]> in
+        let userFuture = try User.findOrCreate(from: event, bot: bot, app: app).throwingFlatMap { user -> Future<[Botter.Message]> in
             
             var replyText: String = "Not handled"
             var nextFuture: Future<[Botter.Message]?>? = nil
@@ -289,7 +306,7 @@ class PhotoBot {
     func handleText(_ update: Botter.Update, _ context: Botter.BotContext?) throws {
         guard case let .message(message) = update.content, let text = message.text else { return }
         
-        let userFuture = User.findOrCreate(from: message, bot: bot, app: app)
+        let userFuture = try User.findOrCreate(from: message, bot: bot, app: app)
             .throwingFlatMap { user -> Future<[Botter.Message]?> in
                 if let nodeId = user.nodeId {
                     return NodeModel.find(nodeId, on: self.app.db)
@@ -451,7 +468,7 @@ class PhotoBot {
         case .uploadPhoto:
             guard let text = message.text else { throw HandleActionError.textNotFound }
             
-            var platforms: [Platform<AnyCodable, AnyCodable>] = []
+            var platforms: [TypedPlatform<AnyCodable>] = []
             
             if bot.vk != nil {
                 platforms.append(.vk(.init()))
@@ -462,18 +479,15 @@ class PhotoBot {
             }
             
             return try platforms.map { platform -> Future<PlatformFile.Entry> in
-                let (userId, chatId): (Int64?, Int64?)
+                let destination: SendDestination
                 switch platform {
                 case .tg:
-                    chatId = Application.tgBufferUserId
-                    userId = nil
+                    destination = .chatId(Application.tgBufferUserId)
                 case .vk:
-                    userId = Application.vkBufferUserId
-                    chatId = nil
+                    destination = .userId(Application.vkBufferUserId)
                 }
                 return try self.bot.sendMessage(params: .init(
-                    chatId: chatId,
-                    userId: userId,
+                    destination: destination,
                     text: "Загружаю вот эту фото",
                     attachments: [
                         .init(type: .photo, content: .url(text))
@@ -490,7 +504,7 @@ class PhotoBot {
                     }
                     text.append(attachment.attachmentId)
                     return try message.reply(from: self.bot, params: .init(text: text), app: self.app)
-                        .map { _ in platform.to(attachment.attachmentId) }
+                        .map { _ in platform.convert(to: attachment.attachmentId) }
                 }
             }.flatten(on: app.eventLoopGroup.next()).flatMap { platformEntries in
                 PlatformFile.create(platformEntries: platformEntries, type: .photo, app: self.app).throwingFlatMap { try $0.saveReturningId(app: self.app) }.throwingFlatMap { savedId in
@@ -517,6 +531,7 @@ enum PhotoBotError: Error {
     case nodeByEntryPointNotFound
     case nodeByActionNotFound
     case nodeByIdNotFound
+    case destinationNotFound
 }
 
 func strType(of value: Any) -> String {

@@ -31,12 +31,9 @@ final class UserModel: Model, UserProtocol {
     
     @OptionalField(key: "node_payload")
     var nodePayload: NodePayload?
-    
-    @ID(custom: "vk_id")
-    var vkId: Int64?
-    
-    @ID(custom: "tg_id")
-    var tgId: Int64?
+
+    @Field(key: "platform_ids")
+    var platformIds: [TypedPlatform<UserPlatformId>]
 
     @OptionalField(key: "name")
     var name: String?
@@ -45,22 +42,49 @@ final class UserModel: Model, UserProtocol {
 
 }
 
-extension UserModel {
+extension UserModel {    
+    private static func filterQuery<T: Encodable>(_ platform: AnyPlatform, _ field: String,  _ value: T) throws -> String {
+        """
+            EXISTS (
+                SELECT FROM unnest(platform_ids) AS elem WHERE (to_jsonb(elem)::json#>'{\(platform.name), \(field)}')::text = '\(try value.encodeToString()!)'
+            )
+        """
+    }
     
-    public static func find<T: PlatformObject & Replyable>(
+    public static func find<T: PlatformObject & InputReplyable>(
         _ platformReplyable: T,
         on database: Database
-    ) -> Future<UserModel?> {
-        let id = platformReplyable.userId!
-        switch platformReplyable.platform {
-        case .tg:
-            return query(on: database)
-                .filter(\.$tgId == id)
-                .first()
-        case .vk:
-            return query(on: database)
-                .filter(\.$vkId == id)
-                .first()
+    ) throws -> Future<UserModel?> {
+        guard let destination = platformReplyable.destination else { throw PhotoBotError.destinationNotFound }
+        let platform = platformReplyable.platform.any
+        return try Self.find(destination: destination, platform: platform, on: database)
+    }
+    
+    public static func find(
+        destination: SendDestination,
+        platform: AnyPlatform,
+        on database: Database
+    ) throws -> Future<UserModel?> {
+        let filterQuery: String
+       
+        switch destination {
+        case let .chatId(id), let .userId(id):
+            filterQuery = try UserModel.filterQuery(platform, "id", id)
+            
+        case let .username(username):
+            filterQuery = try UserModel.filterQuery(platform, "username", username)
         }
+        
+        return query(on: database).filter(.sql(raw: filterQuery)).first()
+    }
+}
+
+extension Array {
+    func first<Tg, Vk>(platform: AnyPlatform) -> Element? where Element == Platform<Tg, Vk> {
+        first { $0.any == platform }
+    }
+    
+    func firstValue<T>(platform: AnyPlatform) -> T? where Element == TypedPlatform<T> {
+        first(platform: platform)?.value
     }
 }

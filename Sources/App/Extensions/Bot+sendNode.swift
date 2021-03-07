@@ -9,20 +9,27 @@ import Botter
 import Vapor
 
 extension Bot {
-    func sendNode<R: Replyable & PlatformObject, Tg, Vk>(to replyable: R, user: User, node: Node, payload: NodePayload?, platform: Platform<Tg, Vk>, app: Application) throws -> Future<[Botter.Message]>? {
+    func sendNode<R: InputReplyable & PlatformObject, Tg, Vk>(to replyable: R, user: User, node: Node, payload: NodePayload?, platform: Platform<Tg, Vk>, app: Application) throws -> Future<[Botter.Message]>? {
         try node.messagesGroup?.getSendMessages(platform: replyable.platform.any, in: node, app: app, user, payload).throwingFlatMap { messages -> Future<[Botter.Message]> in
             var future: Future<[Botter.Message]> = app.eventLoopGroup.future([])
             
             for params in messages {
-                var params = params
-                params.setDestination(to: replyable)
+                params.destination = replyable.destination
                 future = future.flatMap { messages in
                     params.keyboard.buttons.map { buttons in
                         buttons.compactMap(\.payload).map { payload -> Future<String> in
                             if payload.count > 64 {
                                 return EventPayloadModel(payload)
                                     .saveWithId(on: app.db)
-                                    .flatMapThrowing { String(describing: $0) }
+                                    .flatMapThrowing { id in
+                                        switch platform {
+                                        case .tg: // tg payload is just string like "blahblah"
+                                            return String(describing: id)
+                                        case .vk: // vk payload is json string like "\"blahblah\""
+                                            return try id.encodeToString()!
+                                        }
+                                        
+                                    }
                             } else {
                                 return app.eventLoopGroup.future(payload)
                             }
@@ -35,11 +42,10 @@ extension Bot {
                         }
                         
                         return try self.sendMessage(
-                            params: params.params,
+                            params: params.params!,
                             platform: platform, app: app
                         ).map { messages + [$0] }
                     }
-                    
                 }
             }
             

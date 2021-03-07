@@ -92,14 +92,14 @@ extension Validation where Value: Collection {
 
 }
 
-extension Validation where Value == [Platform<String, String>] {
-    static func contains(_ platforms: Platform<AnyCodable, AnyCodable>...) -> Validation {
+extension Validation where Value == [TypedPlatform<String>] {
+    static func contains(_ platforms: TypedPlatform<AnyCodable>...) -> Validation {
         return contains(platforms)
     }
 
-    static func contains(_ platforms: [Platform<AnyCodable, AnyCodable>]) -> Validation {
+    static func contains(_ platforms: [TypedPlatform<AnyCodable>]) -> Validation {
         return .init { value in
-            if value.map({ $0.to(AnyCodable()) }).contains(where: { platform in platforms.contains { $0 == platform } }) {
+            if value.map({ $0.convert(to: AnyCodable()) }).contains(where: { platform in platforms.contains { $0 == platform } }) {
                 return .success
             } else {
                 return .failure("\(value) is not contains all \(platforms)")

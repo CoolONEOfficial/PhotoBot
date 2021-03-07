@@ -24,9 +24,7 @@ final class User: UserProtocol {
     
     var nodePayload: NodePayload?
     
-    var vkId: Int64?
-
-    var tgId: Int64?
+    var platformIds: [TypedPlatform<UserPlatformId>] = []
     
     @Validated(.greater(1)) // .isLetters &&
     var name: String?
@@ -51,34 +49,32 @@ extension User: ModeledType {
 
 extension User {
 
-    static func create(from user: Botter.User, app: Application) -> Future<User> {
+    static func create(from user: Botter.User, bot: Bot, app: Application) throws -> Future<User> {
         let name = user.firstName
-        switch user.platform {
-        case .tg:
-            return User.create(tgId: user.id, name: name, app: app)
-        case .vk:
-            return User.create(vkId: user.id, name: name, app: app)
+        return try user.getUsername(bot: bot, app: app).flatMap { username in
+            let platformId = UserPlatformId(id: user.id, username: username)
+            return User.create(platformIds: [ user.platform.convert(to: platformId) ], name: name, app: app)
         }
     }
     
-    static func find<T: PlatformObject & Replyable>(
+    static func find<T: PlatformObject & InputReplyable>(
         _ platformReplyable: T,
         app: Application
-    ) -> Future<User?> {
-        TwinType.find(platformReplyable, on: app.db).optionalFlatMap { User.create(other: $0, app: app) }
+    ) throws -> Future<User?> {
+        try TwinType.find(platformReplyable, on: app.db).optionalFlatMap { User.create(other: $0, app: app) }
     }
     
-    public static func findOrCreate<T: PlatformObject & Replyable & UserFetchable>(
+    public static func findOrCreate<T: PlatformObject & InputReplyable & UserFetchable>(
         from instance: T,
         bot: Bot,
         app: Application
-    ) -> Future<User> {
-        Self.find(instance, app: app).flatMap { model in
+    ) throws -> Future<User> {
+        try Self.find(instance, app: app).flatMap { model in
             if let model = model {
                 return app.eventLoopGroup.next().makeSucceededFuture(model)
             } else {
-                return try! bot.getUser(from: instance, app: app)!.flatMap { botterUser -> Future<User> in
-                    Self.create(from: botterUser, app: app)
+                return try! bot.getUser(from: instance, app: app)!.throwingFlatMap { botterUser -> Future<User> in
+                    try Self.create(from: botterUser, bot: bot, app: app)
                 }
             }
         }
@@ -90,7 +86,7 @@ extension User {
         case replacing
     }
     
-    func push<T: PlatformObject & Replyable>(
+    func push<T: PlatformObject & InputReplyable>(
         _ target: PushTarget, payload: NodePayload? = nil,
         to replyable: T, with bot: Bot,
         app: Application, saveMove: Bool = true
@@ -100,7 +96,7 @@ extension User {
         }
     }
     
-    func push<T: PlatformObject & Replyable>(
+    func push<T: PlatformObject & InputReplyable>(
         _ node: Node, payload: NodePayload? = nil,
         to replyable: T, with bot: Bot,
         app: Application, saveMove: Bool = true
@@ -121,11 +117,11 @@ extension User {
         }
     }
     
-    func popToMain<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, app: Application) throws -> Future<[Message]> {
+    func popToMain<T: PlatformObject & InputReplyable>(to replyable: T, with bot: Bot, app: Application) throws -> Future<[Message]> {
         try pop(to: replyable, with: bot, app: app) { _ in true }
     }
 
-    func pop<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, app: Application) throws -> Future<[Message]> {
+    func pop<T: PlatformObject & InputReplyable>(to replyable: T, with bot: Bot, app: Application) throws -> Future<[Message]> {
         var counter = 0
         return try pop(to: replyable, with: bot, app: app) { _ in
             counter += 1
@@ -137,7 +133,7 @@ extension User {
         case noHistory
     }
     
-    func pop<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, app: Application, while whileCompletion: (UserHistoryEntry) -> Bool) throws -> Future<[Message]> {
+    func pop<T: PlatformObject & InputReplyable>(to replyable: T, with bot: Bot, app: Application, while whileCompletion: (UserHistoryEntry) -> Bool) throws -> Future<[Message]> {
         guard !history.isEmpty else { throw PopError.noHistory }
         for (index, entry) in history.enumerated().reversed() {
             if whileCompletion(entry), index != 0 {

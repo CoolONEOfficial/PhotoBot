@@ -60,7 +60,7 @@ class EchoBot {
 //        let txtLink = "https://www.w3.org/TR/PNG/iso_8859-1.txt"
 //        let txtData = try Data(contentsOf: URL(string: txtLink)!)
 
-        let params: Botter.Bot.SendMessageParams = .init(to: message, text: "that is doc")
+        guard let params = Botter.Bot.SendMessageParams(to: message, text: "that is doc") else { return }
 
 //        if let prevMessage = prevMessage {
 //            try bot.editMessage(prevMessage, params: .init(message: "Other text"), app: app)
@@ -86,13 +86,12 @@ class EchoBot {
     }
 
     func handleCommand(_ update: Botter.Update, _ context: Botter.BotContext?) throws {
-        guard case let .message(message) = update.content, let text = message.text, let context = context else { return }
+        guard case let .message(message) = update.content, let text = message.text, let destination = message.destination, let context = context else { return }
         
         let textButton: Botter.Button = .init(text: "Test", action: .text)
         
         let params = Botter.Bot.SendMessageParams(
-            chatId: message.chatId,
-            userId: message.fromId,
+            destination: destination,
             text: text,
             keyboard: .init([ [ textButton ] ]),
             attachments: nil
