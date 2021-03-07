@@ -51,7 +51,7 @@ extension UserModel {
         """
     }
     
-    public static func find<T: PlatformObject & InputReplyable>(
+    public static func find<T: PlatformObject & Replyable>(
         _ platformReplyable: T,
         on database: Database
     ) throws -> Future<UserModel?> {

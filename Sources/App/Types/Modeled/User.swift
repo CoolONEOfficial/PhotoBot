@@ -57,14 +57,14 @@ extension User {
         }
     }
     
-    static func find<T: PlatformObject & InputReplyable>(
+    static func find<T: PlatformObject & Replyable>(
         _ platformReplyable: T,
         app: Application
     ) throws -> Future<User?> {
         try TwinType.find(platformReplyable, on: app.db).optionalFlatMap { User.create(other: $0, app: app) }
     }
     
-    public static func findOrCreate<T: PlatformObject & InputReplyable & UserFetchable>(
+    public static func findOrCreate<T: PlatformObject & Replyable & UserFetchable>(
         from instance: T,
         bot: Bot,
         app: Application
@@ -86,7 +86,7 @@ extension User {
         case replacing
     }
     
-    func push<T: PlatformObject & InputReplyable>(
+    func push<T: PlatformObject & Replyable>(
         _ target: PushTarget, payload: NodePayload? = nil,
         to replyable: T, with bot: Bot,
         app: Application, saveMove: Bool = true
@@ -96,7 +96,7 @@ extension User {
         }
     }
     
-    func push<T: PlatformObject & InputReplyable>(
+    func push<T: PlatformObject & Replyable>(
         _ node: Node, payload: NodePayload? = nil,
         to replyable: T, with bot: Bot,
         app: Application, saveMove: Bool = true
@@ -117,11 +117,11 @@ extension User {
         }
     }
     
-    func popToMain<T: PlatformObject & InputReplyable>(to replyable: T, with bot: Bot, app: Application) throws -> Future<[Message]> {
+    func popToMain<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, app: Application) throws -> Future<[Message]> {
         try pop(to: replyable, with: bot, app: app) { _ in true }
     }
 
-    func pop<T: PlatformObject & InputReplyable>(to replyable: T, with bot: Bot, app: Application) throws -> Future<[Message]> {
+    func pop<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, app: Application) throws -> Future<[Message]> {
         var counter = 0
         return try pop(to: replyable, with: bot, app: app) { _ in
             counter += 1
@@ -133,7 +133,7 @@ extension User {
         case noHistory
     }
     
-    func pop<T: PlatformObject & InputReplyable>(to replyable: T, with bot: Bot, app: Application, while whileCompletion: (UserHistoryEntry) -> Bool) throws -> Future<[Message]> {
+    func pop<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, app: Application, while whileCompletion: (UserHistoryEntry) -> Bool) throws -> Future<[Message]> {
         guard !history.isEmpty else { throw PopError.noHistory }
         for (index, entry) in history.enumerated().reversed() {
             if whileCompletion(entry), index != 0 {

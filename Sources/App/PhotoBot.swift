@@ -163,7 +163,7 @@ class PhotoBot {
 //
 //    }
     
-    func handleError<T: Botter.InputReplyable & PlatformObject>(_ platformReplyable: T, err: Error) {
+    func handleError<T: Botter.Replyable & PlatformObject>(_ platformReplyable: T, err: Error) {
         try? platformReplyable.replyMessage(from: bot, params: .init(text: "Error: \(err)"), app: app)
         #if DEBUG
         print("Error: \(err)")

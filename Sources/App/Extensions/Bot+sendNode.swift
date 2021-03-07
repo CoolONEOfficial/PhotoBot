@@ -9,7 +9,7 @@ import Botter
 import Vapor
 
 extension Bot {
-    func sendNode<R: InputReplyable & PlatformObject, Tg, Vk>(to replyable: R, user: User, node: Node, payload: NodePayload?, platform: Platform<Tg, Vk>, app: Application) throws -> Future<[Botter.Message]>? {
+    func sendNode<R: Replyable & PlatformObject, Tg, Vk>(to replyable: R, user: User, node: Node, payload: NodePayload?, platform: Platform<Tg, Vk>, app: Application) throws -> Future<[Botter.Message]>? {
         try node.messagesGroup?.getSendMessages(platform: replyable.platform.any, in: node, app: app, user, payload).throwingFlatMap { messages -> Future<[Botter.Message]> in
             var future: Future<[Botter.Message]> = app.eventLoopGroup.future([])
             

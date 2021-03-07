@@ -11,10 +11,6 @@ import Vapor
 
 class SendMessage: Codable {
     
-//    public var chatId: Int64?
-//
-//    public var userId: Int64?
-    
     public var destination: SendDestination?
 
     /// Текст личного сообщения.
@@ -30,14 +26,11 @@ class SendMessage: Codable {
         Bot.SendMessageParams(to: self, text: text, keyboard: keyboard, attachments: attachments)
     }
     
-    convenience init(to replyable: InputReplyable, text: String? = nil, keyboard: Keyboard = .init(), attachments: [FileInfo]? = nil) {
+    convenience init(to replyable: Replyable, text: String? = nil, keyboard: Keyboard = .init(), attachments: [FileInfo]? = nil) {
         self.init(destination: replyable.destination, text: text, keyboard: keyboard, attachments: attachments)
     }
     
-    init(//chatId: Int64? = nil, userId: Int64? = nil,
-        destination: SendDestination? = nil, text: String? = nil, keyboard: Keyboard = .init(), attachments: [FileInfo]? = nil) {
-//        self.chatId = chatId
-//        self.userId = userId
+    init(destination: SendDestination? = nil, text: String? = nil, keyboard: Keyboard = .init(), attachments: [FileInfo]? = nil) {
         self.destination = destination
         self.text = text
         self.keyboard = keyboard
@@ -45,4 +38,4 @@ class SendMessage: Codable {
     }
 }
 
-extension SendMessage: OutputReplyable {}
+extension SendMessage: Replyable {}
