@@ -35,8 +35,14 @@ final class UserModel: Model, UserProtocol {
     @Field(key: "platform_ids")
     var platformIds: [TypedPlatform<UserPlatformId>]
 
-    @OptionalField(key: "name")
-    var name: String?
+    @Field(key: "is_admin")
+    var isAdmin: Bool
+    
+    @OptionalField(key: "first_name")
+    var firstName: String?
+    
+    @OptionalField(key: "last_name")
+    var lastName: String?
     
     required init() { }
 

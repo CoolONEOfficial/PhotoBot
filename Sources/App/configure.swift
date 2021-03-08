@@ -137,7 +137,7 @@ private func configurePostgres(_ app: Application) throws {
         try Node.create(
             name: "Welcome guest node",
             messagesGroup: [
-                .init(text: "Привет, $USER! Похоже ты тут впервые) Хочешь узнать что делает этот бот?", keyboard: [[
+                .init(text: "Привет, " + .replacing(by: .userFirstName) + "! Похоже ты тут впервые) Хочешь узнать что делает этот бот?", keyboard: [[
                     .init(text: "Да", action: .callback, eventPayload: .push(.id(showcaseNodeId))),
                     .init(text: "Нет", action: .callback, eventPayload: .push(.entryPoint(.welcome)))
                 ]])
@@ -162,6 +162,7 @@ func mainGroup(_ app: Application) throws -> UUID {
         messagesGroup: [
             .init(text: "Пришли мне прямую ссылку.")
         ],
+        entryPoint: .uploadPhoto,
         action: .init(.uploadPhoto), app: app
     ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
     
@@ -170,32 +171,23 @@ func mainGroup(_ app: Application) throws -> UUID {
         messagesGroup: [
             .init(text: "Test message here."),
             .init(text: "And other message.")
-        ], app: app
+        ],
+        entryPoint: .about, app: app
     ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
     
     let portfolioNodeId = try Node.create(
         name: "Portfolio node",
         messagesGroup: [
             .init(text: "Test message here.")
-        ], app: app
+        ],
+        entryPoint: .portfolio, app: app
     ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
     
     let orderMainNodeId = try orderBuilderGroup(app)
 
     return try Node.create(
         name: "Welcome node",
-        messagesGroup: [
-            .init(text: "Добро пожаловать, $USER! Выбери секцию чтобы в нее перейти.", keyboard: [
-                [
-                    .init(text: "Обо мне", action: .callback, eventPayload: .push(.id(aboutNodeId))),
-                    .init(text: "Мои работы", action: .callback, eventPayload: .push(.id(portfolioNodeId))),
-                ],
-                [
-                    .init(text: "Заказ фотосессии", action: .callback, eventPayload: .push(.id(orderMainNodeId))),
-                    .init(text: "Выгрузить фотку", action: .callback, eventPayload: .push(.id(uploadPhotoNodeId)))
-                ]
-            ])
-        ],
+        messagesGroup: .welcome,
         entryPoint: .welcome, app: app
     ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
 }

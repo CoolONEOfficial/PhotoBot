@@ -26,8 +26,13 @@ final class User: UserProtocol {
     
     var platformIds: [TypedPlatform<UserPlatformId>] = []
     
-    @Validated(.greater(1)) // .isLetters &&
-    var name: String?
+    var isAdmin: Bool = false
+    
+    @Validated(.greater(1))
+    var firstName: String?
+
+    @Validated(.greater(1))
+    var lastName: String?
     
     required init() {}
 
@@ -36,7 +41,7 @@ final class User: UserProtocol {
 extension User: ModeledType {
     
     var isValid: Bool {
-        _name.isValid
+        _firstName.isValid && _lastName.isValid
     }
     
     func save(app: Application) throws -> EventLoopFuture<UserModel> {
@@ -47,14 +52,28 @@ extension User: ModeledType {
     }
 }
 
+enum UserNavigationError: Error {
+    case noHistory
+    case noNodeId
+}
+
 extension User {
 
     static func create(from user: Botter.User, bot: Bot, app: Application) throws -> Future<User> {
-        let name = user.firstName
+        let firstName = user.firstName
+        let lastName = user.lastName
         return try user.getUsername(bot: bot, app: app).flatMap { username in
             let platformId = UserPlatformId(id: user.id, username: username)
-            return User.create(platformIds: [ user.platform.convert(to: platformId) ], name: name, app: app)
+            return User.create(platformIds: [ user.platform.convert(to: platformId) ], firstName: firstName, lastName: lastName, app: app)
         }
+    }
+    
+    public static func find(
+        destination: SendDestination,
+        platform: AnyPlatform,
+        app: Application
+    ) throws -> Future<User?> {
+        try TwinType.find(destination: destination, platform: platform, on: app.db).optionalFlatMap { User.create(other: $0, app: app) }
     }
     
     static func find<T: PlatformObject & Replyable>(
@@ -91,8 +110,8 @@ extension User {
         to replyable: T, with bot: Bot,
         app: Application, saveMove: Bool = true
     ) -> Future<[Message]> {
-        Node.find(target, app: app).flatMap { node in
-            try! self.push(node, payload: payload, to: replyable, with: bot, app: app, saveMove: saveMove)
+        Node.find(target, app: app).throwingFlatMap { node in
+            try self.push(node, payload: payload, to: replyable, with: bot, app: app, saveMove: saveMove)
         }
     }
     
@@ -129,12 +148,8 @@ extension User {
         }
     }
     
-    enum PopError: Error {
-        case noHistory
-    }
-    
     func pop<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, app: Application, while whileCompletion: (UserHistoryEntry) -> Bool) throws -> Future<[Message]> {
-        guard !history.isEmpty else { throw PopError.noHistory }
+        guard !history.isEmpty else { throw UserNavigationError.noHistory }
         for (index, entry) in history.enumerated().reversed() {
             if whileCompletion(entry), index != 0 {
                 history.removeLast()
@@ -144,6 +159,11 @@ extension User {
         }
         let newestHistoryEntry = history.last!
         return push(.id(newestHistoryEntry.nodeId), payload: newestHistoryEntry.nodePayload, to: replyable, with: bot, app: app, saveMove: false)
+    }
+    
+    func pushToActualNode<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, app: Application) throws -> Future<[Message]> {
+        guard let nodeId = nodeId else { throw UserNavigationError.noNodeId }
+        return push(.id(nodeId), payload: nodePayload, to: replyable, with: bot, app: app, saveMove: false)
     }
 }
 

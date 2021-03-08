@@ -11,7 +11,9 @@ struct CreateUsers: Migration {
     func prepare(on database: Database) -> EventLoopFuture<Void> {
         return database.schema(UserModel.schema)
             .id()
-            .field("name", .string)
+            .field("is_admin", .bool, .required)
+            .field("first_name", .string)
+            .field("last_name", .string)
             .field("platform_ids", .array(of: .json))
             .field("history", .array(of: .json), .required)
             .field("node_id", .uuid, .references(NodeModel.schema, "id"))

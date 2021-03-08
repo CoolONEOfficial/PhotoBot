@@ -42,6 +42,7 @@ enum SendMessageGroup {
     case list(_ content: MessageListType)
     case orderBuilder
     case orderCheckout
+    case welcome
     
     mutating func getSendMessages(platform: AnyPlatform, in node: Node, app: Application, _ user: User, _ payload: NodePayload?) throws -> Future<[SendMessage]> {
         let result: Future<[SendMessage]>
@@ -49,11 +50,11 @@ enum SendMessageGroup {
         switch self {
         case var .array(arr):
             
-            if !(node.systemic ?? false), user.isValid {
+            if !(node.systemic ?? false), user.isValid, user.isAdmin {
                 for (index, params) in arr.enumerated() {
                     params.keyboard.buttons.insert([
                         try! Button(
-                            text: "Edit text",
+                            text: "Редактировать текст",
                             action: .callback,
                             eventPayload: .editText(messageId: index)
                         )
@@ -215,17 +216,31 @@ enum SendMessageGroup {
             
         case .orderCheckout:
             
-            let keyboard: Keyboard = [[
-                try .init(text: "Подтвердить", action: .callback, eventPayload: .createOrder)
-            ]]
-            
             result = app.eventLoopGroup.future([
                 .init(text: "Итого:\nСтилист: " + .replacing(by: .stylist)
                         + "\nВизажист: " + .replacing(by: .makeuper)
                         + "\nСтудия: " + .replacing(by: .studio)
-                        + "\nСумма: " + .replacing(by: .price) + " р.", keyboard: keyboard)
+                        + "\nСумма: " + .replacing(by: .price) + " р.", keyboard: [[
+                            try .init(text: "Подтвердить", action: .callback, eventPayload: .createOrder)
+                        ]])
             ])
 
+        case .welcome:
+            
+            result = app.eventLoopGroup.future([
+                .init(text: "Добро пожаловать, " + .replacing(by: .userFirstName) + "! Выбери секцию чтобы в нее перейти.", keyboard: [
+                    [
+                        try .init(text: "Обо мне", action: .callback, eventPayload: .push(.entryPoint(.about))),
+                        try .init(text: "Мои работы", action: .callback, eventPayload: .push(.entryPoint(.portfolio))),
+                    ],
+                    [
+                        try .init(text: "Заказ фотосессии", action: .callback, eventPayload: .push(.entryPoint(.orderBuilder)))
+                    ] + (user.isAdmin ? [
+                        try .init(text: "Выгрузить фотку", action: .callback, eventPayload: .push(.entryPoint(.uploadPhoto)))
+                    ] : [])
+                ])
+            ])
+            
         }
 
         return result
@@ -317,6 +332,7 @@ extension SendMessageGroup: Codable {
         case listType
         case orderBuilder
         case orderCheckout
+        case welcome
     }
 
     internal init(from decoder: Decoder) throws {
@@ -344,6 +360,10 @@ extension SendMessageGroup: Codable {
             self = .orderCheckout
             return
         }
+        if container.allKeys.contains(.welcome), try container.decodeNil(forKey: .welcome) == false {
+            self = .welcome
+            return
+        }
         throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown enum case"))
     }
 
@@ -361,6 +381,8 @@ extension SendMessageGroup: Codable {
             try container.encode(true, forKey: .orderBuilder)
         case .orderCheckout:
             try container.encode(true, forKey: .orderCheckout)
+        case .welcome:
+            try container.encode(true, forKey: .welcome)
         }
     }
 

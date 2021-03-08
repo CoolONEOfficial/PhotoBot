@@ -234,22 +234,31 @@ class PhotoBot {
                     try event.replyMessage(from: bot, params: .init(text: message), app: app).map { [$0] }
                 }
             }.throwingFlatMap { [self] messages in
-                try user.popToMain(to: event, with: bot, app: app).map { messages + $0 }
-            }.throwingFlatMap { [self] messages in
-                try UserModel.find(
+                try User.find(
                     destination: .username("cooloneofficial"),//Application.adminNickname(for: platform)),
                     platform: platform,
-                    on: app.db
-                ).throwingFlatMap { user in
-                    if let id = user?.platformIds.firstValue(platform: platform)?.id {
-                        return try bot.sendMessage(params: .init(
-                            destination: .init(platform: platform, id: id),
-                            text: "Новый заказ был создан."
-                        ), platform: platform, app: app).map { messages + [$0] }
+                    app: app
+                ).flatMap { user in
+                    if let user = user, let id = user.platformIds.firstValue(platform: platform)?.id {
+                        return MessageFormatter.shared.format(
+                            "Новый заказ от @" + .replacing(by: .username) + " (" + .replacing(by: .userId) + "):"
+                                + "\nСтилист: " + .replacing(by: .stylist)
+                                + "\nВизажист: " + .replacing(by: .makeuper)
+                                + "\nСтудия: " + .replacing(by: .studio)
+                                + "\nСумма: " + .replacing(by: .price) + " р.",
+                            platform: platform, user: user, app: app
+                        ).throwingFlatMap { text in
+                            try bot.sendMessage(params: .init(
+                                destination: .init(platform: platform, id: id),
+                                text: text
+                            ), platform: platform, app: app).map { messages + [$0] }
+                        }
                     } else {
                         return app.eventLoopGroup.future(messages)
                     }
                 }
+            }.throwingFlatMap { [self] messages in
+                try user.popToMain(to: event, with: bot, app: app).map { messages + $0 }
             }
 
         case .nextPage, .previousPage:
@@ -311,20 +320,20 @@ class PhotoBot {
                 if let nodeId = user.nodeId {
                     return NodeModel.find(nodeId, on: self.app.db)
                         .unwrap(or: PhotoBotError.nodeByIdNotFound)
-                        .throwingFlatMap { node -> Future<[Botter.Message]?> in
+                        .throwingFlatMap { [self] node -> Future<[Botter.Message]?> in
                             let nextFuture: Future<[Botter.Message]?>?
                             
                             if let action = node.action {
-                                nextFuture = try self.handleAction(action, user, message, context).throwingFlatMap { result -> Future<[Botter.Message]?> in
+                                nextFuture = try handleAction(action, user, message, context).throwingFlatMap { result -> Future<[Botter.Message]?> in
                                     var future: Future<[Botter.Message]>?
                                 
                                     guard let successNodeId = action.action else { return self.app.eventLoopGroup.future(nil) }
                                     switch successNodeId {
                                     case let .push(target):
-                                        future = user.push(target, to: message, with: self.bot, app: self.app)
+                                        future = user.push(target, to: message, with: bot, app: app)
                                         
                                     case .pop:
-                                        future = try user.pop(to: message, with: self.bot, app: self.app)
+                                        future = try user.pop(to: message, with: bot, app: app)
 
                                     case .moveToBuilder(let builderType):
                                         future = try self.moveToBuilder(builderType, user: user, nodeId: nodeId, message: message, text: text)
@@ -333,7 +342,9 @@ class PhotoBot {
                                     return future?.map { Optional($0) } ?? (self.app.eventLoopGroup.future(nil))
                                 }
                             } else {
-                                nextFuture = try message.reply(from: self.bot, params: .init(text: "В этом месте не принимается текст. Попробуй нажать на подходящую кнопку."), app: self.app).map { [$0] }
+                                nextFuture = try message.reply(from: bot, params: .init(text: "В этом месте не принимается текст. Попробуй нажать на подходящую кнопку."), app: app).throwingFlatMap { message in
+                                    try user.pushToActualNode(to: message, with: bot, app: app).map { $0 + [message] }
+                                }
                             }
                             
                             return nextFuture ?? self.app.eventLoopGroup.future(nil)
@@ -460,9 +471,9 @@ class PhotoBot {
             }
 
         case .setName:
-            user.name = message.text
+            user.firstName = message.text
             return try user.save(app: app).throwingFlatMap { _ in
-                try message.reply(from: self.bot, params: .init(text: "Good, \(user.name!)"), app: self.app).map { _ in () }
+                try message.reply(from: self.bot, params: .init(text: "Good, \(user.firstName!)"), app: self.app).map { _ in () }
             }
 
         case .uploadPhoto:

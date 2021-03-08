@@ -15,7 +15,10 @@ class MessageFormatter {
     private init() {}
     
     enum ReplacingKey: String {
-        case user = "$USER"
+        case username = "$USERNAME"
+        case userId = "$USER_ID"
+        case userFirstName = "$USER_FIRST_NAME"
+        case userLastName = "$USER_LAST_NAME"
         case stylist = "$STYLIST"
         case makeuper = "$MAKEUPER"
         case studio = "$STUDIO"
@@ -23,19 +26,24 @@ class MessageFormatter {
         case admin = "$ADMIN"
     }
     
-    typealias ReplacingDict = [ReplacingKey: String]
+    typealias ReplacingDict = [ReplacingKey: CustomStringConvertible]
     
     func format(_ string: String, platform: AnyPlatform, user: User, app: Application) -> Future<String> {
         let nope = "<nope>"
         let notSelected = "Не выбран"
         
+        let userPlatformId = user.platformIds.firstValue(platform: platform)
+        
         let replacingDict: ReplacingDict = [
-            .user: user.name ?? nope,
+            .userFirstName: user.firstName ?? nope,
+            .userLastName: user.lastName ?? nope,
             .stylist: notSelected,
             .makeuper: notSelected,
             .studio: notSelected,
-            .price: "0",
-            .admin: Application.adminNickname(for: platform)
+            .price: 0,
+            .admin: Application.adminNickname(for: platform),
+            .userId: (try? userPlatformId?.id.encodeToString()) ?? nope,
+            .username: userPlatformId?.username ?? nope
         ]
 
         var future = app.eventLoopGroup.future(replacingDict)
@@ -51,12 +59,12 @@ class MessageFormatter {
 
         return future.map { dict in
             dict.reduce(string) { string, entry in
-                string.replacingOccurrences(of: entry.key.rawValue, with: entry.value)
+                string.replacingOccurrences(of: entry.key.rawValue, with: entry.value.description)
             }
         }
     }
     
-    private func handleOrderState(state: OrderState, replacingDict: [ReplacingKey: String], app: Application, future: Future<ReplacingDict>) -> Future<ReplacingDict> {
+    private func handleOrderState(state: OrderState, replacingDict: [ReplacingKey: CustomStringConvertible], app: Application, future: Future<ReplacingDict>) -> Future<ReplacingDict> {
         var future = future
         var replacingDict = replacingDict
         if let stylistId = state.stylistId {

@@ -18,6 +18,9 @@ enum EntryPoint: String, Codable {
     case orderBuilderStudio
     case orderBuilderMakeuper
     case orderCheckout
+    case about
+    case portfolio
+    case uploadPhoto
 }
 
 protocol NodeProtocol: Cloneable where TwinType: NodeProtocol {
