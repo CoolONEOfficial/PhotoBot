@@ -209,10 +209,30 @@ class PhotoBot {
                 }
             }
         
-        case let .selectDate(date):
+        case let .selectDay(date), let .selectTime(date):
             replyText = "Selected"
+            let calendar = Calendar(identifier: .gregorian)
+            let comps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: date)
+            guard let (year, month, day, hour, minute) = (comps.year, comps.month, comps.day, comps.hour, comps.minute) as? (Int, Int, Int, Int, Int),
+                  let nodeId = user.nodeId else { throw HandleActionError.assotiatedValuesInvalid }
+            let time: TimeInterval?
+            if case .selectTime = eventPayload {
+                time = Double(hour * 60 * 60 + minute * 60)
+            } else {
+                time = nil
+            }
+            return user.push(.id(nodeId), payload: .calendar(year: year, month: month, day: day, time: time), to: event, with: bot, app: app, saveMove: false)
+        
+        case let .selectDuration(duration):
+            replyText = "Selected"
+            
+            let calendar = Calendar(identifier: .gregorian)
+            guard case let .calendar(year, month, day, time) = user.nodePayload,
+                  let (hour, minute, second) = time?.components,
+                  let date = calendar.date(from: .init(year: year, month: month, day: day, hour: hour, minute: minute, second: second)) else { throw HandleActionError.payloadInvalid }
+            
             return Node.find(.entryPoint(.orderBuilder), app: app).throwingFlatMap { [self] node in
-                try user.push(node, payload: .orderBuilder(.init(with: user.history.last?.nodePayload, date: date)), to: event, with: bot, app: app, saveMove: false)
+                try user.push(node, payload: .orderBuilder(.init(with: user.history.last?.nodePayload, date: date, duration: duration)), to: event, with: bot, app: app, saveMove: false)
             }
 
         case .back:
@@ -458,6 +478,7 @@ class PhotoBot {
         case textNotFound
         case textIncorrect
         case payloadInvalid
+        case assotiatedValuesInvalid
         case noAttachments
     }
     

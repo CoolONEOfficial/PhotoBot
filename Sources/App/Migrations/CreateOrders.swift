@@ -16,6 +16,7 @@ struct CreateOrders: Migration {
             .field("studio_id", .uuid, .references(StudioModel.schema, "id"))
             .field("price", .int, .required)
             .field("date", .datetime, .required)
+            .field("duration", .time, .required)
             .create()
     }
     

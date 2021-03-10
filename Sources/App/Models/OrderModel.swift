@@ -46,6 +46,9 @@ final class OrderModel: Model, OrderProtocol {
     @Field(key: "date")
     var date: Date
     
+    @Field(key: "duration")
+    var duration: TimeInterval
+    
     @Field(key: "price")
     var price: Int
     

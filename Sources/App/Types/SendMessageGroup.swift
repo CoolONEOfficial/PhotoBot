@@ -246,7 +246,6 @@ enum SendMessageGroup {
             ])
             
         case .calendar:
-            
             result = try calendarMessages(app: app, payload)
         }
 
@@ -261,53 +260,96 @@ enum SendMessageGroup {
         let currentDate = Date()
         let comps = calendar.dateComponents([.year, .month], from: currentDate)
         var (year, month) = (comps.year!, comps.month!)
+        var day: Int?
+        var time: TimeInterval?
         
-        if case let .calendar(payloadYear, payloadMonth) = payload {
+        if case let .calendar(payloadYear, payloadMonth, payloadDay, payloadTime) = payload {
             year = payloadYear
             month = payloadMonth
+            day = payloadDay
+            time = payloadTime
         }
-
-        let dayInSeconds: TimeInterval = 60 * 60 * 24
-        let startMonth = calendar.date(from: .init(year: year, month: month))!
-        let startTable = startMonth.addingTimeInterval(-dayInSeconds * .init(calendar.weekday(date: startMonth)))
-
-        let endMonth = calendar.date(byAdding: .init(month: 1, day: -1), to: startMonth)!
-        let endTable = endMonth.addingTimeInterval(dayInSeconds * .init(6 - calendar.weekday(date: endMonth)))
         
         let formatter = DateFormatter()
-        let weekdayMessages = formatter.veryShortWeekdaySymbols
-            .shift(withDistance: calendar.firstWeekday - 1).compactMap { weekday in
-            Button(text: weekday)
+        if let _ = time {
+            return app.eventLoopGroup.future([
+                .init(text: "Выберите продолжительность:"),
+                .init(text: "Полчаса\nза полчаса можно тото", keyboard: [[
+                    try .init(text: "Выбрать", action: .callback, eventPayload: .selectDuration(duration: 60*30))
+                ]]),
+                .init(text: "Час\nза час можно тото", keyboard: [[
+                    try .init(text: "Выбрать", action: .callback, eventPayload: .selectDuration(duration: 60*60))
+                ]]),
+                .init(text: "Два часа\nза два часа можно тото", keyboard: [[
+                    try .init(text: "Выбрать", action: .callback, eventPayload: .selectDuration(duration: 60*60*2))
+                ]])
+            ])
+        } else if let selectedDay = day {
+            let date = calendar.date(from: .init(year: year, month: month, day: selectedDay))!
+            let hour: TimeInterval = 60 * 60
+            let availableInterval = date.addingTimeInterval(hour * 8)...date
+                .addingTimeInterval(hour * 24)
+            let timesMessages = try availableInterval.intervalDates(with: hour / 2).map { date in
+                try Button(
+                    text: DateFormatter.localizedString(from: date, dateStyle: .none, timeStyle: .short),
+                    action: .callback,
+                    eventPayload: .selectTime(date: date)
+                )
+            }.chunked(into: 6)
+            
+            let headers = [ "Утро", "День", "Вечер" ]
+            
+            let groupsMessages = timesMessages.chunked(into: timesMessages.count / 3).enumerated()
+                .map { (Button(text: headers[$0.0]), $0.1) }
+                .map { [[$0.0]] + $0.1 }
+                .reduce([], +)
+
+            return app.eventLoopGroup.future([
+                .init(text: "Выбери время:", keyboard: .init(buttons: groupsMessages))
+            ])
+        } else {
+            let dayInSeconds: TimeInterval = 60 * 60 * 24
+            let startMonth = calendar.date(from: .init(year: year, month: month))!
+            let startTable = startMonth.addingTimeInterval(-dayInSeconds * .init(calendar.weekday(date: startMonth)))
+
+            let endMonth = calendar.date(byAdding: .init(month: 1, day: -1), to: startMonth)!
+            let endTable = endMonth.addingTimeInterval(dayInSeconds * .init(6 - calendar.weekday(date: endMonth)))
+            
+            
+            let weekdayMessages = formatter.veryShortWeekdaySymbols
+                .shift(withDistance: calendar.firstWeekday - 1).compactMap { weekday in
+                Button(text: weekday)
+            }
+            let daysMessages = try (startTable...endTable).intervalDates().map { date in
+                try Button(
+                    text: String(calendar.component(.day, from: date)),
+                    action: .callback,
+                    eventPayload: .selectDay(date: date)
+                )
+            }.chunked(into: 7)
+            
+            func eventPayload(appending comps: DateComponents) -> EventPayload {
+                let date = calendar.date(from: .init(year: year, month: month))!
+                let newDate = calendar.date(byAdding: comps, to: date)!
+                let newComps = calendar.dateComponents([.year, .month], from: newDate)
+                let (newYear, newMonth) = (newComps.year!, newComps.month!)
+                return .push(.entryPoint(.orderBuilderDate), payload: .calendar(year: newYear, month: newMonth), saveToHistory: false)
+            }
+            
+            return app.eventLoopGroup.future([
+                .init(text: "Выбери дату:", keyboard: .init(buttons: [
+                    [
+                        try .init(text: "👈", action: .callback, eventPayload: eventPayload(appending: .init(month: -1))),
+                        .init(text: formatter.shortMonthSymbols[month - 1]),
+                        try .init(text: "👉", action: .callback, eventPayload: eventPayload(appending: .init(month: 1))),
+                        try .init(text: "👈", action: .callback, eventPayload: eventPayload(appending: .init(year: -1))),
+                        .init(text: .init(year)),
+                        try .init(text: "👉", action: .callback, eventPayload: eventPayload(appending: .init(year: 1)))
+                    ],
+                    weekdayMessages
+                ] + daysMessages))
+            ])
         }
-        let dateMessages = try (startTable...endTable).intervalDates().map { date in
-            try Button(
-                text: String(calendar.component(.day, from: date)),
-                action: .callback,
-                eventPayload: .selectDate(date: date)
-            )
-        }.chunked(into: 7)
-        
-        func eventPayload(appending comps: DateComponents) -> EventPayload {
-            let date = calendar.date(from: .init(year: year, month: month))!
-            let newDate = calendar.date(byAdding: comps, to: date)!
-            let newComps = calendar.dateComponents([.year, .month], from: newDate)
-            let (newYear, newMonth) = (newComps.year!, newComps.month!)
-            return .push(.entryPoint(.orderBuilderDate), payload: .calendar(year: newYear, month: newMonth), saveToHistory: false)
-        }
-        
-        return app.eventLoopGroup.future([
-            .init(text: "Выбери дату:", keyboard: .init(buttons: [
-                [
-                    try .init(text: "👈", action: .callback, eventPayload: eventPayload(appending: .init(month: -1))),
-                    .init(text: formatter.shortMonthSymbols[month - 1]),
-                    try .init(text: "👉", action: .callback, eventPayload: eventPayload(appending: .init(month: 1))),
-                    try .init(text: "👈", action: .callback, eventPayload: eventPayload(appending: .init(year: -1))),
-                    .init(text: .init(year)),
-                    try .init(text: "👉", action: .callback, eventPayload: eventPayload(appending: .init(year: 1)))
-                ],
-                weekdayMessages
-            ] + dateMessages))
-        ])
     }
 
     static private func addPageButtons(_ messages: [SendMessage], _ startIndex: Int, _ endIndex: Int, _ count: Int) -> [SendMessage] {

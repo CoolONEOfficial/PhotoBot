@@ -96,8 +96,9 @@ class MessageFormatter {
                 }
             }
         }
-        if let date = state.date {
-            replacingDict[.orderDate] = DateFormatter.localizedString(from: date, dateStyle: .short, timeStyle: .short)
+        if let date = state.date, let duration = state.duration {
+            
+            replacingDict[.orderDate] = DateFormatter.localizedString(from: date, dateStyle: .short, timeStyle: .short) + " - " + DateFormatter.localizedString(from: date.addingTimeInterval(duration), dateStyle: .none, timeStyle: .short)
         }
         
         replacingDict[.price] = .init(state.price)

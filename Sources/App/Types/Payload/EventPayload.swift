@@ -13,7 +13,9 @@ enum EventPayload {
     case selectStylist(id: UUID)
     case selectMakeuper(id: UUID)
     case selectStudio(id: UUID)
-    case selectDate(date: Date)
+    case selectDay(date: Date)
+    case selectTime(date: Date)
+    case selectDuration(duration: TimeInterval)
     case createOrder
     
     // MARK: Navigation
@@ -32,7 +34,9 @@ extension EventPayload: Codable {
         case selectStylist = "selStylist"
         case selectMakeuper = "selMakeuper"
         case selectStudio = "selStudio"
-        case selectDate = "selDate"
+        case selectDay = "selDay"
+        case selectTime = "selTime"
+        case selectDuration = "selDuration"
         case createOrder
         case back
         case push
@@ -68,9 +72,19 @@ extension EventPayload: Codable {
             self = .selectStudio(id: id)
             return
         }
-        if container.allKeys.contains(.selectDate), try container.decodeNil(forKey: .selectDate) == false {
-            let date = try container.decode(Date.self, forKey: .selectDate)
-            self = .selectDate(date: date)
+        if container.allKeys.contains(.selectDay), try container.decodeNil(forKey: .selectDay) == false {
+            let date = try container.decode(Date.self, forKey: .selectDay)
+            self = .selectDay(date: date)
+            return
+        }
+        if container.allKeys.contains(.selectTime), try container.decodeNil(forKey: .selectTime) == false {
+            let date = try container.decode(Date.self, forKey: .selectTime)
+            self = .selectTime(date: date)
+            return
+        }
+        if container.allKeys.contains(.selectDuration), try container.decodeNil(forKey: .selectDuration) == false {
+            let duration = try container.decode(TimeInterval.self, forKey: .selectDuration)
+            self = .selectDuration(duration: duration)
             return
         }
         if container.allKeys.contains(.createOrder), try container.decodeNil(forKey: .createOrder) == false {
@@ -114,8 +128,12 @@ extension EventPayload: Codable {
             try container.encode(id, forKey: .selectMakeuper)
         case let .selectStudio(id):
             try container.encode(id, forKey: .selectStudio)
-        case let .selectDate(date):
-            try container.encode(date, forKey: .selectDate)
+        case let .selectDay(date):
+            try container.encode(date, forKey: .selectDay)
+        case let .selectTime(date):
+            try container.encode(date, forKey: .selectTime)
+        case let .selectDuration(duration):
+            try container.encode(duration, forKey: .selectDuration)
         case .createOrder:
             try container.encode(true, forKey: .createOrder)
         case .back:
