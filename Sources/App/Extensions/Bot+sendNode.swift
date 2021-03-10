@@ -17,7 +17,8 @@ extension Bot {
                 params.destination = replyable.destination
                 future = future.flatMap { messages in
                     params.keyboard.buttons.map { buttons in
-                        buttons.compactMap(\.payload).map { payload -> Future<String> in
+                        buttons.map(\.payload).map { payload -> Future<String?> in
+                            guard let payload = payload else { return app.eventLoopGroup.future(nil) }
                             if payload.count > 64 {
                                 return EventPayloadModel(payload)
                                     .saveWithId(on: app.db)
@@ -28,16 +29,17 @@ extension Bot {
                                         case .vk: // vk payload is json string like "\"blahblah\""
                                             return try id.encodeToString()!
                                         }
-                                        
                                     }
                             } else {
                                 return app.eventLoopGroup.future(payload)
                             }
                         }.flatten(on: app.eventLoopGroup.next())
-                    }.flatten(on: app.eventLoopGroup.next()).throwingFlatMap { payloadIds in
-                        for (index, list) in payloadIds.enumerated() {
-                            for (innerIndex, id) in list.enumerated() {
-                                params.keyboard.buttons[index][innerIndex].payload = String(id)
+                    }.flatten(on: app.eventLoopGroup.next()).throwingFlatMap { buttonPayloads in
+                        for (index, list) in buttonPayloads.enumerated() {
+                            for (innerIndex, payload) in list.enumerated() {
+                                if let payload = payload {
+                                    params.keyboard.buttons[index][innerIndex].payload = payload
+                                }
                             }
                         }
                         

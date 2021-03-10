@@ -24,6 +24,7 @@ class MessageFormatter {
         case studio = "$STUDIO"
         case price = "$PRICE"
         case admin = "$ADMIN"
+        case orderDate = "$ORDERDATE"
     }
     
     typealias ReplacingDict = [ReplacingKey: CustomStringConvertible]
@@ -43,16 +44,17 @@ class MessageFormatter {
             .price: 0,
             .admin: Application.adminNickname(for: platform),
             .userId: (try? userPlatformId?.id.encodeToString()) ?? nope,
-            .username: userPlatformId?.username ?? nope
+            .username: userPlatformId?.username ?? nope,
+            .orderDate: notSelected
         ]
 
         var future = app.eventLoopGroup.future(replacingDict)
         switch user.nodePayload {
         case let .checkout(state):
-            future = handleOrderState(state: state.order, replacingDict: replacingDict, app: app, future: future)
+            future = handleOrderState(state: state.order, replacingDict: replacingDict, app: app)
 
         case let .orderBuilder(state):
-            future = handleOrderState(state: state, replacingDict: replacingDict, app: app, future: future)
+            future = handleOrderState(state: state, replacingDict: replacingDict, app: app)
             
         default: break
         }
@@ -64,8 +66,8 @@ class MessageFormatter {
         }
     }
     
-    private func handleOrderState(state: OrderState, replacingDict: [ReplacingKey: CustomStringConvertible], app: Application, future: Future<ReplacingDict>) -> Future<ReplacingDict> {
-        var future = future
+    private func handleOrderState(state: OrderState, replacingDict: [ReplacingKey: CustomStringConvertible], app: Application) -> Future<ReplacingDict> {
+        var future = app.eventLoopGroup.future(())
         var replacingDict = replacingDict
         if let stylistId = state.stylistId {
             future = future.flatMap { string in
@@ -73,7 +75,6 @@ class MessageFormatter {
                     if let stylistName = stylist?.name {
                         replacingDict[.stylist] = stylistName
                     }
-                    return replacingDict
                 }
             }
         }
@@ -83,7 +84,6 @@ class MessageFormatter {
                     if let makeuperName = makeuper?.name {
                         replacingDict[.makeuper] = makeuperName
                     }
-                    return replacingDict
                 }
             }
         }
@@ -93,12 +93,17 @@ class MessageFormatter {
                     if let studioName = studio?.name {
                         replacingDict[.studio] = studioName
                     }
-                    return replacingDict
                 }
             }
         }
+        if let date = state.date {
+            replacingDict[.orderDate] = DateFormatter.localizedString(from: date, dateStyle: .short, timeStyle: .short)
+        }
+        
         replacingDict[.price] = .init(state.price)
-        return future
+        return future.map {
+            replacingDict
+        }
     }
 }
 

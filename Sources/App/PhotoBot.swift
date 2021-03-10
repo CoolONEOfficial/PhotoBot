@@ -174,52 +174,54 @@ class PhotoBot {
         switch eventPayload {
         case let .editText(messageId):
             replyText = "Move"
-            return Node.find(.action(.messageEdit), app: self.app).throwingFlatMap { node in
-                try user.push(node, payload: .editText(messageId: messageId), to: event, with: self.bot, app: self.app)
+            return Node.find(.action(.messageEdit), app: app).throwingFlatMap { [self] node in
+                try user.push(node, payload: .editText(messageId: messageId), to: event, with: bot, app: app)
             }
 
         case let .createNode(type):
             replyText = "Move"
-            return Node.find(.action(.createNode), app: self.app).throwingFlatMap { node in
-                try user.push(node, payload: .build(type: type), to: event, with: self.bot, app: self.app)
+            return Node.find(.action(.createNode), app: app).throwingFlatMap { [self] node in
+                try user.push(node, payload: .build(type: type), to: event, with: bot, app: app)
             }
 
         case let .selectStylist(stylistId):
             replyText = "Selected"
-            return Node.find(.entryPoint(.orderBuilder), app: self.app).flatMap { node in
-                Stylist.find(stylistId, app: self.app).throwingFlatMap { stylist in
-                    try user.push(node, payload: .orderBuilder(.init(with: user.history.last?.nodePayload, stylist: stylist)), to: event, with: self.bot, app: self.app, saveMove: false)
+            return Node.find(.entryPoint(.orderBuilder), app: app).flatMap { [self] node in
+                Stylist.find(stylistId, app: app).throwingFlatMap { stylist in
+                    try user.push(node, payload: .orderBuilder(.init(with: user.history.last?.nodePayload, stylist: stylist)), to: event, with: bot, app: app, saveMove: false)
                 }
                 
             }
             
         case let .selectMakeuper(makeuperId):
             replyText = "Selected"
-            return Node.find(.entryPoint(.orderBuilder), app: self.app).flatMap { node in
-                Makeuper.find(makeuperId, app: self.app).throwingFlatMap { makeuper in
-                    try user.push(node, payload: .orderBuilder(.init(with: user.history.last?.nodePayload, makeuper: makeuper)), to: event, with: self.bot, app: self.app, saveMove: false)
+            return Node.find(.entryPoint(.orderBuilder), app: app).flatMap { [self] node in
+                Makeuper.find(makeuperId, app: app).throwingFlatMap { makeuper in
+                    try user.push(node, payload: .orderBuilder(.init(with: user.history.last?.nodePayload, makeuper: makeuper)), to: event, with: bot, app: app, saveMove: false)
                 }
             }
             
         case let .selectStudio(studioId):
             replyText = "Selected"
-            return Node.find(.entryPoint(.orderBuilder), app: self.app).flatMap { node in
-                Studio.find(studioId, app: self.app).throwingFlatMap { studio in
-                    try user.push(node, payload: .orderBuilder(.init(with: user.history.last?.nodePayload, studio: studio)), to: event, with: self.bot, app: self.app, saveMove: false)
+            return Node.find(.entryPoint(.orderBuilder), app: app).flatMap { [self] node in
+                Studio.find(studioId, app: app).throwingFlatMap { studio in
+                    try user.push(node, payload: .orderBuilder(.init(with: user.history.last?.nodePayload, studio: studio)), to: event, with: bot, app: app, saveMove: false)
                 }
+            }
+        
+        case let .selectDate(date):
+            replyText = "Selected"
+            return Node.find(.entryPoint(.orderBuilder), app: app).throwingFlatMap { [self] node in
+                try user.push(node, payload: .orderBuilder(.init(with: user.history.last?.nodePayload, date: date)), to: event, with: bot, app: app, saveMove: false)
             }
 
         case .back:
             replyText = "Pop"
-            return try user.pop(to: event, with: self.bot, app: self.app)
+            return try user.pop(to: event, with: bot, app: app)
             
         case let .push(target, nodePayload, saveMoveToHistory):
             replyText = "Move"
-            return user.push(target, payload: nodePayload, to: event, with: self.bot, app: self.app, saveMove: saveMoveToHistory)
-            
-        case .toCheckout:
-            replyText = "Move"
-            return user.push(.entryPoint(.orderCheckout), to: event, with: self.bot, app: self.app)
+            return user.push(target, payload: nodePayload, to: event, with: bot, app: app, saveMove: saveMoveToHistory)
             
         case .createOrder:
             replyText = "Move"
@@ -228,7 +230,7 @@ class PhotoBot {
             
             let platform = event.platform.any
             
-            return OrderModel.create(checkoutState: checkoutState, app: app).flatMap { [self] _ in
+            return try OrderModel.create(checkoutState: checkoutState, app: app).flatMap { [self] _ in
                 MessageFormatter.shared.format("Заказ успешно создан, в ближайшее время с Вами свяжется @" + .replacing(by: .admin), platform: platform, user: user, app: app)
                 .throwingFlatMap { message in
                     try event.replyMessage(from: bot, params: .init(text: message), app: app).map { [$0] }
@@ -245,6 +247,7 @@ class PhotoBot {
                                 + "\nСтилист: " + .replacing(by: .stylist)
                                 + "\nВизажист: " + .replacing(by: .makeuper)
                                 + "\nСтудия: " + .replacing(by: .studio)
+                                + "\nДата: " + .replacing(by: .orderDate)
                                 + "\nСумма: " + .replacing(by: .price) + " р.",
                             platform: platform, user: user, app: app
                         ).throwingFlatMap { text in
@@ -277,37 +280,41 @@ class PhotoBot {
                 replyText = "👈 Предыдущая"
             }
 
-            return user.push(.id(user.nodeId!), payload: .page(at: pageIndex), to: event, with: self.bot, app: self.app, saveMove: false)
+            return user.push(.id(user.nodeId!), payload: .page(at: pageIndex), to: event, with: bot, app: app, saveMove: false)
         }
     }
     
     func handleEvent(_ update: Botter.Update, _ context: Botter.BotContext?) throws {
         guard case let .event(event) = update.content else { return }
         
-        let userFuture = try User.findOrCreate(from: event, bot: bot, app: app).throwingFlatMap { user -> Future<[Botter.Message]> in
+        let userFuture = try User.findOrCreate(from: event, bot: bot, app: app).throwingFlatMap { [self] user -> Future<[Botter.Message]> in
             
             var replyText: String = "Not handled"
             var nextFuture: Future<[Botter.Message]?>? = nil
             
-            if let eventPayloadIdData = event.data.value as? Data,
-               let eventPayloadIdStr = String(data: eventPayloadIdData, encoding: .utf8),
-               let eventPayloadId = UUID(uuidString: eventPayloadIdStr) {
-                nextFuture = EventPayloadModel.find(eventPayloadId, on: self.app.db)
+            let eventData = event.data.value as? Data
+            let eventStr = String(data: eventData ?? .init(), encoding: .utf8)
+            
+            if eventStr == "nope" {
+                nextFuture = nil
+            } else if let eventStr = eventStr,
+                      let eventPayloadId = UUID(uuidString: eventStr) {
+                nextFuture = EventPayloadModel.find(eventPayloadId, on: app.db)
                     .optionalFlatMapThrowing { model in try EventPayload(from: model.instance) }
-                    .optionalThrowingFlatMap { eventPayload in try self.handleEventPayload(event, user, eventPayload, &replyText) }
+                    .optionalThrowingFlatMap { eventPayload in try handleEventPayload(event, user, eventPayload, &replyText) }
             } else if let eventPayload: EventPayload = try? event.decodeData() {
-                nextFuture = try self.handleEventPayload(event, user, eventPayload, &replyText).map { Optional($0) }
+                nextFuture = try handleEventPayload(event, user, eventPayload, &replyText).map { Optional($0) }
             }
             
             var futureArr: [EventLoopFuture<[Botter.Message]>] = [
-                try event.reply(from: self.bot, params: .init(type: .notification(text: replyText)), app: self.app).map { _ in [] }
+                try event.reply(from: bot, params: .init(type: .notification(text: replyText)), app: app).map { _ in [] }
             ]
             
             if let nextFuture = nextFuture {
                 futureArr.append(nextFuture.unwrap(orReplace: []))
             }
             
-            return futureArr.flatten(on: self.app.eventLoopGroup.next()).map { $0.last ?? [] }
+            return futureArr.flatten(on: app.eventLoopGroup.next()).map { $0.last ?? [] }
         }
         userFuture.whenFailure { [weak self] in self?.handleError(event, err: $0) }
     }
@@ -539,7 +546,7 @@ extension Botter.Button {
 }
 
 enum PhotoBotError: Error {
-    case nodeByEntryPointNotFound
+    case nodeByEntryPointNotFound(EntryPoint)
     case nodeByActionNotFound
     case nodeByIdNotFound
     case destinationNotFound

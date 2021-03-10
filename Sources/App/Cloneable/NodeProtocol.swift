@@ -17,6 +17,7 @@ enum EntryPoint: String, Codable {
     case orderBuilderStylist
     case orderBuilderStudio
     case orderBuilderMakeuper
+    case orderBuilderDate
     case orderCheckout
     case about
     case portfolio

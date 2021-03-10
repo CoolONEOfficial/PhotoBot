@@ -13,6 +13,7 @@ struct OrderState: Codable {
     var stylistId: UUID?
     var makeuperId: UUID?
     var studioId: UUID?
+    var date: Date?
     var price: Int
 }
 
@@ -22,7 +23,7 @@ struct CheckoutState: Codable {
 }
 
 extension OrderState {
-    init(with oldPayload: NodePayload?, stylist: Stylist? = nil, makeuper: Makeuper? = nil, studio: Studio? = nil) {
+    init(with oldPayload: NodePayload?, stylist: Stylist? = nil, makeuper: Makeuper? = nil, studio: Studio? = nil, date: Date? = nil) {
         let priceables: [Priceable?] = [ stylist, makeuper, studio ]
         let appendingPrice = priceables.compactMap { $0?.price }.reduce(0, +)
         if case let .orderBuilder(state) = oldPayload {
@@ -30,6 +31,7 @@ extension OrderState {
                 stylistId: stylist?.id ?? state.stylistId,
                 makeuperId: makeuper?.id ?? state.makeuperId,
                 studioId: studio?.id ?? state.studioId,
+                date: date ?? state.date,
                 price: state.price + appendingPrice
             )
         } else {
@@ -37,6 +39,7 @@ extension OrderState {
                 stylistId: stylist?.id,
                 makeuperId: makeuper?.id,
                 studioId: studio?.id,
+                date: date,
                 price: appendingPrice
             )
         }
@@ -49,20 +52,8 @@ enum NodePayload: Codable {
     case page(at: Int)
     case orderBuilder(OrderState)
     case checkout(CheckoutState)
+    case calendar(year: Int, month: Int)
 }
-
-//extension NodePayload {
-//    static func orderBuilder(with oldPayload: NodePayload?, stylistId: UUID? = nil, makeuperId: UUID? = nil, studioId: UUID? = nil) -> Self {
-//        if case let .orderBuilder(_stylistId, _makeuperId, _studioId) = oldPayload {
-//            return .orderBuilder(
-//                stylistId: stylistId ?? _stylistId,
-//                makeuperId: makeuperId ?? _makeuperId,
-//                studioId: studioId ?? _studioId
-//            )
-//        }
-//        return .orderBuilder(stylistId: stylistId, makeuperId: makeuperId, studioId: studioId)
-//    }
-//}
 
 extension NodePayload {
 
@@ -71,8 +62,10 @@ extension NodePayload {
         case createBuildableType
         case createBuildableObject
         case pageAt
-        case orderBuilderState
+        case orderState
         case checkoutState
+        case calendarYear
+        case calendarMonth
     }
 
     internal init(from decoder: Decoder) throws {
@@ -94,14 +87,20 @@ extension NodePayload {
             self = .page(at: num)
             return
         }
-        if container.allKeys.contains(.orderBuilderState) {
-            let state = try container.decode(OrderState.self, forKey: .orderBuilderState)
+        if container.allKeys.contains(.orderState) {
+            let state = try container.decode(OrderState.self, forKey: .orderState)
             self = .orderBuilder(state)
             return
         }
         if container.allKeys.contains(.checkoutState) {
             let state = try container.decode(CheckoutState.self, forKey: .checkoutState)
             self = .checkout(state)
+            return
+        }
+        if container.allKeys.contains(.calendarMonth), container.allKeys.contains(.calendarYear) {
+            let year = try container.decode(Int.self, forKey: .calendarYear)
+            let month = try container.decode(Int.self, forKey: .calendarMonth)
+            self = .calendar(year: year, month: month)
             return
         }
         throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown enum case"))
@@ -122,10 +121,14 @@ extension NodePayload {
             try container.encode(num, forKey: .pageAt)
 
         case let .orderBuilder(state):
-            try container.encode(state, forKey: .orderBuilderState)
+            try container.encode(state, forKey: .orderState)
         
         case let .checkout(checkout):
             try container.encode(checkout, forKey: .checkoutState)
+
+        case let .calendar(year, month):
+            try container.encode(year, forKey: .calendarYear)
+            try container.encode(month, forKey: .calendarMonth)
         }
     }
 

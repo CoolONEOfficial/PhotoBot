@@ -142,48 +142,47 @@ private func configurePostgres(_ app: Application) throws {
                     .init(text: "Нет", action: .callback, eventPayload: .push(.entryPoint(.welcome)))
                 ]])
             ],
-            //action: .init(.setName, success: .push(id: showcaseNodeId), failure: "Wrong name, please try again.")
             entryPoint: .welcomeGuest, app: app
-        ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
+        ).throwingFlatMap { try $0.save(app: app) }.wait()
         
         try Node.create(
             systemic: true,
             name: "Change static node text node",
             messagesGroup: [ .init(text: "Пришли мне новый текст") ],
             action: .init(.messageEdit, success: .pop), app: app
-        ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
+        ).throwingFlatMap { try $0.save(app: app) }.wait()
         
     }
 }
 
 func mainGroup(_ app: Application) throws -> UUID {
-    let uploadPhotoNodeId = try Node.create(
+    try Node.create(
         name: "Upload photo node",
         messagesGroup: [
             .init(text: "Пришли мне прямую ссылку.")
         ],
         entryPoint: .uploadPhoto,
         action: .init(.uploadPhoto), app: app
-    ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
+    ).throwingFlatMap { try $0.save(app: app) }.wait()
     
-    let aboutNodeId = try Node.create(
+    try Node.create(
         name: "About node",
         messagesGroup: [
             .init(text: "Test message here."),
             .init(text: "And other message.")
         ],
         entryPoint: .about, app: app
-    ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
+    ).throwingFlatMap { try $0.save(app: app) }.wait()
     
-    let portfolioNodeId = try Node.create(
+    try Node.create(
         name: "Portfolio node",
         messagesGroup: [
             .init(text: "Test message here.")
         ],
         entryPoint: .portfolio, app: app
-    ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
+    ).throwingFlatMap { try $0.save(app: app) }.wait()
     
-    let orderMainNodeId = try orderBuilderGroup(app)
+    try orderBuilderGroup(app)
 
     return try Node.create(
         name: "Welcome node",
@@ -193,29 +192,35 @@ func mainGroup(_ app: Application) throws -> UUID {
 }
 
 func orderBuilderGroup(_ app: Application) throws -> UUID {
-    let stylistNodeId = try Node.create(
+    try Node.create(
         name: "Order builder stylist node",
         messagesGroup: .list(.stylists),
         entryPoint: .orderBuilderStylist, app: app
     ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
     
-    let makeuperNodeId = try Node.create(
+    try Node.create(
         name: "Order builder makeuper node",
         messagesGroup: .list(.makeupers),
         entryPoint: .orderBuilderMakeuper, app: app
     ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
     
-    let studioNodeId = try Node.create(
+    try Node.create(
         name: "Order builder studio node",
         messagesGroup: .list(.studios),
         entryPoint: .orderBuilderStudio, app: app
-    ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
+    ).throwingFlatMap { try $0.save(app: app) }.wait()
+    
+    try Node.create(
+        name: "Order builder date node",
+        messagesGroup: .calendar,
+        entryPoint: .orderBuilderDate, app: app
+    ).throwingFlatMap { try $0.save(app: app) }.wait()
     
     try Node.create(
         name: "Order checkout node",
         messagesGroup: .orderCheckout,
         entryPoint: .orderCheckout, app: app
-    ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
+    ).throwingFlatMap { try $0.save(app: app) }.wait()
     
     return try Node.create(
         name: "Order builder main node",

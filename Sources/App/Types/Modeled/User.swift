@@ -149,15 +149,18 @@ extension User {
     }
     
     func pop<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, app: Application, while whileCompletion: (UserHistoryEntry) -> Bool) throws -> Future<[Message]> {
-        guard !history.isEmpty else { throw UserNavigationError.noHistory }
-        for (index, entry) in history.enumerated().reversed() {
-            if whileCompletion(entry), index != 0 {
-                history.removeLast()
-            } else {
-                break
+        guard !history.isEmpty, let nodeId = nodeId else { throw UserNavigationError.noHistory }
+        if whileCompletion(UserHistoryEntry(nodeId: nodeId, nodePayload: nodePayload)) {
+            for (index, entry) in history.enumerated().reversed() {
+                if whileCompletion(entry), index != 0 {
+                    history.removeLast()
+                } else {
+                    break
+                }
             }
         }
         let newestHistoryEntry = history.last!
+        history.removeLast()
         return push(.id(newestHistoryEntry.nodeId), payload: newestHistoryEntry.nodePayload, to: replyable, with: bot, app: app, saveMove: false)
     }
     

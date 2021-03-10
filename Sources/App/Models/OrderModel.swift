@@ -43,6 +43,9 @@ final class OrderModel: Model, OrderProtocol {
         set { self.$studio.id = newValue }
     }
     
+    @Field(key: "date")
+    var date: Date
+    
     @Field(key: "price")
     var price: Int
     

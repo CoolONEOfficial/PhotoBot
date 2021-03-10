@@ -43,6 +43,7 @@ enum SendMessageGroup {
     case orderBuilder
     case orderCheckout
     case welcome
+    case calendar
     
     mutating func getSendMessages(platform: AnyPlatform, in node: Node, app: Application, _ user: User, _ payload: NodePayload?) throws -> Future<[SendMessage]> {
         let result: Future<[SendMessage]>
@@ -194,14 +195,15 @@ enum SendMessageGroup {
             var keyboard: Keyboard = [[
                 try .init(text: "Стилист", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderStylist))),
                 try .init(text: "Визажист", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderMakeuper))),
-                try .init(text: "Студия", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderStudio)))
+                try .init(text: "Студия", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderStudio))),
+                try .init(text: "Время", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderDate)))
             ]]
             
-            if let payload = payload,
-               case let .orderBuilder(state) = payload,
+            if case let .orderBuilder(state) = payload,
                state.stylistId != nil,
                state.makeuperId != nil,
-               state.studioId != nil {
+               state.studioId != nil,
+               state.date != nil {
                 keyboard.buttons.safeAppend([
                     try .init(text: "К завершению", action: .callback, eventPayload: .push(.entryPoint(.orderCheckout), payload: .checkout(.init(order: state))))
                 ])
@@ -211,6 +213,7 @@ enum SendMessageGroup {
                 .init(text: "Ваш заказ:\nСтилист: " + .replacing(by: .stylist)
                         + "\nВизажист: " + .replacing(by: .makeuper)
                         + "\nСтудия: " + .replacing(by: .studio)
+                        + "\nДата: " + .replacing(by: .orderDate)
                         + "\nСумма: " + .replacing(by: .price) + " р.", keyboard: keyboard)
             ])
             
@@ -220,6 +223,7 @@ enum SendMessageGroup {
                 .init(text: "Итого:\nСтилист: " + .replacing(by: .stylist)
                         + "\nВизажист: " + .replacing(by: .makeuper)
                         + "\nСтудия: " + .replacing(by: .studio)
+                        + "\nДата: " + .replacing(by: .orderDate)
                         + "\nСумма: " + .replacing(by: .price) + " р.", keyboard: [[
                             try .init(text: "Подтвердить", action: .callback, eventPayload: .createOrder)
                         ]])
@@ -241,6 +245,9 @@ enum SendMessageGroup {
                 ])
             ])
             
+        case .calendar:
+            
+            result = try calendarMessages(app: app, payload)
         }
 
         return result
@@ -248,6 +255,61 @@ enum SendMessageGroup {
             .flatMapEach(on: app.eventLoopGroup.next()) { Self.formatMessage(platform: platform, $0, user, app: app) }
     }
     
+    func calendarMessages(app: Application, _ payload: NodePayload?) throws -> Future<[SendMessage]> {
+        
+        let calendar = Calendar.current
+        let currentDate = Date()
+        let comps = calendar.dateComponents([.year, .month], from: currentDate)
+        var (year, month) = (comps.year!, comps.month!)
+        
+        if case let .calendar(payloadYear, payloadMonth) = payload {
+            year = payloadYear
+            month = payloadMonth
+        }
+
+        let dayInSeconds: TimeInterval = 60 * 60 * 24
+        let startMonth = calendar.date(from: .init(year: year, month: month))!
+        let startTable = startMonth.addingTimeInterval(-dayInSeconds * .init(calendar.weekday(date: startMonth)))
+
+        let endMonth = calendar.date(byAdding: .init(month: 1, day: -1), to: startMonth)!
+        let endTable = endMonth.addingTimeInterval(dayInSeconds * .init(6 - calendar.weekday(date: endMonth)))
+        
+        let formatter = DateFormatter()
+        let weekdayMessages = formatter.veryShortWeekdaySymbols
+            .shift(withDistance: calendar.firstWeekday - 1).compactMap { weekday in
+            Button(text: weekday)
+        }
+        let dateMessages = try (startTable...endTable).intervalDates().map { date in
+            try Button(
+                text: String(calendar.component(.day, from: date)),
+                action: .callback,
+                eventPayload: .selectDate(date: date)
+            )
+        }.chunked(into: 7)
+        
+        func eventPayload(appending comps: DateComponents) -> EventPayload {
+            let date = calendar.date(from: .init(year: year, month: month))!
+            let newDate = calendar.date(byAdding: comps, to: date)!
+            let newComps = calendar.dateComponents([.year, .month], from: newDate)
+            let (newYear, newMonth) = (newComps.year!, newComps.month!)
+            return .push(.entryPoint(.orderBuilderDate), payload: .calendar(year: newYear, month: newMonth), saveToHistory: false)
+        }
+        
+        return app.eventLoopGroup.future([
+            .init(text: "Выбери дату:", keyboard: .init(buttons: [
+                [
+                    try .init(text: "👈", action: .callback, eventPayload: eventPayload(appending: .init(month: -1))),
+                    .init(text: formatter.shortMonthSymbols[month - 1]),
+                    try .init(text: "👉", action: .callback, eventPayload: eventPayload(appending: .init(month: 1))),
+                    try .init(text: "👈", action: .callback, eventPayload: eventPayload(appending: .init(year: -1))),
+                    .init(text: .init(year)),
+                    try .init(text: "👉", action: .callback, eventPayload: eventPayload(appending: .init(year: 1)))
+                ],
+                weekdayMessages
+            ] + dateMessages))
+        ])
+    }
+
     static private func addPageButtons(_ messages: [SendMessage], _ startIndex: Int, _ endIndex: Int, _ count: Int) -> [SendMessage] {
         if let lastMessage = messages.last {
             var buttons = [Button]()
@@ -333,6 +395,7 @@ extension SendMessageGroup: Codable {
         case orderBuilder
         case orderCheckout
         case welcome
+        case calendar
     }
 
     internal init(from decoder: Decoder) throws {
@@ -364,6 +427,10 @@ extension SendMessageGroup: Codable {
             self = .welcome
             return
         }
+        if container.allKeys.contains(.calendar), try container.decodeNil(forKey: .calendar) == false {
+            self = .calendar
+            return
+        }
         throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown enum case"))
     }
 
@@ -383,6 +450,8 @@ extension SendMessageGroup: Codable {
             try container.encode(true, forKey: .orderCheckout)
         case .welcome:
             try container.encode(true, forKey: .welcome)
+        case .calendar:
+            try container.encode(true, forKey: .calendar)
         }
     }
 

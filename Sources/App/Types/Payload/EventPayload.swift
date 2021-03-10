@@ -13,7 +13,7 @@ enum EventPayload {
     case selectStylist(id: UUID)
     case selectMakeuper(id: UUID)
     case selectStudio(id: UUID)
-    case toCheckout
+    case selectDate(date: Date)
     case createOrder
     
     // MARK: Navigation
@@ -32,52 +32,45 @@ extension EventPayload: Codable {
         case selectStylist = "selStylist"
         case selectMakeuper = "selMakeuper"
         case selectStudio = "selStudio"
-        case toCheckout
+        case selectDate = "selDate"
         case createOrder
         case back
         case push
         case previousPage
         case nextPage
-        case messageId
-        case type
-        case id
     }
 
     internal init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         if container.allKeys.contains(.editText), try container.decodeNil(forKey: .editText) == false {
-            let associatedValues = try container.nestedContainer(keyedBy: CodingKeys.self, forKey: .editText)
-            let messageId = try associatedValues.decode(Int.self, forKey: .messageId)
+            let messageId = try container.decode(Int.self, forKey: .editText)
             self = .editText(messageId: messageId)
             return
         }
         if container.allKeys.contains(.createNode), try container.decodeNil(forKey: .createNode) == false {
-            let associatedValues = try container.nestedContainer(keyedBy: CodingKeys.self, forKey: .createNode)
-            let type = try associatedValues.decode(BuildableType.self, forKey: .type)
+            let type = try container.decode(BuildableType.self, forKey: .createNode)
             self = .createNode(type: type)
             return
         }
         if container.allKeys.contains(.selectStylist), try container.decodeNil(forKey: .selectStylist) == false {
-            let associatedValues = try container.nestedContainer(keyedBy: CodingKeys.self, forKey: .selectStylist)
-            let id = try associatedValues.decode(UUID.self, forKey: .id)
+            let id = try container.decode(UUID.self, forKey: .selectStylist)
             self = .selectStylist(id: id)
             return
         }
         if container.allKeys.contains(.selectMakeuper), try container.decodeNil(forKey: .selectMakeuper) == false {
-            let associatedValues = try container.nestedContainer(keyedBy: CodingKeys.self, forKey: .selectMakeuper)
-            let id = try associatedValues.decode(UUID.self, forKey: .id)
+            let id = try container.decode(UUID.self, forKey: .selectMakeuper)
             self = .selectMakeuper(id: id)
             return
         }
         if container.allKeys.contains(.selectStudio), try container.decodeNil(forKey: .selectStudio) == false {
-            let associatedValues = try container.nestedContainer(keyedBy: CodingKeys.self, forKey: .selectStudio)
-            let id = try associatedValues.decode(UUID.self, forKey: .id)
+            let id = try container.decode(UUID.self, forKey: .selectStudio)
             self = .selectStudio(id: id)
             return
         }
-        if container.allKeys.contains(.toCheckout), try container.decodeNil(forKey: .toCheckout) == false {
-            self = .toCheckout
+        if container.allKeys.contains(.selectDate), try container.decodeNil(forKey: .selectDate) == false {
+            let date = try container.decode(Date.self, forKey: .selectDate)
+            self = .selectDate(date: date)
             return
         }
         if container.allKeys.contains(.createOrder), try container.decodeNil(forKey: .createOrder) == false {
@@ -112,22 +105,17 @@ extension EventPayload: Codable {
 
         switch self {
         case let .editText(messageId):
-            var associatedValues = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .editText)
-            try associatedValues.encode(messageId, forKey: .messageId)
+            try container.encode(messageId, forKey: .editText)
         case let .createNode(type):
-            var associatedValues = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .createNode)
-            try associatedValues.encode(type, forKey: .type)
+            try container.encode(type, forKey: .createNode)
         case let .selectStylist(id):
-            var associatedValues = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .selectStylist)
-            try associatedValues.encode(id, forKey: .id)
+            try container.encode(id, forKey: .selectStylist)
         case let .selectMakeuper(id):
-            var associatedValues = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .selectMakeuper)
-            try associatedValues.encode(id, forKey: .id)
+            try container.encode(id, forKey: .selectMakeuper)
         case let .selectStudio(id):
-            var associatedValues = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .selectStudio)
-            try associatedValues.encode(id, forKey: .id)
-        case .toCheckout:
-            try container.encode(true, forKey: .toCheckout)
+            try container.encode(id, forKey: .selectStudio)
+        case let .selectDate(date):
+            try container.encode(date, forKey: .selectDate)
         case .createOrder:
             try container.encode(true, forKey: .createOrder)
         case .back:
