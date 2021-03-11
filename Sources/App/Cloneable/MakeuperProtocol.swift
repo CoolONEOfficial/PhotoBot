@@ -23,7 +23,7 @@ protocol MakeuperProtocol: PhotosProtocol, PlatformIdentifiable, Priceable, Clon
 }
 
 extension MakeuperProtocol {
-    static func create(other: TwinType, app: Application) -> Future<Self> {
+    static func create(other: TwinType, app: Application) throws -> Future<Self> {
         other.getPhotos(app: app).flatMap { photos in
             Self.create(id: other.id, name: other.name, platformIds: other.platformIds, photos: photos, price: other.price, app: app)
         }

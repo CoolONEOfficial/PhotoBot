@@ -13,8 +13,10 @@ struct CreatePromotions: Migration {
             .id()
             .field("name", .string, .required)
             .field("description", .string, .required)
+            .field("promocode", .string)
             .field("condition", .json, .required)
             .field("impact", .json, .required)
+            .unique(on: "promocode")
             .create()
     }
 

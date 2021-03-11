@@ -24,7 +24,7 @@ protocol StudioProtocol: PhotosProtocol, Priceable, Cloneable where TwinType: St
 extension StudioProtocol {
     var photosSiblings: AttachableFileSiblings<StudioModel, StudioPhoto>? { nil }
     
-    static func create(other: TwinType, app: Application) -> Future<Self> {
+    static func create(other: TwinType, app: Application) throws -> Future<Self> {
         other.getPhotos(app: app).flatMap { photos in
             Self.create(id: other.id, name: other.name, description: other.description, address: other.address, coords: other.coords, photos: photos, price: other.price, app: app)
         }

@@ -33,15 +33,6 @@ final class NodeModel: Model, NodeProtocol {
     var action: NodeAction?
 
     required init() { }
-//
-//    init(id: UUID? = nil, systemic: Bool = false, name: String, messagesGroup: SendMessageGroup, entryPoint: Node.EntryPoint? = nil, action: NodeAction? = nil) {
-//        self.id = id
-//        self.systemic = systemic
-//        self.name = name
-//        self.messagesGroup = messagesGroup
-//        self.entryPoint = entryPoint
-//        self.action = action
-//    }
     
     public static func find(
         _ target: PushTarget,
@@ -61,5 +52,3 @@ final class NodeModel: Model, NodeProtocol {
         }
     }
 }
-
-//extension NodeModel: TypedModel { typealias MyType = Node }

@@ -22,10 +22,13 @@ final class Promotion: PromotionProtocol {
     
     @Validated(.nonEmpty)
     var description: String?
-
-    var impact: PromotionImpact?
     
-    var condition: PromotionCondition?
+    @Validated(.nonEmpty)
+    var promocode: String?
+
+    var impact: PromotionImpact!
+    
+    var condition: PromotionCondition!
 
     required init() {}
     
@@ -41,6 +44,12 @@ extension Promotion: ModeledType {
         guard isValid else {
             throw ModeledTypeError.validationError(self)
         }
-        return TwinType.create(other: self, app: app)
+        return try TwinType.create(other: self, app: app)
+    }
+}
+
+extension Promotion {
+    static func find(promocode: String, app: Application) -> Future<Promotion?> {
+        PromotionModel.query(on: app.db).filter(\.$promocode, .equal, promocode.trimmingCharacters(in: .whitespaces)).first().optionalThrowingFlatMap { try Promotion.create(other: $0, app: app) }
     }
 }

@@ -13,7 +13,7 @@ import Fluent
 protocol Cloneable: class {
     associatedtype TwinType: Cloneable
     
-    static func create(other: TwinType, app: Application) -> Future<Self>
+    static func create(other: TwinType, app: Application) throws -> Future<Self>
     
     func saveIfNeeded(app: Application) -> Future<Self>
 }
@@ -27,7 +27,7 @@ extension Cloneable where TwinType: Model { // non-model types
         _ id: TwinType.IDValue?,
         app: Application
     ) -> EventLoopFuture<Self?> {
-        TwinType.find(id, on: app.db).optionalFlatMap { Self.create(other: $0, app: app) }
+        TwinType.find(id, on: app.db).optionalThrowingFlatMap { try Self.create(other: $0, app: app) }
     }
 }
 

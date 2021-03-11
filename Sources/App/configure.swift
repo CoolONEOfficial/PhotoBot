@@ -113,6 +113,7 @@ private func configurePostgres(_ app: Application) throws {
         for num in 1...3 {
             try Promotion.create(
                 name: "Promo \(num)",
+                promocode: "PROMO\(num)",
                 description: "Promo desc",
                 impact: .fixed(100),
                 condition: .and([ .numeric(.price, .more, 500) ]),
@@ -224,7 +225,7 @@ func orderBuilderGroup(_ app: Application) throws -> UUID {
     try Node.create(
         name: "Order checkout node",
         messagesGroup: .orderCheckout,
-        entryPoint: .orderCheckout, app: app
+        entryPoint: .orderCheckout, action: .init(.applyPromocode), app: app
     ).throwingFlatMap { try $0.save(app: app) }.wait()
     
     return try Node.create(

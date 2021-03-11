@@ -42,7 +42,7 @@ extension Stylist: ModeledType {
         guard isValid else {
             throw ModeledTypeError.validationError(self)
         }
-        return TwinType.create(other: self, app: app)
+        return try TwinType.create(other: self, app: app)
     }
 }
 

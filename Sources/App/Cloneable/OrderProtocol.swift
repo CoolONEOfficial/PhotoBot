@@ -29,7 +29,7 @@ enum OrderCreateError: Error {
 }
 
 extension OrderProtocol {
-    static func create(other: TwinType, app: Application) -> Future<Self> {
+    static func create(other: TwinType, app: Application) throws -> Future<Self> {
         Self.create(id: other.id, stylistId: other.stylistId, makeuperId: other.makeuperId, studioId: other.studioId, interval: other.interval, price: other.price, app: app)
     }
     

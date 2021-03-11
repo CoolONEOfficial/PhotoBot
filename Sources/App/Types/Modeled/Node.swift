@@ -40,7 +40,7 @@ extension Node: ModeledType {
         guard isValid else {
             throw ModeledTypeError.validationError(self)
         }
-        return TwinType.create(other: self, app: app)
+        return try TwinType.create(other: self, app: app)
     }
 }
 
@@ -49,7 +49,7 @@ extension Node {
         _ target: PushTarget,
         app: Application
     ) -> Future<Node> {
-        TwinType.find(target, on: app.db).flatMap { Node.create(other: $0, app: app) }
+        TwinType.find(target, on: app.db).throwingFlatMap { try Node.create(other: $0, app: app) }
     }
     
     public static func findId(

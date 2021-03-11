@@ -229,7 +229,7 @@ class PhotoBot {
             let calendar = Calendar(identifier: .gregorian)
             guard case let .calendar(year, month, day, time) = user.nodePayload,
                   let (hour, minute, second) = time?.components,
-                  let date = calendar.date(from: .init(year: year, month: month, day: day, hour: hour, minute: minute, second: second)) else { throw HandleActionError.payloadInvalid }
+                  let date = calendar.date(from: .init(year: year, month: month, day: day, hour: hour, minute: minute, second: second)) else { throw HandleActionError.nodePayloadInvalid }
             
             return Node.find(.entryPoint(.orderBuilder), app: app).throwingFlatMap { [self] node in
                 try user.push(node, payload: .orderBuilder(.init(with: user.history.last?.nodePayload, date: date, duration: duration)), to: event, with: bot, app: app, saveMove: false)
@@ -246,7 +246,7 @@ class PhotoBot {
         case .createOrder:
             replyText = "Move"
             
-            guard case let .checkout(checkoutState) = user.nodePayload else { throw HandleActionError.payloadInvalid }
+            guard case let .checkout(checkoutState) = user.nodePayload else { throw HandleActionError.nodePayloadInvalid }
             
             let platform = event.platform.any
             
@@ -364,22 +364,28 @@ class PhotoBot {
                             let nextFuture: Future<[Botter.Message]?>?
                             
                             if let action = node.action {
-                                nextFuture = try handleAction(action, user, message, context).throwingFlatMap { result -> Future<[Botter.Message]?> in
-                                    var future: Future<[Botter.Message]>?
-                                
-                                    guard let successNodeId = action.action else { return self.app.eventLoopGroup.future(nil) }
-                                    switch successNodeId {
-                                    case let .push(target):
-                                        future = user.push(target, to: message, with: bot, app: app)
-                                        
-                                    case .pop:
-                                        future = try user.pop(to: message, with: bot, app: app)
-
-                                    case .moveToBuilder(let builderType):
-                                        future = try self.moveToBuilder(builderType, user: user, nodeId: nodeId, message: message, text: text)
-                                    }
+                                nextFuture = try handleAction(action, user, message, context).throwingFlatMap { success -> Future<[Botter.Message]?> in
+                                    if success {
+                                        var future: Future<[Botter.Message]>?
                                     
-                                    return future?.map { Optional($0) } ?? (self.app.eventLoopGroup.future(nil))
+                                        guard let successNodeId = action.action else { return self.app.eventLoopGroup.future(nil) }
+                                        switch successNodeId {
+                                        case let .push(target):
+                                            future = user.push(target, to: message, with: bot, app: app)
+                                            
+                                        case .pop:
+                                            future = try user.pop(to: message, with: bot, app: app)
+
+                                        case .moveToBuilder(let builderType):
+                                            future = try self.moveToBuilder(builderType, user: user, nodeId: nodeId, message: message, text: text)
+                                        }
+                                        
+                                        return future?.map { Optional($0) } ?? (self.app.eventLoopGroup.future(nil))
+                                    } else {
+                                        return try message.reply(from: bot, params: .init(text: "Некорректное сообщение, попробуй еще раз но с другим текстом."), app: app).map(\.first).optionalThrowingFlatMap { message in
+                                            try user.pushToActualNode(to: message, with: bot, app: app).map { $0 + [message] }
+                                        }
+                                    }
                                 }
                             } else {
                                 nextFuture = try message.reply(from: bot, params: .init(text: "В этом месте не принимается текст. Попробуй нажать на подходящую кнопку."), app: app).map(\.first).optionalThrowingFlatMap { message in
@@ -490,12 +496,12 @@ class PhotoBot {
     enum HandleActionError: Error {
         case textNotFound
         case textIncorrect
-        case payloadInvalid
+        case nodePayloadInvalid
         case assotiatedValuesInvalid
         case noAttachments
     }
     
-    func handleAction(_ action: NodeAction, _ user: User, _ message: Botter.Message, _ context: Botter.BotContext?) throws -> Future<Void> {
+    func handleAction(_ action: NodeAction, _ user: User, _ message: Botter.Message, _ context: Botter.BotContext?) throws -> Future<Bool> {
         switch action.type {
         case .messageEdit:
             guard let text = message.text else { throw HandleActionError.textNotFound }
@@ -503,34 +509,26 @@ class PhotoBot {
                 
                 guard let nodePayload = user.nodePayload,
                       case let .editText(messageId) = nodePayload else {
-                    throw HandleActionError.payloadInvalid
+                    throw HandleActionError.nodePayloadInvalid
                 }
 
                 node.messagesGroup?.updateText(at: messageId, text: text)
                 
-                return try node.save(app: self.app).map { _ in () }
+                return try node.save(app: self.app).map { _ in true }
             }
 
         case .setName:
             user.firstName = message.text
             return try user.save(app: app).throwingFlatMap { _ in
-                try message.reply(from: self.bot, params: .init(text: "Good, \(user.firstName!)"), app: self.app).map { _ in () }
-            }
+                try message.reply(from: self.bot, params: .init(text: "Good, \(user.firstName!)"), app: self.app)
+            }.map { _ in true }
 
         case .uploadPhoto:
             guard let text = message.text else { throw HandleActionError.textNotFound }
             
-            var platforms: [TypedPlatform<AnyCodable>] = []
+            let availablePlatforms: [AnyPlatform] = .available(bot: bot)
             
-            if bot.vk != nil {
-                platforms.append(.vk(.init()))
-            }
-            
-            if bot.tg != nil {
-                platforms.append(.tg(.init()))
-            }
-            
-            return try platforms.map { platform -> Future<PlatformFile.Entry> in
+            return try availablePlatforms.map { platform -> Future<PlatformFile.Entry> in
                 let destination: SendDestination
                 switch platform {
                 case .tg:
@@ -561,12 +559,22 @@ class PhotoBot {
             }.flatten(on: app.eventLoopGroup.next()).flatMap { platformEntries in
                 PlatformFile.create(platformEntries: platformEntries, type: .photo, app: self.app).throwingFlatMap { try $0.saveReturningId(app: self.app) }.throwingFlatMap { savedId in
                     try message.reply(from: self.bot, params: .init(text: "локальный id: \(savedId)"), app: self.app)
-                        .map { _ in () }
+                        
                 }
+            }.map { _ in true }
+            
+        case .applyPromocode:
+            guard let text = message.text else { throw HandleActionError.textNotFound }
+            guard case var .checkout(checkoutState) = user.nodePayload else { throw HandleActionError.nodePayloadInvalid }
+            
+            return Promotion.find(promocode: text, app: app).flatMap { [self] promotion -> Future<Bool> in
+                guard let promotion = promotion else { return app.eventLoopGroup.future(false) }
+                checkoutState.promotions.append(promotion.id!)
+                return user.push(.entryPoint(.orderCheckout), payload: .checkout(checkoutState), to: message, with: bot, app: app).map { _ in true }
             }
 
         case .buildType, .createNode:
-            return app.eventLoopGroup.future(())
+            return app.eventLoopGroup.future(true)
         }
     }
     

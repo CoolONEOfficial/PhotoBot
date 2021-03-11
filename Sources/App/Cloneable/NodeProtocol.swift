@@ -37,7 +37,7 @@ protocol NodeProtocol: Cloneable where TwinType: NodeProtocol {
 }
 
 extension NodeProtocol {
-    static func create(other: TwinType, app: Application) -> Future<Self> {
+    static func create(other: TwinType, app: Application) throws -> Future<Self> {
         Self.create(id: other.id, systemic: other.systemic, name: other.name, messagesGroup: other.messagesGroup, entryPoint: other.entryPoint, action: other.action, app: app)
     }
     

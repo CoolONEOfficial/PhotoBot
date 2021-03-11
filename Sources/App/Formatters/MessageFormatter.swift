@@ -25,6 +25,7 @@ class MessageFormatter {
         case price = "$PRICE"
         case admin = "$ADMIN"
         case orderDate = "$ORDERDATE"
+        case appliedPromotions = "$APPLIED_PROMOTIONS"
     }
     
     typealias ReplacingDict = [ReplacingKey: CustomStringConvertible]
@@ -45,13 +46,24 @@ class MessageFormatter {
             .admin: Application.adminNickname(for: platform),
             .userId: (try? userPlatformId?.id.encodeToString()) ?? nope,
             .username: userPlatformId?.username ?? nope,
-            .orderDate: notSelected
+            .orderDate: notSelected,
+            .appliedPromotions: ""
         ]
 
         var future = app.eventLoopGroup.future(replacingDict)
         switch user.nodePayload {
         case let .checkout(state):
-            future = handleOrderState(state: state.order, replacingDict: replacingDict, platform: platform, app: app)
+            future = handleOrderState(state: state.order, replacingDict: replacingDict, platform: platform, app: app).flatMap { dict in
+                state.promotions.map { Promotion.find($0, app: app) }.flatten(on: app.eventLoopGroup.next()).map { promotions in
+                    var str = promotions.isEmpty ? "" : ("Примененные акции: " + promotions.compactMap { $0?.name }.joined(separator: ", ") + "\n")
+                    if !promotions.contains(where: { $0?.promocode != nil }) {
+                        str += "Если у тебя есть промокод пришли его в ответ на это сообщение и он будет применен\n"
+                    }
+                    var dict = dict
+                    dict[.appliedPromotions] = str
+                    return dict
+                }
+            }
 
         case let .orderBuilder(state):
             future = handleOrderState(state: state, replacingDict: replacingDict, platform: platform, app: app)

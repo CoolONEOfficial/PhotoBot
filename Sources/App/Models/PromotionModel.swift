@@ -22,13 +22,14 @@ final class PromotionModel: Model, PromotionProtocol {
     @Field(key: "description")
     var description: String?
     
+    @Field(key: "promocode")
+    var promocode: String?
+    
     @Field(key: "impact")
-    var impact: PromotionImpact?
+    var impact: PromotionImpact!
     
     @Field(key: "condition")
-    var condition: PromotionCondition?
+    var condition: PromotionCondition!
 
     required init() { }
 }
-
-//extension PromotionModel: TypedModel { typealias MyType = Promotion }

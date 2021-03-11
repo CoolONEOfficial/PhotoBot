@@ -92,7 +92,7 @@ protocol UserProtocol: PlatformIdentifiable, Cloneable where TwinType: UserProto
 }
 
 extension UserProtocol {
-    static func create(other: TwinType, app: Application) -> Future<Self> {
+    static func create(other: TwinType, app: Application) throws -> Future<Self> {
         Self.create(id: other.id, history: other.history, nodeId: other.nodeId, nodePayload: other.nodePayload, platformIds: other.platformIds, isAdmin: other.isAdmin, firstName: other.firstName, lastName: other.lastName, app: app)
     }
     

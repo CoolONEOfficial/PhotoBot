@@ -91,8 +91,8 @@ enum SendMessageGroup {
                 result = MakeuperModel.query(on: app.db).count().flatMap { count in
                     MakeuperModel.query(on: app.db).range(startIndex ..< endIndex).all().flatMap { humans in
                         humans.enumerated().map { (index, human) -> Future<SendMessage> in
-                            human.$_photos.get(on: app.db).flatMap { photos -> Future<SendMessage> in
-                                photos.map { PlatformFile.create(other: $0, app: app) }
+                            human.$_photos.get(on: app.db).throwingFlatMap { photos -> Future<SendMessage> in
+                                try photos.map { try PlatformFile.create(other: $0, app: app) }
                                     .flatten(on: app.eventLoopGroup.next())
                                     .flatMapThrowing { attachments -> SendMessage in
                                         SendMessage(
@@ -120,8 +120,8 @@ enum SendMessageGroup {
                 result = model.query(on: app.db).count().flatMap { count in
                     model.query(on: app.db).range(startIndex ..< endIndex).all().flatMap { humans in
                         humans.enumerated().map { (index, human) -> Future<SendMessage> in
-                            human.$_photos.get(on: app.db).flatMap { photos -> Future<SendMessage> in
-                                photos.map { PlatformFile.create(other: $0, app: app) }
+                            human.$_photos.get(on: app.db).throwingFlatMap { photos -> Future<SendMessage> in
+                                try photos.map { try PlatformFile.create(other: $0, app: app) }
                                     .flatten(on: app.eventLoopGroup.next())
                                     .flatMapThrowing { attachments -> SendMessage in
                                         SendMessage(
@@ -149,8 +149,8 @@ enum SendMessageGroup {
                 result = model.query(on: app.db).count().flatMap { count in
                     model.query(on: app.db).range(startIndex ..< endIndex).all().flatMap { studios in
                         studios.enumerated().map { (index, studio) -> Future<SendMessage> in
-                            studio.$_photos.get(on: app.db).flatMap { photos -> Future<SendMessage> in
-                                photos.map { PlatformFile.create(other: $0, app: app) }
+                            studio.$_photos.get(on: app.db).throwingFlatMap { photos -> Future<SendMessage> in
+                                try photos.map { try PlatformFile.create(other: $0, app: app) }
                                     .flatten(on: app.eventLoopGroup.next())
                                     .flatMapThrowing { attachments -> SendMessage in
                                         SendMessage(
@@ -220,11 +220,11 @@ enum SendMessageGroup {
         case .orderCheckout:
             
             result = app.eventLoopGroup.future([
-                .init(text: "Итого:\nСтилист: " + .replacing(by: .stylist)
+                .init(text: "Оформление заказа\nИтого:\nСтилист: " + .replacing(by: .stylist)
                         + "\nВизажист: " + .replacing(by: .makeuper)
                         + "\nСтудия: " + .replacing(by: .studio)
                         + "\nДата: " + .replacing(by: .orderDate)
-                        + "\nСумма: " + .replacing(by: .price) + " р.", keyboard: [[
+                        + "\nСумма: " + .replacing(by: .price) + " р.\n" + .replacing(by: .appliedPromotions), keyboard: [[
                             try .init(text: "Подтвердить", action: .callback, eventPayload: .createOrder)
                         ]])
             ])

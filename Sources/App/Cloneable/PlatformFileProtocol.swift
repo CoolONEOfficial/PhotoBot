@@ -22,7 +22,7 @@ protocol PlatformFileProtocol: Cloneable where TwinType: PlatformFileProtocol {
 }
 
 extension PlatformFileProtocol {
-    static func create(other: TwinType, app: Application) -> Future<Self> {
+    static func create(other: TwinType, app: Application) throws -> Future<Self> {
         Self.create(id: other.id, platformEntries: other.platformEntries, type: other.type, app: app)
     }
     

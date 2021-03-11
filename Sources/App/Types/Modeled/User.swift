@@ -48,7 +48,7 @@ extension User: ModeledType {
         guard isValid else {
             throw ModeledTypeError.validationError(self)
         }
-        return TwinType.create(other: self, app: app)
+        return try TwinType.create(other: self, app: app)
     }
 }
 
@@ -73,14 +73,14 @@ extension User {
         platform: AnyPlatform,
         app: Application
     ) throws -> Future<User?> {
-        try TwinType.find(destination: destination, platform: platform, on: app.db).optionalFlatMap { User.create(other: $0, app: app) }
+        try TwinType.find(destination: destination, platform: platform, on: app.db).optionalThrowingFlatMap { try User.create(other: $0, app: app) }
     }
     
     static func find<T: PlatformObject & Replyable>(
         _ platformReplyable: T,
         app: Application
     ) throws -> Future<User?> {
-        try TwinType.find(platformReplyable, on: app.db).optionalFlatMap { User.create(other: $0, app: app) }
+        try TwinType.find(platformReplyable, on: app.db).optionalThrowingFlatMap { try User.create(other: $0, app: app) }
     }
     
     public static func findOrCreate<T: PlatformObject & Replyable & UserFetchable>(
