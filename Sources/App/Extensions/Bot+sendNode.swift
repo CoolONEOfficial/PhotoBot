@@ -46,7 +46,7 @@ extension Bot {
                         return try self.sendMessage(
                             params: params.params!,
                             platform: platform, app: app
-                        ).map { messages + [$0] }
+                        ).map { messages + $0 }
                     }
                 }
             }

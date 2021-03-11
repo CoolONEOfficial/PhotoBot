@@ -250,12 +250,12 @@ class PhotoBot {
             
             let platform = event.platform.any
             
-            return try OrderModel.create(checkoutState: checkoutState, app: app).flatMap { [self] _ in
+            return try OrderModel.create(checkoutState: checkoutState, app: app).flatMap { [self] order in
                 MessageFormatter.shared.format("Заказ успешно создан, в ближайшее время с Вами свяжется @" + .replacing(by: .admin), platform: platform, user: user, app: app)
                 .throwingFlatMap { message in
-                    try event.replyMessage(from: bot, params: .init(text: message), app: app).map { [$0] }
-                }
-            }.throwingFlatMap { [self] messages in
+                    try event.replyMessage(from: bot, params: .init(text: message), app: app)
+                }.map { ($0, order) }
+            }.throwingFlatMap { [self] (messages, order) in
                 try User.find(
                     destination: .username("cooloneofficial"),//Application.adminNickname(for: platform)),
                     platform: platform,
@@ -271,10 +271,23 @@ class PhotoBot {
                                 + "\nСумма: " + .replacing(by: .price) + " р.",
                             platform: platform, user: user, app: app
                         ).throwingFlatMap { text in
-                            try bot.sendMessage(params: .init(
-                                destination: .init(platform: platform, id: id),
-                                text: text
-                            ), platform: platform, app: app).map { messages + [$0] }
+                            [
+                                try bot.sendMessage(params: .init(
+                                    destination: .init(platform: platform, id: id),
+                                    text: text
+                                ), platform: platform, app: app),
+                                order.fetchWatchers(app: app).throwingFlatMap {
+                                    try $0.map { watcher in
+                                        let platformIds = watcher.platformIds
+                                        
+                                        let platformId = platformIds.first(for: platform) ?? platformIds.first!
+                                        return try bot.sendMessage(params: .init(
+                                            destination: platformId.sendDestination,
+                                            text: text
+                                        ), platform: platform, app: app)
+                                    }.flatten(on: app.eventLoopGroup.next()).map { messages + $0.reduce([], +) }
+                                }
+                            ].flatten(on: app.eventLoopGroup.next()).map { $0.reduce([], +) }
                         }
                     } else {
                         return app.eventLoopGroup.future(messages)
@@ -369,7 +382,7 @@ class PhotoBot {
                                     return future?.map { Optional($0) } ?? (self.app.eventLoopGroup.future(nil))
                                 }
                             } else {
-                                nextFuture = try message.reply(from: bot, params: .init(text: "В этом месте не принимается текст. Попробуй нажать на подходящую кнопку."), app: app).throwingFlatMap { message in
+                                nextFuture = try message.reply(from: bot, params: .init(text: "В этом месте не принимается текст. Попробуй нажать на подходящую кнопку."), app: app).map(\.first).optionalThrowingFlatMap { message in
                                     try user.pushToActualNode(to: message, with: bot, app: app).map { $0 + [message] }
                                 }
                             }
@@ -464,7 +477,7 @@ class PhotoBot {
                     { $0.nodeId != nodeId } }
                 
             case .checkFailed:
-                return try? message.reply(from: self.bot, params: .init(text: "Incorrect format, try again"), app: self.app).map { [$0] }
+                return try? message.reply(from: self.bot, params: .init(text: "Incorrect format, try again"), app: self.app)
             }
             
         } else {
@@ -532,7 +545,7 @@ class PhotoBot {
                         .init(type: .photo, content: .url(text))
                     ]
                 ), platform: platform, app: app).throwingFlatMap { res -> Future<PlatformFile.Entry> in
-                    guard let attachment = res.attachments.first else { throw HandleActionError.noAttachments }
+                    guard let attachment = res.first?.attachments.first else { throw HandleActionError.noAttachments }
                     var text = ""
                     switch platform {
                     case .tg:

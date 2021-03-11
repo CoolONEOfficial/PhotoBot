@@ -9,7 +9,7 @@ import Fluent
 import Vapor
 
 protocol CreatePhotos: Migration {
-    associatedtype TwinType: PhotoModeledType & ModeledType
+    associatedtype TwinType: PhotosProtocol & ModeledType
     
     var name: String { get }
 }

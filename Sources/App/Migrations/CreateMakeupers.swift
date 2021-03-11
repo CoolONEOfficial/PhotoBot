@@ -12,6 +12,7 @@ struct CreateMakeupers: Migration {
         return database.schema(MakeuperModel.schema)
             .id()
             .field("name", .string)
+            .field("platform_ids", .array(of: .json))
             .field("price", .int, .required)
             .create()
     }

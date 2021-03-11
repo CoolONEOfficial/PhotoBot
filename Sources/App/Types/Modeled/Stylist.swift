@@ -20,6 +20,8 @@ final class Stylist: StylistProtocol {
 
     @Validated(.greater(1))
     var name: String?
+    
+    var platformIds: [TypedPlatform<UserPlatformId>] = []
 
     var photos: [PlatformFileModel] = []
     
@@ -29,10 +31,6 @@ final class Stylist: StylistProtocol {
 
     // TODO: contact info (vk or tg id/username)
 
-}
-
-extension Stylist: PhotoModeledType {
-    typealias PhotoModel = StylistPhoto
 }
 
 extension Stylist: ModeledType {

@@ -66,7 +66,7 @@ class EchoBot {
 //            try bot.editMessage(prevMessage, params: .init(message: "Other text"), app: app)
 //        }
         
-        try bot.sendMessage(params: params, platform: message.platform, app: app).flatMap { message in
+        try bot.sendMessage(params: params, platform: message.platform, app: app).map(\.first).optionalFlatMap { message in
             try! self.bot.editMessage(message, params: .init(message: "Other text"), app: self.app)!
         }
     }

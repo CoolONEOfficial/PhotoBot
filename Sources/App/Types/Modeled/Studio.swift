@@ -33,10 +33,6 @@ final class Studio: StudioProtocol {
     
 }
 
-extension Studio: PhotoModeledType {
-    typealias PhotoModel = StudioPhoto
-}
-
 extension Studio: ModeledType {
 
     var isValid: Bool {

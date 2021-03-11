@@ -10,7 +10,7 @@ import Vapor
 import Fluent
 import Botter
 
-protocol MakeuperProtocol: PhotosProtocol, Priceable, Cloneable where TwinType: MakeuperProtocol {
+protocol MakeuperProtocol: PhotosProtocol, PlatformIdentifiable, Priceable, Cloneable where TwinType: MakeuperProtocol {
 
     associatedtype SiblingModel = MakeuperModel
     associatedtype PhotoModel = MakeuperPhoto
@@ -19,20 +19,21 @@ protocol MakeuperProtocol: PhotosProtocol, Priceable, Cloneable where TwinType: 
     var name: String? { get set }
 
     init()
-    static func create(id: UUID?, name: String?, photos: [PlatformFileModel]?, price: Int, app: Application) -> Future<Self>
+    static func create(id: UUID?, name: String?, platformIds: [TypedPlatform<UserPlatformId>], photos: [PlatformFileModel]?, price: Int, app: Application) -> Future<Self>
 }
 
 extension MakeuperProtocol {
     static func create(other: TwinType, app: Application) -> Future<Self> {
         other.getPhotos(app: app).flatMap { photos in
-            Self.create(id: other.id, name: other.name, photos: photos, price: other.price, app: app)
+            Self.create(id: other.id, name: other.name, platformIds: other.platformIds, photos: photos, price: other.price, app: app)
         }
     }
 
-    static func create(id: UUID? = nil, name: String?, photos: [PlatformFileModel]?, price: Int, app: Application) -> Future<Self> {
+    static func create(id: UUID? = nil, name: String?, platformIds: [TypedPlatform<UserPlatformId>], photos: [PlatformFileModel]?, price: Int, app: Application) -> Future<Self> {
         var instance = Self.init()
         instance.id = id
         instance.name = name
+        instance.platformIds = platformIds
         instance.price = price
         return instance.saveIfNeeded(app: app).throwingFlatMap {
             try $0.attachPhotos(photos: photos, app: app).transform(to: instance)

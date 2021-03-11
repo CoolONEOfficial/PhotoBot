@@ -22,6 +22,9 @@ final class MakeuperModel: Model, MakeuperProtocol {
     @OptionalField(key: "name")
     var name: String?
     
+    @Field(key: "platform_ids")
+    var platformIds: [TypedPlatform<UserPlatformId>]
+    
     @Siblings(through: MakeuperPhoto.self, from: \.$makeuper, to: \.$photo)
     var _photos: [PlatformFileModel]
     
@@ -36,9 +39,4 @@ final class MakeuperModel: Model, MakeuperProtocol {
     var price: Int
     
     required init() {}
-}
-
-extension MakeuperModel {
-    
-    typealias PhotoModel = MakeuperPhoto
 }

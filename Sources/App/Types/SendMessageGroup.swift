@@ -79,9 +79,9 @@ enum SendMessageGroup {
                 pageNumber = 0
             }
             
-            let messagesByPage = 5
-            let startIndex = pageNumber * messagesByPage
-            let endIndex = startIndex + messagesByPage
+            let itemsPerPage = 3
+            let startIndex = pageNumber * itemsPerPage
+            let endIndex = startIndex + itemsPerPage
             
             switch type {
             case .portfolio:
@@ -96,7 +96,7 @@ enum SendMessageGroup {
                                     .flatten(on: app.eventLoopGroup.next())
                                     .flatMapThrowing { attachments -> SendMessage in
                                         SendMessage(
-                                            text: "\(human.name ?? "")\n\(human.price) р./ч.",
+                                            text: "\(human.name ?? "")\n\(human.price) р./ч.\n\(human.platformLink(for: platform) ?? "")",
                                             keyboard: [ [
                                                 try Button(
                                                     text: "Выбрать",
@@ -125,7 +125,7 @@ enum SendMessageGroup {
                                     .flatten(on: app.eventLoopGroup.next())
                                     .flatMapThrowing { attachments -> SendMessage in
                                         SendMessage(
-                                            text: "\(human.name ?? "")\n\(human.price) р./ч.",
+                                            text: "\(human.name ?? "")\n\(human.price) р./ч.\n\(human.platformLink(for: platform) ?? "")",
                                             keyboard: [ [
                                                 try Button(
                                                     text: "Выбрать",

@@ -51,10 +51,10 @@ class MessageFormatter {
         var future = app.eventLoopGroup.future(replacingDict)
         switch user.nodePayload {
         case let .checkout(state):
-            future = handleOrderState(state: state.order, replacingDict: replacingDict, app: app)
+            future = handleOrderState(state: state.order, replacingDict: replacingDict, platform: platform, app: app)
 
         case let .orderBuilder(state):
-            future = handleOrderState(state: state, replacingDict: replacingDict, app: app)
+            future = handleOrderState(state: state, replacingDict: replacingDict, platform: platform, app: app)
             
         default: break
         }
@@ -66,14 +66,15 @@ class MessageFormatter {
         }
     }
     
-    private func handleOrderState(state: OrderState, replacingDict: [ReplacingKey: CustomStringConvertible], app: Application) -> Future<ReplacingDict> {
+    private func handleOrderState(state: OrderState, replacingDict: [ReplacingKey: CustomStringConvertible], platform: AnyPlatform, app: Application) -> Future<ReplacingDict> {
         var future = app.eventLoopGroup.future(())
         var replacingDict = replacingDict
         if let stylistId = state.stylistId {
             future = future.flatMap { string in
                 StylistModel.find(stylistId, on: app.db).map { stylist in
                     if let stylistName = stylist?.name {
-                        replacingDict[.stylist] = stylistName
+                        let link = stylist?.platformLink(for: platform)
+                        replacingDict[.stylist] = stylistName + (link != nil ? " (\(link!))" : "")
                     }
                 }
             }
@@ -82,7 +83,8 @@ class MessageFormatter {
             future = future.flatMap { string in
                 MakeuperModel.find(makeuperId, on: app.db).map { makeuper in
                     if let makeuperName = makeuper?.name {
-                        replacingDict[.makeuper] = makeuperName
+                        let link = makeuper?.platformLink(for: platform)
+                        replacingDict[.makeuper] = makeuperName + (link != nil ? " (\(link!))" : "")
                     }
                 }
             }

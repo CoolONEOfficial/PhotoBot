@@ -12,6 +12,7 @@ struct CreateStylists: Migration {
         return database.schema(StylistModel.schema)
             .id()
             .field("name", .string, .required)
+            .field("platform_ids", .array(of: .json))
             .field("price", .int, .required)
             .create()
     }

@@ -23,6 +23,9 @@ final class StylistModel: Model, StylistProtocol {
     @OptionalField(key: "name")
     var name: String?
     
+    @Field(key: "platform_ids")
+    var platformIds: [TypedPlatform<UserPlatformId>]
+    
     @Siblings(through: StylistPhoto.self, from: \.$stylist, to: \.$photo)
     var _photos: [PlatformFileModel]
 
@@ -37,9 +40,4 @@ final class StylistModel: Model, StylistProtocol {
     var photosSiblings: AttachableFileSiblings<StylistModel, StylistPhoto>? { $_photos }
     
     required init() {}
-}
-
-extension StylistModel {
-    
-    typealias PhotoModel = StylistPhoto
 }

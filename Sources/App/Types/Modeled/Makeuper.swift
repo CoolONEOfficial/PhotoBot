@@ -21,16 +21,14 @@ final class Makeuper: MakeuperProtocol {
     @Validated(.isLetters && .greater(1) && .less(25))
     var name: String?
 
+    var platformIds: [TypedPlatform<UserPlatformId>] = []
+    
     var photos: [PlatformFileModel] = []
     
     var price: Int = 0
 
     required init() {}
 
-}
-
-extension Makeuper: PhotoModeledType {
-    typealias PhotoModel = MakeuperPhoto
 }
 
 extension Makeuper: ModeledType {

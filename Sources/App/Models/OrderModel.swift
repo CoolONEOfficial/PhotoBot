@@ -43,11 +43,21 @@ final class OrderModel: Model, OrderProtocol {
         set { self.$studio.id = newValue }
     }
     
-    @Field(key: "date")
-    var date: Date
+    @Field(key: "start_date")
+    var startDate: Date
     
-    @Field(key: "duration")
-    var duration: TimeInterval
+    @Field(key: "end_date")
+    var endDate: Date
+    
+    var interval: DateInterval {
+        get {
+            .init(start: startDate, end: endDate)
+        }
+        set {
+            startDate = newValue.start
+            endDate = newValue.end
+        }
+    }
     
     @Field(key: "price")
     var price: Int
@@ -56,3 +66,11 @@ final class OrderModel: Model, OrderProtocol {
     
 }
 
+extension OrderModel {
+    func fetchWatchers(app: Application) -> Future<[PlatformIdentifiable]> {
+        [
+            $makeuper.get(on: app.db).optionalMap { $0 as PlatformIdentifiable },
+            $stylist.get(on: app.db).optionalMap { $0 as PlatformIdentifiable }
+        ].flatten(on: app.eventLoopGroup.next()).map { $0.compactMap { $0 } }
+    }
+}

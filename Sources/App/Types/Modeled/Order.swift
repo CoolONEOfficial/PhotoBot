@@ -19,8 +19,7 @@ final class Order: OrderProtocol {
     var stylistId: UUID?
     var makeuperId: UUID?
     var studioId: UUID?
-    var date: Date = .init()
-    var duration: TimeInterval = 0
+    var interval: DateInterval = .init()
     var price: Int = 0
     
     required init() {}

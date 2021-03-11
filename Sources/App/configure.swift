@@ -93,15 +93,20 @@ private func configurePostgres(_ app: Application) throws {
             .vk("photo-119092254_457239065")
         ], type: .photo, app: app).throwingFlatMap { try $0.save(app: app) }.wait()
         
+        let test2 = try PlatformFile.create(platformEntries: [
+            .tg("AgACAgQAAxkDAAIHjGAyWdeuTYimywkuaJsCk6cnPBw_AAKIqDEb84k9Ulm1-biSJET0czAfGwAEAQADAgADbQADE8MBAAEeBA"),
+            .vk("photo-119092254_457239065")
+        ], type: .photo, app: app).throwingFlatMap { try $0.save(app: app) }.wait()
+        
         for num in 1...20 {
             try Stylist.create(
-                name: "Stylist \(num)", photos: [test], price: 123, app: app
+                name: "Stylist \(num)", platformIds: [.tg(.init(id: 356008384, username: "cooloneofficial"))], photos: [test, test2], price: 123, app: app
             ).throwingFlatMap { try $0.save(app: app) }.wait()
         }
         
         for num in 1...20 {
             try Makeuper.create(
-                name: "Makeuper \(num)", photos: [test], price: 123, app: app
+                name: "Makeuper \(num)", platformIds: [.tg(.init(id: 356008384, username: "cooloneofficial"))], photos: [test, test2], price: 123, app: app
             ).throwingFlatMap { try $0.save(app: app) }.wait()
         }
         
