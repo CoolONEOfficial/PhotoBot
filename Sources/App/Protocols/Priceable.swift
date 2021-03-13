@@ -13,6 +13,6 @@ protocol Priceable {
 
 extension Priceable {
     var formattedPrice: String {
-        "\(price) р./ч."
+        "\(price) ₽ / час"
     }
 }

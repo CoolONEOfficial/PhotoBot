@@ -263,12 +263,11 @@ class PhotoBot {
                 ).flatMap { user in
                     if let user = user, let id = user.platformIds.firstValue(platform: platform)?.id {
                         return MessageFormatter.shared.format(
-                            "Новый заказ от @" + .replacing(by: .username) + " (" + .replacing(by: .userId) + "):"
-                                + "\nСтилист: " + .replacing(by: .stylist)
-                                + "\nВизажист: " + .replacing(by: .makeuper)
-                                + "\nСтудия: " + .replacing(by: .studio)
-                                + "\nДата: " + .replacing(by: .orderDate)
-                                + "\nСумма: " + .replacing(by: .price) + " р.",
+                            [
+                                "Новый заказ от @" + .replacing(by: .username) + " (" + .replacing(by: .userId) + "):",
+                                .replacing(by: .orderBlock),
+                                "Сумма: " + .replacing(by: .price) + " ₽"
+                            ].joined(separator: "\n"),
                             platform: platform, user: user, app: app
                         ).throwingFlatMap { text in
                             [

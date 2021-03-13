@@ -9,7 +9,7 @@ import Foundation
 import Vapor
 import Botter
 
-enum ReplacingKey: AutoCodable {
+enum ReplacingKey: String {
     
     case username
     case userId
@@ -25,35 +25,7 @@ enum ReplacingKey: AutoCodable {
 
     case promoBlock
     case priceBlock
-    case orderBlock(showLinks: Bool = false)
-    
-//    var name: String {
-//        switch self {
-//        case .username: return "$USERNAME"
-//        case .userId: return "$USER_ID"
-//        case .userFirstName: return "$USER_FIRST_NAME"
-//        case .userLastName: return "$USER_LAST_NAME"
-//        case .stylist: return "$STYLIST"
-//        case .makeuper: return "$MAKEUPER"
-//        case .studio: return "$STUDIO"
-//        case .price: return "$PRICE"
-//        case .totalPrice: return "$TOTAL_PRICE"
-//        case .admin: return "$ADMIN"
-//        case .orderDate: return "$ORDERDATE"
-//
-//        case .promoBlock: return "$PROMO_BLOCK"
-//        case .priceBlock: return "$PRICE_BLOCK"
-//        case .orderBlock: return "$ORDER_BLOCK"
-//        }
-//    }
-
-//    func encode() throws -> String {
-//        String(data: try JSONEncoder.snakeCased.encode(self), encoding: .utf8)! + "|"
-//    }
-//
-//    init(string: String) throws {
-//        self = try JSONDecoder.snakeCased.decode(Self.self, from: string.data(using: .utf8)!)
-//    }
+    case orderBlock
 }
 
 extension ReplacingKey: CaseIterable {
@@ -72,7 +44,7 @@ extension ReplacingKey: CaseIterable {
 
         .promoBlock,
         .priceBlock,
-        .orderBlock()
+        .orderBlock
     ]
 }
 
@@ -86,14 +58,14 @@ extension ReplacingKey {
         switch self {
         case .username, .userId, .userLastName, .userFirstName:
             let userPlatformId = user.platformIds.firstValue(platform: platform)
-            dict[.username] = userPlatformId?.username ?? Self.nope
-            dict[.userId] = (try? userPlatformId?.id.encodeToString()) ?? Self.nope
-            dict[.userFirstName] = user.firstName ?? Self.nope
-            dict[.userFirstName] = user.firstName ?? Self.nope
-            dict[.userLastName] = user.lastName ?? Self.nope
+            dict[.username] = [userPlatformId?.username ?? Self.nope]
+            dict[.userId] = [(try? userPlatformId?.id.encodeToString()) ?? Self.nope]
+            dict[.userFirstName] = [user.firstName ?? Self.nope]
+            dict[.userFirstName] = [user.firstName ?? Self.nope]
+            dict[.userLastName] = [user.lastName ?? Self.nope]
 
         case .admin:
-            dict[.admin] = Application.adminNickname(for: platform)
+            dict[.admin] = [Application.adminNickname(for: platform)]
 
         case .orderDate:
             switch user.nodePayload {
@@ -119,21 +91,28 @@ extension ReplacingKey {
                         .map { $0.compactMap { $0 } }
                         .map { promotions in
                         
-                            let price = Float(state.order.price)
-                            
-                            let priceBlockElements = ["Сумма: " + .replacing(by: .price)]
-                                + promotions.map { $0.impact.description(for: price) }
-                                + ["Общая стоимость: " + .replacing(by: .totalPrice)]
-                            
-                            var promoBlock = promotions.isEmpty ? "" : ("Примененные акции: " + promotions.compactMap { $0.name }.joined(separator: ", ") + "\n")
-                            if !promotions.contains(where: { $0.promocode != nil }) {
-                                promoBlock += "Если у тебя есть промокод пришли его в ответ на это сообщение и он будет применен\n"
-                            }
-                            
                             var dict = dict
-                            dict[.promoBlock] = promoBlock
-                            dict[.priceBlock] = priceBlockElements.joined(separator: "\n")
-                            dict[.totalPrice] = promotions.applying(to: price)
+                            
+                            var promoBlockElements = [String]()//promotions.isEmpty ? [] : ["Примененные акции:", promotions.compactMap { $0.name }.joined(separator: ", ")]
+                            if !promotions.contains(where: { $0.promocode != nil }) {
+                                promoBlockElements.append("Если у тебя есть промокод пришли его в ответ на это сообщение и он будет применен")
+                            }
+                            dict[.promoBlock] = promoBlockElements
+                            
+                            let price = Float(state.order.price)
+                            let priceBlockElements = ["Сумма: " + .replacing(by: .price) + " ₽"]
+                                + promotions.map { promo in
+                                    var str = promo.impact.description(for: price)
+                                    
+                                    if let caption = promo.promocode ?? promo.name {
+                                        str += " (\(caption))"
+                                    }
+                                    
+                                    return str
+                                }
+                                + ["Общая стоимость: " + .replacing(by: .totalPrice) + " ₽"]
+                            dict[.priceBlock] = priceBlockElements
+                            dict[.totalPrice] = [promotions.applying(to: price)]
                             return dict
                         }
                 }
@@ -149,73 +128,72 @@ extension ReplacingKey {
                 Self.handleOrderState(state: orderState, dict: dict, platform: platform, app: app)
             }
 
-        case .orderBlock(let showLinks): break
-            
+        case .orderBlock:
+            dict[self] = [[
+                "Стилист: " + .replacing(by: .stylist),
+                "Визажист: " + .replacing(by: .makeuper),
+                "Студия: " + .replacing(by: .studio),
+                "Дата: " + .replacing(by: .orderDate)
+            ].joined(separator: "\n")]
         }
         return app.eventLoopGroup.future(dict)
     }
     
-    private static func handleOrderState(state: OrderState?, dict: [ReplacingKey: CustomStringConvertible], platform: AnyPlatform, app: Application) -> Future<ReplacingDict> {
+    private static func handleOrderState(state: OrderState?, dict: ReplacingDict, platform: AnyPlatform, app: Application) -> Future<ReplacingDict> {
         var future = app.eventLoopGroup.future(())
         var dict = dict
 
-        dict[.stylist] = Self.notSelected
+        dict[.stylist] = [Self.notSelected]
         if let stylistId = state?.stylistId {
             future = future.flatMap { string in
                 StylistModel.find(stylistId, on: app.db).map { stylist in
                     if let stylistName = stylist?.name {
                         let link = stylist?.platformLink(for: platform)
-                        dict[.stylist] = stylistName + (link != nil ? " (\(link!))" : "")
+                        dict[.stylist] = [stylistName + (link != nil ? " (\(link!))" : "")]
                     }
                 }
             }
         }
 
-        dict[.makeuper] = Self.notSelected
+        dict[.makeuper] = [Self.notSelected]
         if let makeuperId = state?.makeuperId {
             future = future.flatMap { string in
                 MakeuperModel.find(makeuperId, on: app.db).map { makeuper in
                     if let makeuperName = makeuper?.name {
                         let link = makeuper?.platformLink(for: platform)
-                        dict[.makeuper] = makeuperName + (link != nil ? " (\(link!))" : "")
+                        dict[.makeuper] = [makeuperName + (link != nil ? " (\(link!))" : "")]
                     }
                 }
             }
         }
 
-        dict[.studio] = Self.notSelected
+        dict[.studio] = [Self.notSelected]
         if let studioId = state?.studioId {
             future = future.flatMap { string in
                 StudioModel.find(studioId, on: app.db).map { studio in
-                    dict[.studio] = studio?.name ?? Self.notSelected
+                    dict[.studio] = [studio?.name ?? Self.notSelected]
                 }
             }
         }
 
-        dict[.orderDate] = Self.notSelected
+        dict[.orderDate] = [Self.notSelected]
         if let date = state?.date, let duration = state?.duration {
-            dict[.orderDate] = DateFormatter.localizedString(from: date, dateStyle: .short, timeStyle: .short) + " - " + DateFormatter.localizedString(from: date.addingTimeInterval(duration), dateStyle: .none, timeStyle: .short)
+            dict[.orderDate] = [DateFormatter.localizedString(from: date, dateStyle: .short, timeStyle: .short) + " - " + DateFormatter.localizedString(from: date.addingTimeInterval(duration), dateStyle: .none, timeStyle: .short)]
         }
         
-        dict[.price] = state?.price ?? 0
+        dict[.price] = [state?.price ?? 0]
 
         return future.map { dict }
     }
 }
 
-extension ReplacingKey: Hashable {
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(try! encodeToString())
-    }
-}
-
 extension String {
     static func replacing(by key: ReplacingKey) -> Self {
-        "|" + (try! key.encodeToString()!) + "|"
+        "|" + key.rawValue + "|"
     }
 }
 
-typealias ReplacingDict = [ReplacingKey: CustomStringConvertible]
+typealias ReplacingDict = [ReplacingKey: [CustomStringConvertible]]
 
 extension String {
     func indicesOf(string: String) -> [Index] {
@@ -248,43 +226,43 @@ class MessageFormatter {
     
     private init() {}
     
-    private func testFormat(_ string: String, dict: ReplacingDict, platform: AnyPlatform, user: User, app: Application) -> Future<String> {
-        if let start = string.firstIndex(of: "|"),
-           let end = string.secondIndex(of: "|") {
-            let range = start...end
-            let replacingString = String(string[range].dropLast().dropFirst())
-            let key = try! ReplacingKey(from: replacingString)
-            
-            let future: Future<(ReplacingDict, String)>
-            
-            var string = string
-            if let val = dict[key] {
-                string.replaceSubrange(range, with: val.description)
-                future = app.eventLoopGroup.future((dict, string))
-            } else {
-                future = key.appending(dict: dict, platform: platform, user: user, app: app).map { dict in
-                    string.replaceSubrange(range, with: dict[key]!.description)
-                    return (dict, string)
-                }
-            }
-        
-            return future.flatMap { self.testFormat($0.1, dict: $0.0, platform: platform, user: user, app: app) }
-        }
-        return app.eventLoopGroup.future(string)
-    }
-    
     func format(_ string: String, platform: AnyPlatform, user: User, app: Application) -> Future<String> {
         let userPlatformId = user.platformIds.firstValue(platform: platform)
         
         let initialDict: ReplacingDict = [
-            .userFirstName: user.firstName ?? ReplacingKey.nope,
-            .userLastName: user.lastName ?? ReplacingKey.nope,
-            .admin: Application.adminNickname(for: platform),
-            .userId: (try? userPlatformId?.id.encodeToString()) ?? ReplacingKey.nope,
-            .username: userPlatformId?.username ?? ReplacingKey.nope,
+            .userFirstName: [user.firstName ?? ReplacingKey.nope],
+            .userLastName: [user.lastName ?? ReplacingKey.nope],
+            .admin: [Application.adminNickname(for: platform)],
+            .userId: [(try? userPlatformId?.id.encodeToString()) ?? ReplacingKey.nope],
+            .username: [userPlatformId?.username ?? ReplacingKey.nope],
         ]
         
-        return testFormat(string, dict: initialDict, platform: platform, user: user, app: app)
+        return format(string, dict: initialDict, platform: platform, user: user, app: app)
+    }
+    
+    private func format(_ string: String, dict: ReplacingDict, platform: AnyPlatform, user: User, app: Application) -> Future<String> {
+        if let start = string.firstIndex(of: "|"),
+           let end = string.secondIndex(of: "|") {
+            let range = start...end
+            let replacingString = String(string[range].dropLast().dropFirst())
+            if let key = ReplacingKey(rawValue: replacingString) {
+                let future: Future<(ReplacingDict, String)>
+                
+                var string = string
+                if let val = dict[key] {
+                    string.replaceSubrange(range, with: val.map(\.description).joined(separator: "\n"))
+                    future = app.eventLoopGroup.future((dict, string))
+                } else {
+                    future = key.appending(dict: dict, platform: platform, user: user, app: app).map { dict in
+                        string.replaceSubrange(range, with: dict[key]!.map(\.description).joined(separator: "\n"))
+                        return (dict, string)
+                    }
+                }
+            
+                return future.flatMap { self.format($0.1, dict: $0.0, platform: platform, user: user, app: app) }
+            }
+        }
+        return app.eventLoopGroup.future(string)
     }
     
 }

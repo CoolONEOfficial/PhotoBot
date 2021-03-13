@@ -96,7 +96,7 @@ enum SendMessageGroup {
                                     .flatten(on: app.eventLoopGroup.next())
                                     .flatMapThrowing { attachments -> SendMessage in
                                         SendMessage(
-                                            text: "\(human.name ?? "")\n\(human.price) р./ч.\n\(human.platformLink(for: platform) ?? "")",
+                                            text: "\(human.name ?? "")\n\(human.price) ₽ / час\n\(human.platformLink(for: platform) ?? "")",
                                             keyboard: [ [
                                                 try Button(
                                                     text: "Выбрать",
@@ -125,7 +125,7 @@ enum SendMessageGroup {
                                     .flatten(on: app.eventLoopGroup.next())
                                     .flatMapThrowing { attachments -> SendMessage in
                                         SendMessage(
-                                            text: "\(human.name ?? "")\n\(human.price) р./ч.\n\(human.platformLink(for: platform) ?? "")",
+                                            text: "\(human.name ?? "")\n\(human.price) ₽ / час\n\(human.platformLink(for: platform) ?? "")",
                                             keyboard: [ [
                                                 try Button(
                                                     text: "Выбрать",
@@ -154,7 +154,7 @@ enum SendMessageGroup {
                                     .flatten(on: app.eventLoopGroup.next())
                                     .flatMapThrowing { attachments -> SendMessage in
                                         SendMessage(
-                                            text: "\(studio.name ?? "")\n\(studio.price) р./ч.",
+                                            text: "\(studio.name ?? "")\n\(studio.price) ₽ / час",
                                             keyboard: [ [
                                                 try Button(
                                                     text: "Выбрать",
@@ -205,40 +205,42 @@ enum SendMessageGroup {
                state.studioId != nil,
                state.date != nil {
                 keyboard.buttons.safeAppend([
-                    try .init(text: "К завершению", action: .callback, eventPayload: .push(.entryPoint(.orderCheckout), payload: .checkout(.init(order: state))))
+                    try .init(text: "👌 К завершению", action: .callback, eventPayload: .push(.entryPoint(.orderCheckout), payload: .checkout(.init(order: state))))
                 ])
             }
             
-            result = app.eventLoopGroup.future([
-                .init(text: "Ваш заказ:\nСтилист: " + .replacing(by: .stylist)
-                        + "\nВизажист: " + .replacing(by: .makeuper)
-                        + "\nСтудия: " + .replacing(by: .studio)
-                        + "\nДата: " + .replacing(by: .orderDate)
-                        + "\nСумма: " + .replacing(by: .price) + " р.", keyboard: keyboard)
-            ])
+            result = app.eventLoopGroup.future([ .init(
+                text: [
+                    "Ваш заказ:",
+                    .replacing(by: .orderBlock),
+                    "Сумма: " + .replacing(by: .price) + " ₽"
+                ].joined(separator: "\n"),
+                keyboard: keyboard
+            ) ])
             
         case .orderCheckout:
-            
-            result = app.eventLoopGroup.future([
-                .init(text: "Оформление заказа\nИтого:\nСтилист: " + .replacing(by: .stylist)
-                        + "\nВизажист: " + .replacing(by: .makeuper)
-                        + "\nСтудия: " + .replacing(by: .studio)
-                        + "\nДата: " + .replacing(by: .orderDate)
-                        + "\n" + .replacing(by: .priceBlock) + "\n" + .replacing(by: .promoBlock), keyboard: [[
-                            try .init(text: "Подтвердить", action: .callback, eventPayload: .createOrder)
-                        ]])
-            ])
+            result = app.eventLoopGroup.future([ .init(
+                text: [
+                    "Оформление заказа",
+                    .replacing(by: .orderBlock),
+                    .replacing(by: .priceBlock),
+                    .replacing(by: .promoBlock),
+                ].joined(separator: "\n"),
+                keyboard: [[
+                    try .init(text: "✅ Отправить", action: .callback, eventPayload: .createOrder)
+                ]]
+            ) ])
 
         case .welcome:
             
             result = app.eventLoopGroup.future([
                 .init(text: "Добро пожаловать, " + .replacing(by: .userFirstName) + "! Выбери секцию чтобы в нее перейти.", keyboard: [
                     [
-                        try .init(text: "Обо мне", action: .callback, eventPayload: .push(.entryPoint(.about))),
-                        try .init(text: "Мои работы", action: .callback, eventPayload: .push(.entryPoint(.portfolio))),
+                        try .init(text: "👧 Обо мне", action: .callback, eventPayload: .push(.entryPoint(.about))),
+                        try .init(text: "🖼️ Мои работы", action: .callback, eventPayload: .push(.entryPoint(.portfolio))),
                     ],
                     [
-                        try .init(text: "Заказ фотосессии", action: .callback, eventPayload: .push(.entryPoint(.orderBuilder)))
+                        try .init(text: "📷 Заказ фотосессии", action: .callback, eventPayload: .push(.entryPoint(.orderBuilder)))
                     ] + (user.isAdmin ? [
                         try .init(text: "Выгрузить фотку", action: .callback, eventPayload: .push(.entryPoint(.uploadPhoto)))
                     ] : [])
@@ -369,7 +371,10 @@ enum SendMessageGroup {
     
     static private func addNavigationButtons(_ messages: [SendMessage], _ user: User) -> [SendMessage] {
         if !user.history.isEmpty, let lastMessage = messages.last {
-            lastMessage.keyboard.buttons.safeAppend([ try! .init(text: "🔙 Назад", action: .callback, eventPayload: .back) ])
+            lastMessage.keyboard.buttons.safeAppend([ try! .init(
+                text: user.history.last?.nodeId == user.nodeId ? "❌ Отмена" : "👈 Назад",
+                action: .callback, eventPayload: .back
+            ) ])
         }
         return messages
     }
