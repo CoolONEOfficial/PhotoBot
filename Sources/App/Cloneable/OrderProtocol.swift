@@ -11,9 +11,29 @@ import Fluent
 import Botter
 import FluentSQL
 
+enum OrderType: String, Codable {
+    case loveStory
+    case family
+    case content
+}
+
+extension OrderType {
+    var name: String {
+        switch self {
+        case .loveStory:
+            return "Love story"
+        case .family:
+            return "Семейная фотосессия"
+        case .content:
+            return "Контент-сьемка"
+        }
+    }
+}
+
 protocol OrderProtocol: Cloneable where TwinType: OrderProtocol {
     
     var id: UUID? { get set }
+    var type: OrderType! { get set }
     var stylistId: UUID? { get set }
     var makeuperId: UUID? { get set }
     var studioId: UUID? { get set }
@@ -21,21 +41,22 @@ protocol OrderProtocol: Cloneable where TwinType: OrderProtocol {
     var price: Int { get set }
     
     init()
-    static func create(id: UUID?, stylistId: UUID?, makeuperId: UUID?, studioId: UUID?, interval: DateInterval, price: Int, app: Application) -> Future<Self>
+    static func create(id: UUID?, type: OrderType, stylistId: UUID?, makeuperId: UUID?, studioId: UUID?, interval: DateInterval, price: Int, app: Application) -> Future<Self>
 }
 
 enum OrderCreateError: Error {
-    case noDate
+    case noDateOrType
 }
 
 extension OrderProtocol {
     static func create(other: TwinType, app: Application) throws -> Future<Self> {
-        Self.create(id: other.id, stylistId: other.stylistId, makeuperId: other.makeuperId, studioId: other.studioId, interval: other.interval, price: other.price, app: app)
+        Self.create(id: other.id, type: other.type, stylistId: other.stylistId, makeuperId: other.makeuperId, studioId: other.studioId, interval: other.interval, price: other.price, app: app)
     }
     
-    static func create(id: UUID? = nil, stylistId: UUID?, makeuperId: UUID?, studioId: UUID?, interval: DateInterval, price: Int = 0, app: Application) -> Future<Self> {
+    static func create(id: UUID? = nil, type: OrderType, stylistId: UUID?, makeuperId: UUID?, studioId: UUID?, interval: DateInterval, price: Int = 0, app: Application) -> Future<Self> {
         let instance = Self.init()
         instance.id = id
+        instance.type = type
         instance.stylistId = stylistId
         instance.makeuperId = makeuperId
         instance.studioId = studioId
@@ -47,8 +68,10 @@ extension OrderProtocol {
     static func create(id: UUID? = nil, checkoutState: CheckoutState, app: Application) throws -> Future<Self> {
         let order = checkoutState.order
         guard let date = order.date,
-              let duration = order.duration else { throw OrderCreateError.noDate }
+              let duration = order.duration,
+              let type = order.type else { throw OrderCreateError.noDateOrType }
         return Self.create(
+            type: type,
             stylistId: order.stylistId,
             makeuperId: order.makeuperId,
             studioId: order.studioId,

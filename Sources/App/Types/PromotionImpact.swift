@@ -14,12 +14,14 @@ enum PromotionImpact {
 
 extension PromotionImpact {
     private func value(for num: Float) -> Float {
+        let result: Float
         switch self {
         case let .fixed(fixed):
-            return Float(fixed)
+            result = .init(fixed)
         case let .percents(percents):
-            return num / 100 * Float(percents)
+            result = num / 100 * Float(percents)
         }
+        return max(result, 0)
     }
     
     func applying(to num: Float) -> Float {

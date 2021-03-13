@@ -11,6 +11,7 @@ struct CreateOrders: Migration {
     func prepare(on database: Database) -> EventLoopFuture<Void> {
         return database.schema(OrderModel.schema)
             .id()
+            .field("type", .string, .required)
             .field("stylist_id", .uuid, .references(StylistModel.schema, "id"))
             .field("makeuper_id", .uuid, .references(MakeuperModel.schema, "id"))
             .field("studio_id", .uuid, .references(StudioModel.schema, "id"))

@@ -13,6 +13,7 @@ import Botter
 enum EntryPoint: String, Codable {
     case welcome
     case welcomeGuest
+    case orderTypes
     case orderBuilder
     case orderBuilderStylist
     case orderBuilderStudio

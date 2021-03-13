@@ -22,6 +22,7 @@ enum ReplacingKey: String {
     case totalPrice
     case admin
     case orderDate
+    case orderType
 
     case promoBlock
     case priceBlock
@@ -41,6 +42,7 @@ extension ReplacingKey: CaseIterable {
         .totalPrice,
         .admin,
         .orderDate,
+        .orderType,
 
         .promoBlock,
         .priceBlock,
@@ -55,6 +57,18 @@ extension ReplacingKey {
     func appending(dict: ReplacingDict, platform: AnyPlatform, user: User, app: Application) -> Future<ReplacingDict> {
         var dict = dict
         
+        var orderState: OrderState?
+        switch user.nodePayload {
+        case let .checkout(state):
+            orderState = state.order
+        
+        case let .orderBuilder(state):
+            orderState = state
+        
+        default:
+            orderState = nil
+        }
+        
         switch self {
         case .username, .userId, .userLastName, .userFirstName:
             let userPlatformId = user.platformIds.firstValue(platform: platform)
@@ -67,25 +81,10 @@ extension ReplacingKey {
         case .admin:
             dict[.admin] = [Application.adminNickname(for: platform)]
 
-        case .orderDate:
-            switch user.nodePayload {
-            case let .checkout(state):
-                return Self.handleOrderState(state: state.order, dict: dict, platform: platform, app: app)
-
-            case let .orderBuilder(state):
-                return Self.handleOrderState(state: state, dict: dict, platform: platform, app: app)
-                
-            default: break
-            }
-
-        case .promoBlock, .priceBlock, .price, .totalPrice, .stylist, .makeuper, .studio:
+        case .promoBlock, .priceBlock, .price, .totalPrice, .stylist, .makeuper, .studio, .orderDate, .orderType:
             var future: Future<ReplacingDict> = app.eventLoopGroup.future(dict)
             
-            var orderState: OrderState?
-            switch user.nodePayload {
-            case let .checkout(state):
-                orderState = state.order
-                
+            if case let .checkout(state) = user.nodePayload {
                 future = future.flatMap { dict in
                     state.promotions.map { Promotion.find($0, app: app) }.flatten(on: app.eventLoopGroup.next())
                         .map { $0.compactMap { $0 } }
@@ -116,12 +115,6 @@ extension ReplacingKey {
                             return dict
                         }
                 }
-            
-            case let .orderBuilder(state):
-                orderState = state
-            
-            default:
-                orderState = nil
             }
             
             return future.flatMap { dict in
@@ -129,12 +122,25 @@ extension ReplacingKey {
             }
 
         case .orderBlock:
-            dict[self] = [[
-                "Стилист: " + .replacing(by: .stylist),
-                "Визажист: " + .replacing(by: .makeuper),
+            
+            var str = [
+                "Тип: " + .replacing(by: .orderType),
                 "Студия: " + .replacing(by: .studio),
-                "Дата: " + .replacing(by: .orderDate)
-            ].joined(separator: "\n")]
+                "Дата: " + .replacing(by: .orderDate),
+            ]
+            
+            switch orderState?.type {
+            case .family, .loveStory:
+                str.insert(contentsOf: [
+                    "Стилист: " + .replacing(by: .stylist),
+                    "Визажист: " + .replacing(by: .makeuper),
+                ], at: 1)
+                
+            default:
+                break
+            }
+            
+            dict[self] = [str.joined(separator: "\n")]
         }
         return app.eventLoopGroup.future(dict)
     }
@@ -179,6 +185,11 @@ extension ReplacingKey {
         dict[.orderDate] = [Self.notSelected]
         if let date = state?.date, let duration = state?.duration {
             dict[.orderDate] = [DateFormatter.localizedString(from: date, dateStyle: .short, timeStyle: .short) + " - " + DateFormatter.localizedString(from: date.addingTimeInterval(duration), dateStyle: .none, timeStyle: .short)]
+        }
+        
+        dict[.orderType] = [Self.notSelected]
+        if let orderType = state?.type.name {
+            dict[.orderType] = [orderType]
         }
         
         dict[.price] = [state?.price ?? 0]

@@ -199,16 +199,22 @@ func mainGroup(_ app: Application) throws -> UUID {
 
 func orderBuilderGroup(_ app: Application) throws -> UUID {
     try Node.create(
+        name: "Order types node",
+        messagesGroup: .orderTypes,
+        entryPoint: .orderTypes, app: app
+    ).throwingFlatMap { try $0.save(app: app) }.wait()
+    
+    try Node.create(
         name: "Order builder stylist node",
         messagesGroup: .list(.stylists),
         entryPoint: .orderBuilderStylist, app: app
-    ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
+    ).throwingFlatMap { try $0.save(app: app) }.wait()
     
     try Node.create(
         name: "Order builder makeuper node",
         messagesGroup: .list(.makeupers),
         entryPoint: .orderBuilderMakeuper, app: app
-    ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
+    ).throwingFlatMap { try $0.save(app: app) }.wait()
     
     try Node.create(
         name: "Order builder studio node",

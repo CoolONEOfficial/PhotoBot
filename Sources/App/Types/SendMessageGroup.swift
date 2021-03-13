@@ -9,7 +9,7 @@ import Foundation
 import Botter
 import Vapor
 import Fluent
-//
+
 enum SendMessageGroupError: Error {
     case invalidPayload
     case nodesNotFound
@@ -40,6 +40,7 @@ enum SendMessageGroup {
     case array(_ elements: [SendMessage])
     case builder
     case list(_ content: MessageListType)
+    case orderTypes
     case orderBuilder
     case orderCheckout
     case welcome
@@ -190,20 +191,41 @@ enum SendMessageGroup {
             
             result = app.eventLoopGroup.future(arr)
 
+        case .orderTypes:
+            result = app.eventLoopGroup.future([
+                .init(text: "Выберите тип фотосессии:"),
+                .init(text: "Love story", keyboard: [[
+                    try .init(text: "Выбрать", action: .callback, eventPayload: .push(.entryPoint(.orderBuilder), payload: .orderBuilder(.init(type: .loveStory))))
+                ]]),
+                .init(text: "Контент сьемка", keyboard: [[
+                    try .init(text: "Выбрать", action: .callback, eventPayload: .push(.entryPoint(.orderBuilder), payload: .orderBuilder(.init(type: .content))))
+                ]]),
+                .init(text: "Семейная фотосессия", keyboard: [[
+                    try .init(text: "Выбрать", action: .callback, eventPayload: .push(.entryPoint(.orderBuilder), payload: .orderBuilder(.init(type: .family))))
+                ]])
+            ])
+            
         case .orderBuilder:
             
+            guard case let .orderBuilder(state) = payload, let type = state.type else {
+                return app.eventLoopGroup.future(error: SendMessageGroupError.invalidPayload)
+            }
+            
             var keyboard: Keyboard = [[
-                try .init(text: "Стилист", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderStylist))),
-                try .init(text: "Визажист", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderMakeuper))),
                 try .init(text: "Студия", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderStudio))),
                 try .init(text: "Время", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderDate)))
             ]]
+
+            switch type {
+            case .loveStory, .family:
+                keyboard.buttons[0].insert(contentsOf: [
+                    try .init(text: "Стилист", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderStylist))),
+                    try .init(text: "Визажист", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderMakeuper))),
+                ], at: 0)
+            case .content: break
+            }
             
-            if case let .orderBuilder(state) = payload,
-               state.stylistId != nil,
-               state.makeuperId != nil,
-               state.studioId != nil,
-               state.date != nil {
+            if state.isValid {
                 keyboard.buttons.safeAppend([
                     try .init(text: "👌 К завершению", action: .callback, eventPayload: .push(.entryPoint(.orderCheckout), payload: .checkout(.init(order: state))))
                 ])
@@ -232,7 +254,6 @@ enum SendMessageGroup {
             ) ])
 
         case .welcome:
-            
             result = app.eventLoopGroup.future([
                 .init(text: "Добро пожаловать, " + .replacing(by: .userFirstName) + "! Выбери секцию чтобы в нее перейти.", keyboard: [
                     [
@@ -240,7 +261,7 @@ enum SendMessageGroup {
                         try .init(text: "🖼️ Мои работы", action: .callback, eventPayload: .push(.entryPoint(.portfolio))),
                     ],
                     [
-                        try .init(text: "📷 Заказ фотосессии", action: .callback, eventPayload: .push(.entryPoint(.orderBuilder)))
+                        try .init(text: "📷 Заказ фотосессии", action: .callback, eventPayload: .push(.entryPoint(.orderTypes)))
                     ] + (user.isAdmin ? [
                         try .init(text: "Выгрузить фотку", action: .callback, eventPayload: .push(.entryPoint(.uploadPhoto)))
                     ] : [])
@@ -441,6 +462,7 @@ extension SendMessageGroup: Codable {
         case listType
         case orderBuilder
         case orderCheckout
+        case orderTypes
         case welcome
         case calendar
     }
@@ -468,6 +490,10 @@ extension SendMessageGroup: Codable {
         }
         if container.allKeys.contains(.orderCheckout), try container.decodeNil(forKey: .orderCheckout) == false {
             self = .orderCheckout
+            return
+        }
+        if container.allKeys.contains(.orderTypes), try container.decodeNil(forKey: .orderTypes) == false {
+            self = .orderTypes
             return
         }
         if container.allKeys.contains(.welcome), try container.decodeNil(forKey: .welcome) == false {
@@ -499,6 +525,8 @@ extension SendMessageGroup: Codable {
             try container.encode(true, forKey: .welcome)
         case .calendar:
             try container.encode(true, forKey: .calendar)
+        case .orderTypes:
+            try container.encode(true, forKey: .orderTypes)
         }
     }
 

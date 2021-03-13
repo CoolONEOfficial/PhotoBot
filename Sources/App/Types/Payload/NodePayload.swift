@@ -10,25 +10,36 @@ import AnyCodable
 import Botter
 
 struct OrderState: Codable {
+    var type: OrderType!
     var stylistId: UUID?
     var makeuperId: UUID?
     var studioId: UUID?
     var date: Date?
     var duration: TimeInterval?
-    var price: Int
-}
-
-struct CheckoutState: Codable {
-    var order: OrderState
-    var promotions: [UUID] = []
+    var price: Int = 0
 }
 
 extension OrderState {
-    init(with oldPayload: NodePayload?, stylist: Stylist? = nil, makeuper: Makeuper? = nil, studio: Studio? = nil, date: Date? = nil, duration: TimeInterval? = nil) {
+    var isValid: Bool {
+        let requiredParams: [Any?] = [date, studioId, duration]
+//        switch type {
+//        case .content: break
+//            //requiredParams = [  ]
+//        case .loveStory, .family:
+//            requiredParams += [ makeuperId ]
+//            
+//        }
+        return requiredParams.allSatisfy { $0 != nil }
+    }
+}
+
+extension OrderState {
+    init(with oldPayload: NodePayload?, type: OrderType? = nil, stylist: Stylist? = nil, makeuper: Makeuper? = nil, studio: Studio? = nil, date: Date? = nil, duration: TimeInterval? = nil) {
         let priceables: [Priceable?] = [ stylist, makeuper, studio ]
         let appendingPrice = priceables.compactMap { $0?.price }.reduce(0, +)
         if case let .orderBuilder(state) = oldPayload {
             self.init(
+                type: type ?? state.type,
                 stylistId: stylist?.id ?? state.stylistId,
                 makeuperId: makeuper?.id ?? state.makeuperId,
                 studioId: studio?.id ?? state.studioId,
@@ -38,6 +49,7 @@ extension OrderState {
             )
         } else {
             self.init(
+                type: type,
                 stylistId: stylist?.id,
                 makeuperId: makeuper?.id,
                 studioId: studio?.id,
@@ -47,6 +59,11 @@ extension OrderState {
             )
         }
     }
+}
+
+struct CheckoutState: Codable {
+    var order: OrderState
+    var promotions: [UUID] = []
 }
 
 enum NodePayload: Codable {

@@ -16,6 +16,7 @@ final class Order: OrderProtocol {
     typealias TwinType = OrderModel
     
     var id: UUID?
+    var type: OrderType!
     var stylistId: UUID?
     var makeuperId: UUID?
     var studioId: UUID?

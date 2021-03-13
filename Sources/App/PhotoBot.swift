@@ -266,7 +266,7 @@ class PhotoBot {
                             [
                                 "Новый заказ от @" + .replacing(by: .username) + " (" + .replacing(by: .userId) + "):",
                                 .replacing(by: .orderBlock),
-                                "Сумма: " + .replacing(by: .price) + " ₽"
+                                .replacing(by: .priceBlock),
                             ].joined(separator: "\n"),
                             platform: platform, user: user, app: app
                         ).throwingFlatMap { text in

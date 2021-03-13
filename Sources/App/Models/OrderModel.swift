@@ -19,6 +19,9 @@ final class OrderModel: Model, OrderProtocol {
     @ID(key: .id)
     var id: UUID?
     
+    @Field(key: "type")
+    var type: OrderType!
+    
     @OptionalParent(key: "stylist_id")
     var stylist: StylistModel?
     
