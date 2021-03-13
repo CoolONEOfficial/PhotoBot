@@ -39,3 +39,9 @@ extension PromotionProtocol {
         return instance.saveIfNeeded(app: app)
     }
 }
+
+extension Array where Element: PromotionProtocol {
+    func applying(to price: Float) -> Float {
+        reduce(Float(price)) { $1.impact.applying(to: $0) }
+    }
+}

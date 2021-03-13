@@ -224,7 +224,7 @@ enum SendMessageGroup {
                         + "\nВизажист: " + .replacing(by: .makeuper)
                         + "\nСтудия: " + .replacing(by: .studio)
                         + "\nДата: " + .replacing(by: .orderDate)
-                        + "\nСумма: " + .replacing(by: .price) + " р.\n" + .replacing(by: .appliedPromotions), keyboard: [[
+                        + "\n" + .replacing(by: .priceBlock) + "\n" + .replacing(by: .promoBlock), keyboard: [[
                             try .init(text: "Подтвердить", action: .callback, eventPayload: .createOrder)
                         ]])
             ])

@@ -13,13 +13,21 @@ enum PromotionImpact {
 }
 
 extension PromotionImpact {
-    func apply(to num: inout Int) {
+    private func value(for num: Float) -> Float {
         switch self {
         case let .fixed(fixed):
-            num -= fixed
+            return Float(fixed)
         case let .percents(percents):
-            num -= num / 100 * percents
+            return num / 100 * Float(percents)
         }
+    }
+    
+    func applying(to num: Float) -> Float {
+        num - value(for: num)
+    }
+    
+    func description(for num: Float) -> String {
+        "- \(value(for: num)) ₽"
     }
 }
 
