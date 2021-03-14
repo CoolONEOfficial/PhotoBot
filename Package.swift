@@ -13,6 +13,7 @@ let package = Package(
         .package(url: "https://github.com/vapor/fluent-postgres-driver.git", from: "2.0.0"),
         .package(path: "../Botter"),
         .package(url: "https://github.com/SvenTiigi/ValidatedPropertyKit.git", .exact("0.0.4")),
+        .package(url: "https://github.com/CoolONEOfficial/DateHelper.git", .branch("master")), // TODO: replace by https://github.com/melvitax/DateHelper.git
     ],
     targets: [
         .target(
@@ -23,6 +24,7 @@ let package = Package(
                 .product(name: "Vapor", package: "vapor"),
                 .product(name: "Botter", package: "Botter"),
                 .product(name: "ValidatedPropertyKit", package: "ValidatedPropertyKit"),
+                .product(name: "DateHelper", package: "DateHelper"),
             ],
             swiftSettings: [
                 // Enable better optimizations when building in Release configuration. Despite the use of

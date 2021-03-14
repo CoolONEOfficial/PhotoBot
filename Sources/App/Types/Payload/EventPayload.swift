@@ -14,7 +14,7 @@ enum EventPayload {
     case selectMakeuper(id: UUID)
     case selectStudio(id: UUID)
     case selectDay(date: Date)
-    case selectTime(date: Date)
+    case selectTime(time: TimeInterval)
     case selectDuration(duration: TimeInterval)
     case createOrder
     
@@ -78,8 +78,8 @@ extension EventPayload: Codable {
             return
         }
         if container.allKeys.contains(.selectTime), try container.decodeNil(forKey: .selectTime) == false {
-            let date = try container.decode(Date.self, forKey: .selectTime)
-            self = .selectTime(date: date)
+            let time = try container.decode(TimeInterval.self, forKey: .selectTime)
+            self = .selectTime(time: time)
             return
         }
         if container.allKeys.contains(.selectDuration), try container.decodeNil(forKey: .selectDuration) == false {
@@ -130,8 +130,8 @@ extension EventPayload: Codable {
             try container.encode(id, forKey: .selectStudio)
         case let .selectDay(date):
             try container.encode(date, forKey: .selectDay)
-        case let .selectTime(date):
-            try container.encode(date, forKey: .selectTime)
+        case let .selectTime(timeInterval):
+            try container.encode(timeInterval, forKey: .selectTime)
         case let .selectDuration(duration):
             try container.encode(duration, forKey: .selectDuration)
         case .createOrder:

@@ -225,7 +225,8 @@ func orderBuilderGroup(_ app: Application) throws -> UUID {
     try Node.create(
         name: "Order builder date node",
         messagesGroup: .calendar,
-        entryPoint: .orderBuilderDate, app: app
+        entryPoint: .orderBuilderDate,
+        action: .init(.handleCalendar), app: app
     ).throwingFlatMap { try $0.save(app: app) }.wait()
     
     try Node.create(

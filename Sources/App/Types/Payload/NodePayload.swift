@@ -72,7 +72,7 @@ enum NodePayload: Codable {
     case page(at: Int)
     case orderBuilder(OrderState)
     case checkout(CheckoutState)
-    case calendar(year: Int, month: Int, day: Int? = nil, time: TimeInterval? = nil)
+    case calendar(year: Int, month: Int, day: Int? = nil, time: TimeInterval? = nil, needsConfirm: Bool = false)
 }
 
 extension NodePayload {
@@ -88,6 +88,7 @@ extension NodePayload {
         case calendarMonth
         case calendarDay
         case calendarTime
+        case calendarNeedsConfirm
     }
 
     internal init(from decoder: Decoder) throws {
@@ -124,7 +125,8 @@ extension NodePayload {
             let month = try container.decode(Int.self, forKey: .calendarMonth)
             let day = try container.decodeIfPresent(Int.self, forKey: .calendarDay)
             let time = try container.decodeIfPresent(TimeInterval.self, forKey: .calendarTime)
-            self = .calendar(year: year, month: month, day: day, time: time)
+            let needsConfirm = try container.decodeIfPresent(Bool.self, forKey: .calendarNeedsConfirm)
+            self = .calendar(year: year, month: month, day: day, time: time, needsConfirm: needsConfirm!)
             return
         }
         throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown enum case"))
@@ -150,11 +152,12 @@ extension NodePayload {
         case let .checkout(checkout):
             try container.encode(checkout, forKey: .checkoutState)
 
-        case let .calendar(year, month, day, time):
+        case let .calendar(year, month, day, time, needsConfirm):
             try container.encode(year, forKey: .calendarYear)
             try container.encode(month, forKey: .calendarMonth)
             try container.encode(day, forKey: .calendarDay)
             try container.encode(time, forKey: .calendarTime)
+            try container.encode(needsConfirm, forKey: .calendarNeedsConfirm)
         }
     }
 

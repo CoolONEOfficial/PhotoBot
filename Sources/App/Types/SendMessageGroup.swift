@@ -213,7 +213,7 @@ enum SendMessageGroup {
             
             var keyboard: Keyboard = [[
                 try .init(text: "Студия", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderStudio))),
-                try .init(text: "Время", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderDate)))
+                try .init(text: "Дата", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderDate)))
             ]]
 
             switch type {
@@ -269,7 +269,7 @@ enum SendMessageGroup {
             ])
             
         case .calendar:
-            result = try calendarMessages(app: app, payload)
+            result = try calendarMessages(app: app, platform: platform, payload)
         }
 
         return result
@@ -277,26 +277,45 @@ enum SendMessageGroup {
             .flatMapEach(on: app.eventLoopGroup.next()) { Self.formatMessage(platform: platform, $0, user, app: app) }
     }
     
-    func calendarMessages(app: Application, _ payload: NodePayload?) throws -> Future<[SendMessage]> {
+    func calendarMessages(app: Application, platform: AnyPlatform, _ payload: NodePayload?) throws -> Future<[SendMessage]> {
         
         let calendar = Calendar.current
         let currentDate = Date()
-        let comps = calendar.dateComponents([.year, .month], from: currentDate)
-        var (year, month) = (comps.year!, comps.month!)
+        var (year, month) = (currentDate.component(.year)!, currentDate.component(.month)!)
         var day: Int?
         var time: TimeInterval?
+        var needsConfirm = false
         
-        if case let .calendar(payloadYear, payloadMonth, payloadDay, payloadTime) = payload {
+        if case let .calendar(payloadYear, payloadMonth, payloadDay, payloadTime, payloadNeedsConfirm) = payload {
             year = payloadYear
             month = payloadMonth
             day = payloadDay
             time = payloadTime
+            needsConfirm = payloadNeedsConfirm
         }
         
-        let formatter = DateFormatter()
-        if let _ = time {
+        var date = DateComponents.create(year: year, month: month, day: day).date!
+        if let time = time {
+            date.addTimeInterval(time)
+        }
+
+        if needsConfirm {
+            if let time = time {
+                return app.eventLoopGroup.future([
+                    .init(text: "Было считано время \(date.toString(dateStyle: .none, timeStyle: .short)). Все верно?", keyboard: [[
+                        try .init(text: "Да", action: .callback, eventPayload: .selectTime(time: time))
+                    ]]),
+                ])
+            } else {
+                return app.eventLoopGroup.future([
+                    .init(text: "Была считана дата \(date.toString(dateStyle: .long, timeStyle: .none)) Все верно?", keyboard: [[
+                        try .init(text: "Да", action: .callback, eventPayload: .selectDay(date: date))
+                    ]]),
+                ])
+            }
+        } else if time != nil {
             return app.eventLoopGroup.future([
-                .init(text: "Выберите продолжительность:"),
+                .init(text: "Выберите продолжительность для \(date.toString(style: .short)):"),
                 .init(text: "Полчаса\nза полчаса можно тото", keyboard: [[
                     try .init(text: "Выбрать", action: .callback, eventPayload: .selectDuration(duration: 60*30))
                 ]]),
@@ -307,43 +326,59 @@ enum SendMessageGroup {
                     try .init(text: "Выбрать", action: .callback, eventPayload: .selectDuration(duration: 60*60*2))
                 ]])
             ])
-        } else if let selectedDay = day {
-            let date = calendar.date(from: .init(year: year, month: month, day: selectedDay))!
-            let hour: TimeInterval = 60 * 60
-            let availableInterval = date.addingTimeInterval(hour * 8)...date
-                .addingTimeInterval(hour * 24)
-            let timesMessages = try availableInterval.intervalDates(with: hour / 2).map { date in
-                try Button(
-                    text: DateFormatter.localizedString(from: date, dateStyle: .none, timeStyle: .short),
-                    action: .callback,
-                    eventPayload: .selectTime(date: date)
-                )
-            }.chunked(into: 6)
+        
+        } else if day != nil {
             
             let headers = [ "Утро", "День", "Вечер" ]
             
-            let groupsMessages = timesMessages.chunked(into: timesMessages.count / 3).enumerated()
-                .map { (Button(text: headers[$0.0]), $0.1) }
-                .map { [[$0.0]] + $0.1 }
-                .reduce([], +)
+            switch platform {
+            case .vk:
+                return app.eventLoopGroup.future([.init(text: "Пришли желаемое время")])
 
-            return app.eventLoopGroup.future([
-                .init(text: "Выбери время:", keyboard: .init(buttons: groupsMessages))
-            ])
-        } else {
-            let dayInSeconds: TimeInterval = 60 * 60 * 24
-            let startMonth = calendar.date(from: .init(year: year, month: month))!
-            let startTable = startMonth.addingTimeInterval(-dayInSeconds * .init(calendar.weekday(date: startMonth)))
+            case .tg:
+                let startOfDay = Date().dateFor(.startOfDay)
+                let availableInterval = startOfDay.adjust(.hour, offset: 8)...startOfDay.adjust(.hour, offset: 24)
+                let timesMessages = try availableInterval.intervalDates(.minute, 30)
+                    .map { $0.timeIntervalSince(startOfDay) }
+                    .map { time in
+                    try Button(
+                        text: DateFormatter.localizedString(from: .init(timeIntervalSince1970: time), dateStyle: .none, timeStyle: .short),
+                        action: .callback,
+                        eventPayload: .selectTime(time: time)
+                    )
+                }.chunked(into: 6)
+                
+                
+                
+                let groupsMessages = timesMessages.chunked(into: timesMessages.count / 3).enumerated()
+                    .map { (Button(text: headers[$0.0]), $0.1) }
+                    .map { [[$0.0]] + $0.1 }
+                    .reduce([], +)
 
-            let endMonth = calendar.date(byAdding: .init(month: 1, day: -1), to: startMonth)!
-            let endTable = endMonth.addingTimeInterval(dayInSeconds * .init(6 - calendar.weekday(date: endMonth)))
+                return app.eventLoopGroup.future([
+                    .init(text: "Выбери или пришли время для \(date.toString(dateStyle: .long, timeStyle: .none))", keyboard: .init(buttons: groupsMessages))
+                ])
+            }
+        }
+        
+        switch platform {
+        case .vk:
+            return app.eventLoopGroup.future([.init(text: "Пришли желаемую дату")])
             
+        case .tg:
             
+            let startMonth = date.dateFor(.startOfMonth)
+            let startTable = startMonth.adjust(.day, offset: -calendar.weekday(date: startMonth))
+
+            let endMonth = startMonth.adjust(.month, offset: 1).adjust(.day, offset: -1)
+            let endTable = endMonth.adjust(.day, offset: 6 - calendar.weekday(date: endMonth))
+            
+            let formatter = DateFormatter()
             let weekdayMessages = formatter.veryShortWeekdaySymbols
                 .shift(withDistance: calendar.firstWeekday - 1).compactMap { weekday in
                 Button(text: weekday)
             }
-            let daysMessages = try (startTable...endTable).intervalDates().map { date in
+            let daysMessages = try (startTable...endTable).intervalDates(.day, 1).map { date in
                 try Button(
                     text: String(calendar.component(.day, from: date)),
                     action: .callback,
@@ -360,7 +395,7 @@ enum SendMessageGroup {
             }
             
             return app.eventLoopGroup.future([
-                .init(text: "Выбери дату:", keyboard: .init(buttons: [
+                .init(text: "Выбери или пришли дату", keyboard: .init(buttons: [
                     [
                         try .init(text: "👈", action: .callback, eventPayload: eventPayload(appending: .init(month: -1))),
                         .init(text: formatter.shortMonthSymbols[month - 1]),

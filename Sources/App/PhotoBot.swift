@@ -11,6 +11,7 @@ import Vapor
 import Fluent
 import Vkontakter
 import AnyCodable
+import DateHelper
 
 protocol ArrayProtocol {
     static var elementType: Any.Type { get }
@@ -209,31 +210,25 @@ class PhotoBot {
                 }
             }
         
-        case let .selectDay(date), let .selectTime(date):
+        case let .selectTime(time):
+            guard case let .calendar(year, month, day, _, _) = user.nodePayload else { throw HandleActionError.nodePayloadInvalid }
             replyText = "Selected"
-            let calendar = Calendar(identifier: .gregorian)
-            let comps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: date)
-            guard let (year, month, day, hour, minute) = (comps.year, comps.month, comps.day, comps.hour, comps.minute) as? (Int, Int, Int, Int, Int),
-                  let nodeId = user.nodeId else { throw HandleActionError.assotiatedValuesInvalid }
-            let time: TimeInterval?
-            if case .selectTime = eventPayload {
-                time = Double(hour * 60 * 60 + minute * 60)
-            } else {
-                time = nil
-            }
-            return user.push(.id(nodeId), payload: .calendar(year: year, month: month, day: day, time: time), to: event, with: bot, app: app, saveMove: false)
+            return user.push(.entryPoint(.orderBuilderDate), payload: .calendar(year: year, month: month, day: day, time: time), to: event, with: bot, app: app, saveMove: false)
+            
+        case let .selectDay(date):
+            replyText = "Selected"
+            let comps = Calendar.current.dateComponents([.year, .month, .day], from: date)
+            guard let (year, month, day) = (comps.year, comps.month, comps.day) as? (Int, Int, Int) else { throw HandleActionError.eventPayloadInvalid }
+            return user.push(.entryPoint(.orderBuilderDate), payload: .calendar(year: year, month: month, day: day), to: event, with: bot, app: app, saveMove: false)
         
         case let .selectDuration(duration):
             replyText = "Selected"
+
+            guard case let .calendar(year, month, day, time, _) = user.nodePayload,
+                  let (hour, minute, _) = time?.components,
+                  let date = DateComponents.create(year: year, month: month, day: day, hour: hour, minute: minute).date else { throw HandleActionError.nodePayloadInvalid }
             
-            let calendar = Calendar(identifier: .gregorian)
-            guard case let .calendar(year, month, day, time) = user.nodePayload,
-                  let (hour, minute, second) = time?.components,
-                  let date = calendar.date(from: .init(year: year, month: month, day: day, hour: hour, minute: minute, second: second)) else { throw HandleActionError.nodePayloadInvalid }
-            
-            return Node.find(.entryPoint(.orderBuilder), app: app).throwingFlatMap { [self] node in
-                try user.push(node, payload: .orderBuilder(.init(with: user.history.last?.nodePayload, date: date, duration: duration)), to: event, with: bot, app: app, saveMove: false)
-            }
+            return try user.push(.entryPoint(.orderBuilder), payload: .orderBuilder(.init(with: user.history.last?.nodePayload, date: date, duration: duration)), to: event, with: bot, app: app, saveMove: false)
 
         case .back:
             replyText = "Pop"
@@ -338,7 +333,7 @@ class PhotoBot {
                 nextFuture = try handleEventPayload(event, user, eventPayload, &replyText).map { Optional($0) }
             }
             
-            var futureArr: [EventLoopFuture<[Botter.Message]>] = [
+            var futureArr: [EventLoopFuture<[Botter.Message]>] = update.platform.same(.vk) ? [] : [
                 try event.reply(from: bot, params: .init(type: .notification(text: replyText)), app: app).map { _ in [] }
             ]
             
@@ -496,14 +491,40 @@ class PhotoBot {
         case textNotFound
         case textIncorrect
         case nodePayloadInvalid
-        case assotiatedValuesInvalid
+        case eventPayloadInvalid
         case noAttachments
     }
     
     func handleAction(_ action: NodeAction, _ user: User, _ message: Botter.Message, _ context: Botter.BotContext?) throws -> Future<Bool> {
+        guard let text = message.text else { throw HandleActionError.textNotFound }
+        
         switch action.type {
+        case .handleCalendar:
+            if var date = Date(detectFromString: text) {
+                while date.compare(.isInThePast) {
+                    date = date.adjust(.year, offset: 1)
+                }
+                if user.nodePayload == nil {
+                    if let year = date.component(.year),
+                       let month = date.component(.month),
+                       let day = date.component(.day) {
+                        
+                        return user.push(.entryPoint(.orderBuilderDate), payload: .calendar(
+                            year: year, month: month, day: day,
+                            needsConfirm: true
+                        ), to: message, with: bot, app: app, saveMove: false).map { _ in true }
+                    }
+                } else if case let .calendar(year, month, day, time, _) = user.nodePayload, time == nil {
+                    return user.push(.entryPoint(.orderBuilderDate), payload: .calendar(
+                        year: year, month: month, day: day,
+                        time: date.timeIntervalSince(date.dateFor(.startOfDay)),
+                        needsConfirm: true
+                    ), to: message, with: bot, app: app, saveMove: false).map { _ in true }
+                }
+            }
+            return app.eventLoopGroup.future(false)
+        
         case .messageEdit:
-            guard let text = message.text else { throw HandleActionError.textNotFound }
             return Node.find(.id(user.history.last!.nodeId), app: app).throwingFlatMap { node in
                 
                 guard let nodePayload = user.nodePayload,
@@ -523,8 +544,6 @@ class PhotoBot {
             }.map { _ in true }
 
         case .uploadPhoto:
-            guard let text = message.text else { throw HandleActionError.textNotFound }
-            
             let availablePlatforms: [AnyPlatform] = .available(bot: bot)
             
             return try availablePlatforms.map { platform -> Future<PlatformFile.Entry> in
@@ -563,7 +582,6 @@ class PhotoBot {
             }.map { _ in true }
             
         case .applyPromocode:
-            guard let text = message.text else { throw HandleActionError.textNotFound }
             guard case var .checkout(checkoutState) = user.nodePayload else { throw HandleActionError.nodePayloadInvalid }
             
             return Promotion.find(promocode: text, app: app).flatMap { [self] promotion -> Future<Bool> in
