@@ -329,8 +329,6 @@ enum SendMessageGroup {
         
         } else if day != nil {
             
-            let headers = [ "Утро", "День", "Вечер" ]
-            
             switch platform {
             case .vk:
                 return app.eventLoopGroup.future([.init(text: "Пришли желаемое время")])
@@ -339,16 +337,16 @@ enum SendMessageGroup {
                 let startOfDay = Date().dateFor(.startOfDay)
                 let availableInterval = startOfDay.adjust(.hour, offset: 8)...startOfDay.adjust(.hour, offset: 24)
                 let timesMessages = try availableInterval.intervalDates(.minute, 30)
-                    .map { $0.timeIntervalSince(startOfDay) }
-                    .map { time in
+                    .map { ($0, $0.timeIntervalSince(startOfDay)) }
+                    .map { (date, time) in
                     try Button(
-                        text: DateFormatter.localizedString(from: .init(timeIntervalSince1970: time), dateStyle: .none, timeStyle: .short),
+                        text: date.toString(dateStyle: .none, timeStyle: .short),
                         action: .callback,
                         eventPayload: .selectTime(time: time)
                     )
                 }.chunked(into: 6)
                 
-                
+                let headers = [ "Утро", "День", "Вечер" ]
                 
                 let groupsMessages = timesMessages.chunked(into: timesMessages.count / 3).enumerated()
                     .map { (Button(text: headers[$0.0]), $0.1) }
