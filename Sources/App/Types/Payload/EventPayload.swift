@@ -17,6 +17,7 @@ enum EventPayload {
     case selectTime(time: TimeInterval)
     case selectDuration(duration: TimeInterval)
     case createOrder
+    case pushCheckout(state: OrderState)
     
     // MARK: Navigation
     
@@ -40,6 +41,7 @@ extension EventPayload: Codable {
         case createOrder
         case back
         case push
+        case pushToCheckoutState
         case previousPage
         case nextPage
     }
@@ -111,6 +113,11 @@ extension EventPayload: Codable {
             self = .nextPage
             return
         }
+        if container.allKeys.contains(.pushToCheckoutState), try container.decodeNil(forKey: .pushToCheckoutState) == false {
+            let state = try container.decode(OrderState.self, forKey: .pushToCheckoutState)
+            self = .pushCheckout(state: state)
+            return
+        }
         throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown enum case"))
     }
 
@@ -143,10 +150,12 @@ extension EventPayload: Codable {
             try associatedValues.encode(associatedValue0)
             try associatedValues.encode(associatedValue1)
             try associatedValues.encode(associatedValue2)
+        case let .pushCheckout(state):
+            try container.encode(state, forKey: .pushToCheckoutState)
         case .previousPage:
-            _ = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .previousPage)
+            try container.encode(true, forKey: .previousPage)
         case .nextPage:
-            _ = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .nextPage)
+            try container.encode(true, forKey: .nextPage)
         }
     }
 

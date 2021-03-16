@@ -26,6 +26,7 @@ enum PromotionCondition {
         case price
         case peopleCount
         case propsCount
+        case orderCount
     }
     
     enum NumericCondition: String, Codable  {
@@ -38,14 +39,14 @@ enum PromotionCondition {
 
 extension PromotionCondition {
     
-    func check(state: OrderState, app: Application) -> Future<Bool> {
-        Self.check(state: state, condition: self, app: app)
+    func check(state: OrderState, user: User, app: Application) -> Future<Bool> {
+        Self.check(state: state, condition: self, user: user, app: app)
     }
     
-    static func check(state: OrderState, condition: Self, app: Application) -> Future<Bool> {
+    static func check(state: OrderState, condition: Self, user: User, app: Application) -> Future<Bool> {
         switch condition {
         case let .and(arr), let .or(arr):
-            return arr.map { $0.check(state: state, app: app) }.flatten(on: app.eventLoopGroup.next()).map {
+            return arr.map { $0.check(state: state, user: user, app: app) }.flatten(on: app.eventLoopGroup.next()).map {
                 switch condition {
                 case .and:
                     return $0.allSatisfy { $0 }
@@ -55,7 +56,7 @@ extension PromotionCondition {
                 }
             }
         case let .numeric(lhs, numCondition, rhs):
-            return lhs.getValue(state: state, app: app).map { lhsNum in
+            return lhs.getValue(state: state, user: user, app: app).map { lhsNum in
                 switch numCondition {
                 case .less:
                     return lhsNum < rhs
@@ -73,7 +74,7 @@ extension PromotionCondition {
 }
 
 extension PromotionCondition.NumericKey {
-    func getValue(state: OrderState, app: Application) -> Future<Int> {
+    func getValue(state: OrderState, user: User, app: Application) -> Future<Int> {
         switch self {
         case .price:
             return app.eventLoopGroup.future(Int(state.price))
@@ -81,6 +82,8 @@ extension PromotionCondition.NumericKey {
             return app.eventLoopGroup.future(0)
         case .propsCount:
             return app.eventLoopGroup.future(0)
+        case .orderCount:
+            return OrderModel.query(on: app.db).filter("user_id", .equal, user.id).count()
         }
     }
 }

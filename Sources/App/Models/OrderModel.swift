@@ -19,6 +19,14 @@ final class OrderModel: Model, OrderProtocol {
     @ID(key: .id)
     var id: UUID?
     
+    @Parent(key: "user_id")
+    var user: UserModel
+
+    var userId: UUID! {
+        get { self.$user.id }
+        set { self.$user.id = newValue }
+    }
+    
     @Field(key: "type")
     var type: OrderType!
     

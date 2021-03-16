@@ -13,29 +13,11 @@ import Vkontakter
 import AnyCodable
 import DateHelper
 
-protocol ArrayProtocol {
-    static var elementType: Any.Type { get }
-    var elements: [Any] { get }
-}
-
-extension Array: ArrayProtocol {
-    static var elementType: Any.Type { Element.self }
-    var elements: [Any] { self }
-}
-
-protocol OptionalProtocol {
-    var myWrappedType: Any.Type { get }
-    var myWrapped: Any? { get }
-}
-
-extension Optional: OptionalProtocol {
-    var myWrappedType: Any.Type {
-        Wrapped.self
-    }
-    
-    var myWrapped: Any? {
-        wrapped
-    }
+enum PhotoBotError: Error {
+    case nodeByEntryPointNotFound(EntryPoint)
+    case nodeByActionNotFound
+    case nodeByIdNotFound
+    case destinationNotFound
 }
 
 extension Array where Element == DictEntry {
@@ -238,21 +220,33 @@ class PhotoBot {
             replyText = "Move"
             return user.push(target, payload: nodePayload, to: event, with: bot, app: app, saveMove: saveMoveToHistory)
             
+        case let .pushCheckout(state):
+            replyText = "Move"
+            
+            return PromotionModel.query(on: app.db).filter(\.$autoApply == true).all().flatMap { [self] promotions in
+                promotions.map { promo in
+                    promo.condition.check(state: state, user: user, app: app).map { (check: $0, promo: promo) }
+                }.flatten(on: app.eventLoopGroup.next()).flatMap { promotions in
+                    let promotions = promotions.filter(\.check).compactMap(\.promo.id)
+                    return user.push(.entryPoint(.orderCheckout), payload: .checkout(.init(order: state, promotions: promotions)), to: event, with: bot, app: app, saveMove: true)
+                }
+            }
+            
         case .createOrder:
             replyText = "Move"
             
-            guard case let .checkout(checkoutState) = user.nodePayload else { throw HandleActionError.nodePayloadInvalid }
+            guard case let .checkout(checkoutState) = user.nodePayload, let userId = user.id else { throw HandleActionError.nodePayloadInvalid }
             
             let platform = event.platform.any
             
-            return try OrderModel.create(checkoutState: checkoutState, app: app).flatMap { [self] order in
+            return try OrderModel.create(userId: userId, checkoutState: checkoutState, app: app).flatMap { [self] order in
                 MessageFormatter.shared.format("Заказ успешно создан, в ближайшее время с Вами свяжется @" + .replacing(by: .admin), platform: platform, user: user, app: app)
                 .throwingFlatMap { message in
                     try event.replyMessage(from: bot, params: .init(text: message), app: app)
                 }.map { ($0, order) }
             }.throwingFlatMap { [self] (messages, order) in
                 try User.find(
-                    destination: .username("cooloneofficial"),//Application.adminNickname(for: platform)),
+                    destination: .username(Application.adminNickname(for: platform)),
                     platform: platform,
                     app: app
                 ).flatMap { user in
@@ -290,7 +284,6 @@ class PhotoBot {
                                 }.flatten(on: app.eventLoopGroup.next()).map { messages + $0.reduce([], +) }
                             }
                         ].flatten(on: app.eventLoopGroup.next()).map { $0.reduce([], +) }
-                        //}
                     } else {
                         return app.eventLoopGroup.future(messages)
                     }
@@ -366,8 +359,9 @@ class PhotoBot {
                             let nextFuture: Future<[Botter.Message]?>?
                             
                             if let action = node.action {
-                                nextFuture = try handleAction(action, user, message, context).throwingFlatMap { success -> Future<[Botter.Message]?> in
-                                    if success {
+                                nextFuture = try handleAction(action, user, message, context).throwingFlatMap { result -> Future<[Botter.Message]?> in
+                                    switch result {
+                                    case .success:
                                         var future: Future<[Botter.Message]>?
                                     
                                         guard let successNodeId = action.action else { return self.app.eventLoopGroup.future(nil) }
@@ -383,8 +377,9 @@ class PhotoBot {
                                         }
                                         
                                         return future?.map { Optional($0) } ?? (self.app.eventLoopGroup.future(nil))
-                                    } else {
-                                        return try message.reply(from: bot, params: .init(text: "Некорректное сообщение, попробуй еще раз но с другим текстом."), app: app).map(\.first).optionalThrowingFlatMap { sentMessage in
+                                        
+                                    case let .failure(error):
+                                        return try message.reply(from: bot, params: .init(text: error.errorDescription ?? "Некорректное сообщение, попробуй еще раз но с другим текстом."), app: app).map(\.first).optionalThrowingFlatMap { sentMessage in
                                             try user.pushToActualNode(to: message, with: bot, app: app).map { $0 + [sentMessage] }
                                         }
                                     }
@@ -495,16 +490,35 @@ class PhotoBot {
         return user.push(.id(nodeId), payload: .build(type: builderType, object: payloadObject), to: message, with: self.bot, app: self.app)
     }
 
-    enum HandleActionError: Error {
+    enum HandleActionError: Error, LocalizedError {
         case textNotFound
         case textIncorrect
         case nodePayloadInvalid
         case eventPayloadInvalid
         case noAttachments
+        case promoCondition
+        case dateNotHandled
+        case promoNotFound
+        
+        var errorDescription: String? {
+            switch self {
+            case .promoCondition:
+                return "К сожалению в Вашем заказе не выполняются условия акции."
+                
+            case .dateNotHandled:
+                return "Дата или время не было распознано."
+                
+            case .promoNotFound:
+                return "По данному промокоду не найдено акций."
+                
+            default:
+                return nil
+            }
+        }
     }
-    
-    func handleAction(_ action: NodeAction, _ user: User, _ message: Botter.Message, _ context: Botter.BotContext?) throws -> Future<Bool> {
-        guard let text = message.text else { throw HandleActionError.textNotFound }
+
+    func handleAction(_ action: NodeAction, _ user: User, _ message: Botter.Message, _ context: Botter.BotContext?) throws -> Future<Result<Void, HandleActionError>> {
+        guard let text = message.text else { return app.eventLoopGroup.future(error: HandleActionError.textNotFound) }
         
         switch action.type {
         case .handleCalendar:
@@ -520,17 +534,18 @@ class PhotoBot {
                         return user.push(.entryPoint(.orderBuilderDate), payload: .calendar(
                             year: year, month: month, day: day,
                             needsConfirm: true
-                        ), to: message, with: bot, app: app, saveMove: false).map { _ in true }
+                        ), to: message, with: bot, app: app, saveMove: false).map { _ in .success }
                     }
                 } else if case let .calendar(year, month, day, time, _) = user.nodePayload, time == nil {
+                    
                     return user.push(.entryPoint(.orderBuilderDate), payload: .calendar(
                         year: year, month: month, day: day,
                         time: date.timeIntervalSince(date.dateFor(.startOfDay)),
                         needsConfirm: true
-                    ), to: message, with: bot, app: app, saveMove: false).map { _ in true }
+                    ), to: message, with: bot, app: app, saveMove: false).map { _ in .success }
                 }
             }
-            return app.eventLoopGroup.future(false)
+            return app.eventLoopGroup.future(.failure(.dateNotHandled))
         
         case .messageEdit:
             return Node.find(.id(user.history.last!.nodeId), app: app).throwingFlatMap { node in
@@ -542,14 +557,14 @@ class PhotoBot {
 
                 node.messagesGroup?.updateText(at: messageId, text: text)
                 
-                return try node.save(app: self.app).map { _ in true }
+                return try node.save(app: self.app).map { _ in .success }
             }
 
         case .setName:
             user.firstName = message.text
             return try user.save(app: app).throwingFlatMap { _ in
                 try message.reply(from: self.bot, params: .init(text: "Good, \(user.firstName!)"), app: self.app)
-            }.map { _ in true }
+            }.map { _ in .success }
 
         case .uploadPhoto:
             let availablePlatforms: [AnyPlatform] = .available(bot: bot)
@@ -587,61 +602,39 @@ class PhotoBot {
                     try message.reply(from: self.bot, params: .init(text: "локальный id: \(savedId)"), app: self.app)
                         
                 }
-            }.map { _ in true }
+            }.map { _ in .success }
             
         case .applyPromocode:
             guard case var .checkout(checkoutState) = user.nodePayload else { throw HandleActionError.nodePayloadInvalid }
             
-            return Promotion.find(promocode: text, app: app).flatMap { [self] promotion -> Future<Bool> in
-                guard let promotion = promotion else { return app.eventLoopGroup.future(false) }
-                checkoutState.promotions.append(promotion.id!)
-                return user.push(.entryPoint(.orderCheckout), payload: .checkout(checkoutState), to: message, with: bot, app: app).map { _ in true }
+            return Promotion.find(promocode: text, app: app).flatMap { [self] promotion in
+                guard let promotion = promotion else { return app.eventLoopGroup.future(.failure(.promoNotFound)) }
+                
+                return promotion.condition.check(state: checkoutState.order, user: user, app: app).flatMap { check in
+                    guard check else { return app.eventLoopGroup.future(.failure(.promoCondition)) }
+
+                    return checkoutState.promotions.map { Promotion.find($0, app: app) }.flatten(on: app.eventLoopGroup.next()).flatMap { promotions in
+                        
+                        for promo in promotions.compactMap({ $0 }) where !promo.autoApply {
+                            if let promoId = promo.id {
+                                if let index = checkoutState.promotions.firstIndex(of: promoId) {
+                                    checkoutState.promotions.remove(at: index)
+                                }
+                            }
+                        }
+                        
+                        checkoutState.promotions.append(promotion.id!)
+                        
+                        return user.push(.entryPoint(.orderCheckout), payload: .checkout(checkoutState), to: message, with: bot, app: app).map { _ in .success }
+                    }
+                    
+                    
+                }
             }
 
         case .buildType, .createNode:
-            return app.eventLoopGroup.future(true)
+            return app.eventLoopGroup.future(.success)
         }
     }
-    
-    
-}
 
-extension Botter.Button {
-    init(text: String, action: NodeAction, color: Vkontakter.Button.Color? = nil, payload: String? = nil) throws {
-        try self.init(text: text, action: .callback, color: color, data: action)
-    }
-}
-
-enum PhotoBotError: Error {
-    case nodeByEntryPointNotFound(EntryPoint)
-    case nodeByActionNotFound
-    case nodeByIdNotFound
-    case destinationNotFound
-}
-
-func strType(of value: Any) -> String {
-    String(describing: type(of: value))
-}
-
-protocol BuildableField {
-    static func check(_ str: String) -> Bool
-    static func value(_ str: String) -> AnyCodable
-}
-
-extension String: BuildableField {
-    static func value(_ str: String) -> AnyCodable { .init(str) }
-    
-    static func check(_ str: String) -> Bool { !str.isEmpty }
-}
-
-extension Bool: BuildableField {
-    static func value(_ str: String) -> AnyCodable { .init(str == "+") }
-    
-    static func check(_ str: String) -> Bool { str == "+" || str == "-" }
-}
-
-extension Optional: BuildableField where Wrapped: BuildableField {
-    static func check(_ str: String) -> Bool { Wrapped.check(str) }
-    
-    static func value(_ str: String) -> AnyCodable { Wrapped.value(str) }
 }

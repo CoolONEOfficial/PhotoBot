@@ -107,15 +107,3 @@ extension Validation where Value == [TypedPlatform<String>] {
         }
     }
 }
-
-
-// MARK: - Result+Success
-
-fileprivate extension Result where Success == Void {
-    
-    /// The success Result case
-    static var success: Result {
-        return .success(())
-    }
-    
-}

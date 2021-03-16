@@ -11,6 +11,7 @@ struct CreatePromotions: Migration {
     func prepare(on database: Database) -> EventLoopFuture<Void> {
         database.schema(PromotionModel.schema)
             .id()
+            .field("auto_apply", .bool, .required)
             .field("name", .string, .required)
             .field("description", .string, .required)
             .field("promocode", .string)

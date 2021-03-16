@@ -43,7 +43,6 @@ extension Application {
         let port: Int
         
         switch targetPlatform{
-        
         case "TG":
             port = 8443
         
@@ -182,13 +181,31 @@ private func configurePostgres(_ app: Application) throws {
         for num in 1...3 {
             try Promotion.create(
                 name: "Promo \(num)",
-                promocode: "PROMO\(num)",
                 description: "Promo desc",
+                promocode: "PROMO\(num)",
                 impact: .fixed(100),
                 condition: .and([ .numeric(.price, .more, 500) ]),
                 app: app
             ).throwingFlatMap { try $0.save(app: app) }.wait()
         }
+        
+        try Promotion.create(
+            autoApply: true,
+            name: "Скидка за второй заказ",
+            description: "Promo desc",
+            impact: .percents(5),
+            condition: .numeric(.orderCount, .equals, 1),
+            app: app
+        ).throwingFlatMap { try $0.save(app: app) }.wait()
+        
+        try Promotion.create(
+            autoApply: true,
+            name: "Скидка за третий заказ",
+            description: "Promo desc",
+            impact: .percents(10),
+            condition: .numeric(.orderCount, .equals, 2),
+            app: app
+        ).throwingFlatMap { try $0.save(app: app) }.wait()
         
         for num in 1...3 {
             try Studio.create(

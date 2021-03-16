@@ -12,9 +12,12 @@ final class PromotionModel: Model, PromotionProtocol {
     typealias TwinType = Promotion
 
     static let schema = "promotions"
-
+    
     @ID(key: .id)
     var id: UUID?
+    
+    @Field(key: "auto_apply")
+    var autoApply: Bool
 
     @Field(key: "name")
     var name: String?

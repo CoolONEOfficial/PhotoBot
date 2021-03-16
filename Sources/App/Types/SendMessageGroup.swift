@@ -227,7 +227,7 @@ enum SendMessageGroup {
             
             if state.isValid {
                 keyboard.buttons.safeAppend([
-                    try .init(text: "👌 К завершению", action: .callback, eventPayload: .push(.entryPoint(.orderCheckout), payload: .checkout(.init(order: state))))
+                    try .init(text: "👌 К завершению", action: .callback, eventPayload: .pushCheckout(state: state))
                 ])
             }
             

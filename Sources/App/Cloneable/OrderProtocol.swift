@@ -33,6 +33,7 @@ extension OrderType {
 protocol OrderProtocol: Cloneable where TwinType: OrderProtocol {
     
     var id: UUID? { get set }
+    var userId: UUID! { get set }
     var type: OrderType! { get set }
     var stylistId: UUID? { get set }
     var makeuperId: UUID? { get set }
@@ -41,7 +42,7 @@ protocol OrderProtocol: Cloneable where TwinType: OrderProtocol {
     var price: Int { get set }
     
     init()
-    static func create(id: UUID?, type: OrderType, stylistId: UUID?, makeuperId: UUID?, studioId: UUID?, interval: DateInterval, price: Int, app: Application) -> Future<Self>
+    static func create(id: UUID?, userId: UUID, type: OrderType, stylistId: UUID?, makeuperId: UUID?, studioId: UUID?, interval: DateInterval, price: Int, app: Application) -> Future<Self>
 }
 
 enum OrderCreateError: Error {
@@ -50,12 +51,13 @@ enum OrderCreateError: Error {
 
 extension OrderProtocol {
     static func create(other: TwinType, app: Application) throws -> Future<Self> {
-        Self.create(id: other.id, type: other.type, stylistId: other.stylistId, makeuperId: other.makeuperId, studioId: other.studioId, interval: other.interval, price: other.price, app: app)
+        Self.create(id: other.id, userId: other.userId, type: other.type, stylistId: other.stylistId, makeuperId: other.makeuperId, studioId: other.studioId, interval: other.interval, price: other.price, app: app)
     }
     
-    static func create(id: UUID? = nil, type: OrderType, stylistId: UUID?, makeuperId: UUID?, studioId: UUID?, interval: DateInterval, price: Int = 0, app: Application) -> Future<Self> {
+    static func create(id: UUID? = nil, userId: UUID, type: OrderType, stylistId: UUID?, makeuperId: UUID?, studioId: UUID?, interval: DateInterval, price: Int = 0, app: Application) -> Future<Self> {
         let instance = Self.init()
         instance.id = id
+        instance.userId = userId
         instance.type = type
         instance.stylistId = stylistId
         instance.makeuperId = makeuperId
@@ -65,12 +67,13 @@ extension OrderProtocol {
         return instance.saveIfNeeded(app: app)
     }
     
-    static func create(id: UUID? = nil, checkoutState: CheckoutState, app: Application) throws -> Future<Self> {
+    static func create(id: UUID? = nil, userId: UUID, checkoutState: CheckoutState, app: Application) throws -> Future<Self> {
         let order = checkoutState.order
         guard let date = order.date,
               let duration = order.duration,
               let type = order.type else { throw OrderCreateError.noDateOrType }
         return Self.create(
+            userId: userId,
             type: type,
             stylistId: order.stylistId,
             makeuperId: order.makeuperId,

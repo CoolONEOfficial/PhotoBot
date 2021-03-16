@@ -17,6 +17,8 @@ final class Promotion: PromotionProtocol {
     
     var id: UUID?
     
+    var autoApply: Bool = false
+
     @Validated(.nonEmpty)
     var name: String?
     
