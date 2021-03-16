@@ -33,9 +33,78 @@ extension Application {
         }
         return nil
     }()
-    static let vkServerName: String? = Environment.get("VK_NEW_SERVER_NAME")
+    
+    #if DEBUG
+
+    static let targetPlatform = Environment.get("TARGET_PLATFORM")!
+    
+    static let test: String = {
+        
+        let port: Int
+        
+        switch targetPlatform{
+        
+        case "TG":
+            port = 8443
+        
+        case "VK":
+            port = 80
+    
+        default:
+            fatalError("Where is test platform env vars?")
+        }
+        
+        let command = "ssh -R 80:localhost:\(port) localhost.run"
+        
+        let task = Process()
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        task.arguments = ["-c", command]
+        task.launchPath = "/bin/zsh"
+        task.launch()
+        sleep(3)
+        task.interrupt()
+        
+        let bgTask = Process()
+        bgTask.arguments = ["-c", command]
+        bgTask.launchPath = "/bin/zsh"
+        bgTask.launch()
+        
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        let output = String(data: data, encoding: .utf8)!
+        
+        func matches(for regex: String, in text: String) -> [String] {
+
+            do {
+                let regex = try NSRegularExpression(pattern: regex)
+                let results = regex.matches(in: text,
+                                            range: NSRange(text.startIndex..., in: text))
+                return results.map {
+                    String(text[Range($0.range, in: text)!])
+                }
+            } catch let error {
+                print("invalid regex: \(error.localizedDescription)")
+                return []
+            }
+        }
+
+        let res = matches(for: "\\S+(localhost.run)", in: output).first!
+
+        return res
+    }()
+    
+    static let vkWebhooksUrl: String = test
+    static let tgWebhooksUrl: String = test
+    
+    #else
+    
     static let vkWebhooksUrl: String = Environment.get("WEBHOOKS_VK_URL")!
     static let tgWebhooksUrl: String = Environment.get("WEBHOOKS_TG_URL")!
+    
+    #endif
+    
+    static let vkServerName: String? = Environment.get("VK_NEW_SERVER_NAME")
+    
     static let tgWebhooksPort: Int = Int(Environment.get("WEBHOOKS_TG_PORT")!)!
 }
 
@@ -86,27 +155,27 @@ private func configurePostgres(_ app: Application) throws {
     
     if try NodeModel.query(on: app.db).count().wait() == 0 {
         
-        let welcomeNodeId = try mainGroup(app)
+        try mainGroup(app)
 
-        let test = try PlatformFile.create(platformEntries: [
+        let testPhoto = try PlatformFile.create(platformEntries: [
             .tg("AgACAgQAAxkDAAIHjGAyWdeuTYimywkuaJsCk6cnPBw_AAKIqDEb84k9Ulm1-biSJET0czAfGwAEAQADAgADbQADE8MBAAEeBA"),
             .vk("photo-119092254_457239065")
         ], type: .photo, app: app).throwingFlatMap { try $0.save(app: app) }.wait()
         
-        let test2 = try PlatformFile.create(platformEntries: [
+        let testPhoto2 = try PlatformFile.create(platformEntries: [
             .tg("AgACAgQAAxkDAAIHjGAyWdeuTYimywkuaJsCk6cnPBw_AAKIqDEb84k9Ulm1-biSJET0czAfGwAEAQADAgADbQADE8MBAAEeBA"),
             .vk("photo-119092254_457239065")
         ], type: .photo, app: app).throwingFlatMap { try $0.save(app: app) }.wait()
         
         for num in 1...20 {
             try Stylist.create(
-                name: "Stylist \(num)", platformIds: [.tg(.init(id: 356008384, username: "cooloneofficial"))], photos: [test, test2], price: 123, app: app
+                name: "Stylist \(num)", platformIds: [.tg(.init(id: 356008384, username: "cooloneofficial"))], photos: [testPhoto, testPhoto2], price: 123, app: app
             ).throwingFlatMap { try $0.save(app: app) }.wait()
         }
         
         for num in 1...20 {
             try Makeuper.create(
-                name: "Makeuper \(num)", platformIds: [.tg(.init(id: 356008384, username: "cooloneofficial"))], photos: [test, test2], price: 123, app: app
+                name: "Makeuper \(num)", platformIds: [.tg(.init(id: 356008384, username: "cooloneofficial"))], photos: [testPhoto, testPhoto2], price: 123, app: app
             ).throwingFlatMap { try $0.save(app: app) }.wait()
         }
         
@@ -127,7 +196,7 @@ private func configurePostgres(_ app: Application) throws {
                 description: "Studio desc",
                 address: "adsdsad",
                 coords: .init(lat: 0, long: 0),
-                photos: [test], price: 123, app: app
+                photos: [testPhoto], price: 123, app: app
             ).throwingFlatMap { try $0.save(app: app) }.wait()
         }
 

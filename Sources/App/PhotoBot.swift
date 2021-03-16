@@ -257,32 +257,40 @@ class PhotoBot {
                     app: app
                 ).flatMap { user in
                     if let user = user, let id = user.platformIds.firstValue(platform: platform)?.id {
-                        return MessageFormatter.shared.format(
-                            [
-                                "Новый заказ от @" + .replacing(by: .username) + " (" + .replacing(by: .userId) + "):",
-                                .replacing(by: .orderBlock),
-                                .replacing(by: .priceBlock),
-                            ].joined(separator: "\n"),
-                            platform: platform, user: user, app: app
-                        ).throwingFlatMap { text in
-                            [
+
+                        func getMessage(_ platform: AnyPlatform) -> Future<String> {
+                            MessageFormatter.shared.format(
+                                [
+                                    "Новый заказ от @" + .replacing(by: .username) + " (" + .replacing(by: .userId) + "):",
+                                    .replacing(by: .orderBlock),
+                                    .replacing(by: .priceBlock),
+                                ].joined(separator: "\n"),
+                                platform: platform, user: user, app: app
+                            )
+                        }
+
+                        return [
+                            getMessage(platform).throwingFlatMap { text in
                                 try bot.sendMessage(params: .init(
                                     destination: .init(platform: platform, id: id),
                                     text: text
-                                ), platform: platform, app: app),
-                                order.fetchWatchers(app: app).throwingFlatMap {
-                                    try $0.map { watcher in
-                                        let platformIds = watcher.platformIds
-                                        
-                                        let platformId = platformIds.first(for: platform) ?? platformIds.first!
-                                        return try bot.sendMessage(params: .init(
+                                ), platform: platform, app: app)
+                            },
+                            order.fetchWatchers(app: app).flatMap {
+                                $0.map { watcher in
+                                    let platformIds = watcher.platformIds
+                                    
+                                    let platformId = platformIds.first(for: platform) ?? platformIds.first!
+                                    return getMessage(platformId.any).throwingFlatMap { text in
+                                        try bot.sendMessage(params: .init(
                                             destination: platformId.sendDestination,
                                             text: text
-                                        ), platform: platform, app: app)
-                                    }.flatten(on: app.eventLoopGroup.next()).map { messages + $0.reduce([], +) }
-                                }
-                            ].flatten(on: app.eventLoopGroup.next()).map { $0.reduce([], +) }
-                        }
+                                        ), platform: platformId.any, app: app)
+                                    }
+                                }.flatten(on: app.eventLoopGroup.next()).map { messages + $0.reduce([], +) }
+                            }
+                        ].flatten(on: app.eventLoopGroup.next()).map { $0.reduce([], +) }
+                        //}
                     } else {
                         return app.eventLoopGroup.future(messages)
                     }
@@ -376,8 +384,8 @@ class PhotoBot {
                                         
                                         return future?.map { Optional($0) } ?? (self.app.eventLoopGroup.future(nil))
                                     } else {
-                                        return try message.reply(from: bot, params: .init(text: "Некорректное сообщение, попробуй еще раз но с другим текстом."), app: app).map(\.first).optionalThrowingFlatMap { message in
-                                            try user.pushToActualNode(to: message, with: bot, app: app).map { $0 + [message] }
+                                        return try message.reply(from: bot, params: .init(text: "Некорректное сообщение, попробуй еще раз но с другим текстом."), app: app).map(\.first).optionalThrowingFlatMap { sentMessage in
+                                            try user.pushToActualNode(to: message, with: bot, app: app).map { $0 + [sentMessage] }
                                         }
                                     }
                                 }
