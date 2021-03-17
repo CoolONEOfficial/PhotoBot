@@ -10,7 +10,7 @@ import Vapor
 import Fluent
 import Botter
 
-protocol StylistProtocol: PhotosProtocol, PlatformIdentifiable, Priceable, Cloneable where TwinType: StylistProtocol {
+protocol StylistProtocol: PhotosProtocol, PlatformIdentifiable, Priceable, Twinable where TwinType: StylistProtocol {
     
     associatedtype SiblingModel = StylistModel
     associatedtype PhotoModel = StylistPhoto

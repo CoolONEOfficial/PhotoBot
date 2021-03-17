@@ -77,7 +77,7 @@ extension TypedPlatform where Tg == UserPlatformId, Vk == UserPlatformId {
 
 }
 
-protocol UserProtocol: PlatformIdentifiable, Cloneable where TwinType: UserProtocol {
+protocol UserProtocol: PlatformIdentifiable, Twinable where TwinType: UserProtocol {
     
     var id: UUID? { get set }
     var history: [UserHistoryEntry] { get set }

@@ -15,7 +15,7 @@ enum ModeledTypeError: Error {
     case validationError(_ type: Any)
 }
 
-protocol ModeledType: Cloneable where TwinType: Model {
+protocol ModeledType: Twinable where TwinType: Model {
     
     func save(app: Application) throws -> Future<TwinType>
     

@@ -10,7 +10,7 @@ import Vapor
 import Fluent
 import Botter
 
-protocol PlatformFileProtocol: Cloneable where TwinType: PlatformFileProtocol {
+protocol PlatformFileProtocol: Twinable where TwinType: PlatformFileProtocol {
     typealias Entry = TypedPlatform<String>
     
     var id: UUID? { get set }

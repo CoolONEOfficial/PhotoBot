@@ -10,15 +10,15 @@ import Botter
 import Vapor
 import Fluent
 
-protocol Cloneable: class {
-    associatedtype TwinType: Cloneable
+protocol Twinable: class {
+    associatedtype TwinType: Twinable
     
     static func create(other: TwinType, app: Application) throws -> Future<Self>
     
     func saveIfNeeded(app: Application) -> Future<Self>
 }
 
-extension Cloneable where TwinType: Model { // non-model types
+extension Twinable where TwinType: Model { // non-model types
     func saveIfNeeded(app: Application) -> Future<Self> {
         app.eventLoopGroup.future(self)
     }
@@ -31,7 +31,7 @@ extension Cloneable where TwinType: Model { // non-model types
     }
 }
 
-extension Cloneable where Self: Model { // model types
+extension Twinable where Self: Model { // model types
     func saveIfNeeded(app: Application) -> Future<Self> {
         if self.id != nil {
             self._$id.exists = true

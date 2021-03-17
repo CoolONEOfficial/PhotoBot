@@ -10,7 +10,7 @@ import Vapor
 import Fluent
 import Botter
 
-protocol StudioProtocol: PhotosProtocol, Priceable, Cloneable where TwinType: StudioProtocol {
+protocol StudioProtocol: PhotosProtocol, Priceable, Twinable where TwinType: StudioProtocol {
     var id: UUID? { get set }
     var name: String? { get set }
     var description: String? { get set }

@@ -25,7 +25,7 @@ enum EntryPoint: String, Codable {
     case uploadPhoto
 }
 
-protocol NodeProtocol: Cloneable where TwinType: NodeProtocol {
+protocol NodeProtocol: Twinable where TwinType: NodeProtocol {
     var id: UUID? { get set }
     var systemic: Bool? { get set }
     var name: String? { get set }

@@ -10,7 +10,7 @@ import Vapor
 import Fluent
 import Botter
 
-protocol PromotionProtocol: Cloneable where TwinType: PromotionProtocol {
+protocol PromotionProtocol: Twinable where TwinType: PromotionProtocol {
     var id: UUID? { get set }
     var autoApply: Bool { get set }
     var name: String? { get set }

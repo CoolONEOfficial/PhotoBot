@@ -10,7 +10,7 @@ import Vapor
 import Fluent
 import Botter
 
-protocol MakeuperProtocol: PhotosProtocol, PlatformIdentifiable, Priceable, Cloneable where TwinType: MakeuperProtocol {
+protocol MakeuperProtocol: PhotosProtocol, PlatformIdentifiable, Priceable, Twinable where TwinType: MakeuperProtocol {
 
     associatedtype SiblingModel = MakeuperModel
     associatedtype PhotoModel = MakeuperPhoto

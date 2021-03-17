@@ -30,7 +30,7 @@ extension OrderType {
     }
 }
 
-protocol OrderProtocol: Cloneable where TwinType: OrderProtocol {
+protocol OrderProtocol: Twinable where TwinType: OrderProtocol {
     
     var id: UUID? { get set }
     var userId: UUID! { get set }
