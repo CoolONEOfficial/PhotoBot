@@ -7,9 +7,8 @@
 
 import Foundation
 
-enum EventPayload {
+public enum EventPayload {
     case editText(messageId: Int)
-    case createNode(type: BuildableType)
     case selectStylist(id: UUID)
     case selectMakeuper(id: UUID)
     case selectStudio(id: UUID)
@@ -31,7 +30,6 @@ extension EventPayload: Codable {
 
     enum CodingKeys: String, CodingKey {
         case editText
-        case createNode
         case selectStylist = "selStylist"
         case selectMakeuper = "selMakeuper"
         case selectStudio = "selStudio"
@@ -46,17 +44,12 @@ extension EventPayload: Codable {
         case nextPage
     }
 
-    internal init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         if container.allKeys.contains(.editText), try container.decodeNil(forKey: .editText) == false {
             let messageId = try container.decode(Int.self, forKey: .editText)
             self = .editText(messageId: messageId)
-            return
-        }
-        if container.allKeys.contains(.createNode), try container.decodeNil(forKey: .createNode) == false {
-            let type = try container.decode(BuildableType.self, forKey: .createNode)
-            self = .createNode(type: type)
             return
         }
         if container.allKeys.contains(.selectStylist), try container.decodeNil(forKey: .selectStylist) == false {
@@ -121,14 +114,12 @@ extension EventPayload: Codable {
         throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown enum case"))
     }
 
-    internal func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
 
         switch self {
         case let .editText(messageId):
             try container.encode(messageId, forKey: .editText)
-        case let .createNode(type):
-            try container.encode(type, forKey: .createNode)
         case let .selectStylist(id):
             try container.encode(id, forKey: .selectStylist)
         case let .selectMakeuper(id):
@@ -161,7 +152,7 @@ extension EventPayload: Codable {
 
 }
 
-enum PushTarget {
+public enum PushTarget {
     case id(UUID)
     case entryPoint(EntryPoint)
     case action(NodeActionType)
@@ -172,7 +163,7 @@ enum PushTargetError: Error {
 }
 
 extension PushTarget: Codable {
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         
         if let id = try? container.decode(UUID.self) {
@@ -186,7 +177,7 @@ extension PushTarget: Codable {
         }
     }
     
-    func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         
         switch self {

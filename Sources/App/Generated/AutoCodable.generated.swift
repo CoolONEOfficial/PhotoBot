@@ -8,7 +8,7 @@ extension NodeAction.Action {
 
     enum CodingKeys: String, CodingKey {
         case push
-        case moveToBuilder
+        //case moveToBuilder
         case pop
         case target
         case of
@@ -23,12 +23,12 @@ extension NodeAction.Action {
             self = .push(target: target)
             return
         }
-        if container.allKeys.contains(.moveToBuilder), try container.decodeNil(forKey: .moveToBuilder) == false {
-            let associatedValues = try container.nestedContainer(keyedBy: CodingKeys.self, forKey: .moveToBuilder)
-            let of = try associatedValues.decode(BuildableType.self, forKey: .of)
-            self = .moveToBuilder(of: of)
-            return
-        }
+//        if container.allKeys.contains(.moveToBuilder), try container.decodeNil(forKey: .moveToBuilder) == false {
+//            let associatedValues = try container.nestedContainer(keyedBy: CodingKeys.self, forKey: .moveToBuilder)
+//            let of = try associatedValues.decode(BuildableType.self, forKey: .of)
+//            self = .moveToBuilder(of: of)
+//            return
+//        }
         if container.allKeys.contains(.pop), try container.decodeNil(forKey: .pop) == false {
             self = .pop
             return
@@ -43,9 +43,9 @@ extension NodeAction.Action {
         case let .push(target):
             var associatedValues = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .push)
             try associatedValues.encode(target, forKey: .target)
-        case let .moveToBuilder(of):
-            var associatedValues = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .moveToBuilder)
-            try associatedValues.encode(of, forKey: .of)
+//        case let .moveToBuilder(of):
+//            var associatedValues = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .moveToBuilder)
+//            try associatedValues.encode(of, forKey: .of)
         case .pop:
             _ = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .pop)
         }

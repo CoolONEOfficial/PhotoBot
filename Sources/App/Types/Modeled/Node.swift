@@ -11,7 +11,7 @@ import Botter
 import Vapor
 import Fluent
 
-final class Node: NodeProtocol {
+public final class Node: NodeProtocol {
     
     typealias TwinType = NodeModel
     
@@ -22,7 +22,7 @@ final class Node: NodeProtocol {
     @Validated(.greater(1))
     var name: String?
 
-    var messagesGroup: SendMessageGroup?
+    var messagesGroup: SendMessageGroup!
     
     var entryPoint: EntryPoint?
 

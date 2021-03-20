@@ -12,7 +12,7 @@ import Vapor
 import Fluent
 import AnyCodable
 
-final class User: UserProtocol {
+public final class User: UserProtocol {
     
     typealias TwinType = UserModel
     
@@ -107,18 +107,17 @@ extension User {
     
     func push<T: PlatformObject & Replyable>(
         _ target: PushTarget, payload: NodePayload? = nil,
-        to replyable: T, with bot: Bot,
-        app: Application, saveMove: Bool = true
+        to replyable: T, saveMove: Bool = true, context: PhotoBotContextProtocol
     ) -> Future<[Message]> {
-        Node.find(target, app: app).throwingFlatMap { node in
-            try self.push(node, payload: payload, to: replyable, with: bot, app: app, saveMove: saveMove)
+        Node.find(target, app: context.app).throwingFlatMap { node in
+            try self.push(node, payload: payload, to: replyable, saveMove: saveMove, context: context)
         }
     }
     
     func push<T: PlatformObject & Replyable>(
         _ node: Node, payload: NodePayload? = nil,
-        to replyable: T, with bot: Bot,
-        app: Application, saveMove: Bool = true
+        to replyable: T, saveMove: Bool = true,
+        context: PhotoBotContextProtocol
     ) throws -> Future<[Message]> {
         
         if node.entryPoint == .welcome {
@@ -130,25 +129,25 @@ extension User {
         self.nodePayload = payload
         self.nodeId = node.id!
         
-        return try self.saveReturningId(app: app).throwingFlatMap { (id) -> Future<[Message]> in
+        return try self.saveReturningId(app: context.app).throwingFlatMap { (id) -> Future<[Message]> in
             self.id = id
-            return try replyable.replyNode(with: bot, user: self, node: node, payload: payload, app: app)!
+            return try replyable.replyNode(node: node, payload: payload, context: context)!
         }
     }
     
-    func popToMain<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, app: Application) throws -> Future<[Message]> {
-        try pop(to: replyable, with: bot, app: app) { _ in true }
+    func popToMain<T: PlatformObject & Replyable>(to replyable: T, context: PhotoBotContextProtocol) throws -> Future<[Message]> {
+        try pop(to: replyable, context: context) { _ in true }
     }
 
-    func pop<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, app: Application) throws -> Future<[Message]> {
+    func pop<T: PlatformObject & Replyable>(to replyable: T, context: PhotoBotContextProtocol) throws -> Future<[Message]> {
         var counter = 0
-        return try pop(to: replyable, with: bot, app: app) { _ in
+        return try pop(to: replyable, context: context) { _ in
             counter += 1
             return counter == 1
         }
     }
     
-    func pop<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, app: Application, while whileCompletion: (UserHistoryEntry) -> Bool) throws -> Future<[Message]> {
+    func pop<T: PlatformObject & Replyable>(to replyable: T, context: PhotoBotContextProtocol, while whileCompletion: (UserHistoryEntry) -> Bool) throws -> Future<[Message]> {
         guard !history.isEmpty, let nodeId = nodeId else { throw UserNavigationError.noHistory }
         if whileCompletion(UserHistoryEntry(nodeId: nodeId, nodePayload: nodePayload)) {
             for (index, entry) in history.enumerated().reversed() {
@@ -161,12 +160,12 @@ extension User {
         }
         let newestHistoryEntry = history.last!
         history.removeLast()
-        return push(.id(newestHistoryEntry.nodeId), payload: newestHistoryEntry.nodePayload, to: replyable, with: bot, app: app, saveMove: false)
+        return push(.id(newestHistoryEntry.nodeId), payload: newestHistoryEntry.nodePayload, to: replyable, saveMove: false, context: context)
     }
     
-    func pushToActualNode<T: PlatformObject & Replyable>(to replyable: T, with bot: Bot, app: Application) throws -> Future<[Message]> {
+    func pushToActualNode<T: PlatformObject & Replyable>(to replyable: T, context: PhotoBotContextProtocol) throws -> Future<[Message]> {
         guard let nodeId = nodeId else { throw UserNavigationError.noNodeId }
-        return push(.id(nodeId), payload: nodePayload, to: replyable, with: bot, app: app, saveMove: false)
+        return push(.id(nodeId), payload: nodePayload, to: replyable, saveMove: false, context: context)
     }
 }
 

@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum BuildableType: String, Codable {
+public enum BuildableType: String, Codable {
     case node
     
     var type: Buildable.Type {
@@ -23,7 +23,7 @@ enum BuildableTypeError: Error {
 }
 
 extension BuildableType: Equatable {
-    static func == (lhs: BuildableType, rhs: BuildableType) -> Bool {
+    public static func == (lhs: BuildableType, rhs: BuildableType) -> Bool {
         lhs.type == rhs.type
     }
 }

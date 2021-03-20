@@ -24,7 +24,7 @@ final class NodeModel: Model, NodeProtocol {
     var name: String?
     
     @Field(key: "messages")
-    var messagesGroup: SendMessageGroup?
+    var messagesGroup: SendMessageGroup!
     
     @OptionalField(key: "entry_point")
     var entryPoint: EntryPoint?

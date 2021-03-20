@@ -1,0 +1,117 @@
+//
+//  File.swift
+//  
+//
+//  Created by Nickolay Truhin on 20.03.2021.
+//
+
+import Foundation
+import Botter
+import Vapor
+
+class OrderCheckoutNodeController: NodeController {
+    func create(app: Application) throws -> EventLoopFuture<Node> {
+        Node.create(
+            name: "Order checkout node",
+            messagesGroup: .orderCheckout,
+            entryPoint: .orderCheckout, action: .init(.applyPromocode), app: app
+        )
+    }
+    
+    func handleAction(_ action: NodeAction, _ message: Message, _ text: String, context: PhotoBotContextProtocol) throws -> EventLoopFuture<Result<Void, HandleActionError>>? {
+        guard case .applyPromocode = action.type else { return nil }
+        let (app, user) = (context.app, context.user)
+        
+        guard case var .checkout(checkoutState) = user.nodePayload else { throw HandleActionError.nodePayloadInvalid }
+        
+        return Promotion.find(promocode: text, app: app).flatMap { [self] promotion in
+            guard let promotion = promotion else { return app.eventLoopGroup.future(.failure(.promoNotFound)) }
+            
+            return promotion.condition.check(state: checkoutState.order, context: context).flatMap { check in
+                guard check else { return app.eventLoopGroup.future(.failure(.promoCondition)) }
+
+                return checkoutState.promotions.map { Promotion.find($0, app: app) }.flatten(on: app.eventLoopGroup.next()).flatMap { promotions in
+                    
+                    for promo in promotions.compactMap({ $0 }) where !promo.autoApply {
+                        if let promoId = promo.id {
+                            if let index = checkoutState.promotions.firstIndex(of: promoId) {
+                                checkoutState.promotions.remove(at: index)
+                            }
+                        }
+                    }
+                    
+                    checkoutState.promotions.append(promotion.id!)
+                    
+                    return user.push(.entryPoint(.orderCheckout), payload: .checkout(checkoutState), to: message, context: context).map { _ in .success }
+                }
+                
+                
+            }
+        }
+    }
+    
+    func handleEventPayload(_ event: MessageEvent, _ eventPayload: EventPayload, _ replyText: inout String, context: PhotoBotContextProtocol) throws -> Future<[Botter.Message]>? {
+        guard case .createOrder = eventPayload else { return nil }
+        
+        let (app, user, bot) = (context.app, context.user, context.bot)
+
+        replyText = "Move"
+        
+        guard case let .checkout(checkoutState) = user.nodePayload, let userId = user.id else { throw HandleActionError.nodePayloadInvalid }
+        
+        let platform = event.platform.any
+        
+        return try OrderModel.create(userId: userId, checkoutState: checkoutState, app: app).flatMap { order in
+            MessageFormatter.shared.format("Заказ успешно создан, в ближайшее время с Вами свяжется @" + .replacing(by: .admin), platform: platform, user: user, app: app)
+            .throwingFlatMap { message in
+                try event.replyMessage(.init(text: message), context: context)
+            }.map { ($0, order) }
+        }.throwingFlatMap { (messages, order) in
+            try User.find(
+                destination: .username(Application.adminNickname(for: platform)),
+                platform: platform,
+                app: app
+            ).flatMap { user in
+                if let user = user, let id = user.platformIds.firstValue(platform: platform)?.id {
+
+                    func getMessage(_ platform: AnyPlatform) -> Future<String> {
+                        MessageFormatter.shared.format(
+                            [
+                                "Новый заказ от @" + .replacing(by: .username) + " (" + .replacing(by: .userId) + "):",
+                                .replacing(by: .orderBlock),
+                                .replacing(by: .priceBlock),
+                            ].joined(separator: "\n"),
+                            platform: platform, user: user, app: app
+                        )
+                    }
+
+                    return [
+                        getMessage(platform).throwingFlatMap { text in
+                            try bot.sendMessage(.init(
+                                destination: .init(platform: platform, id: id),
+                                text: text
+                            ), platform: platform, context: context)
+                        },
+                        order.fetchWatchers(app: app).flatMap {
+                            $0.map { watcher in
+                                let platformIds = watcher.platformIds
+                                
+                                let platformId = platformIds.first(for: platform) ?? platformIds.first!
+                                return getMessage(platformId.any).throwingFlatMap { text in
+                                    try bot.sendMessage(.init(
+                                        destination: platformId.sendDestination,
+                                        text: text
+                                    ), platform: platformId.any, context: context)
+                                }
+                            }.flatten(on: app.eventLoopGroup.next()).map { messages + $0.reduce([], +) }
+                        }
+                    ].flatten(on: app.eventLoopGroup.next()).map { $0.reduce([], +) }
+                } else {
+                    return app.eventLoopGroup.future(messages)
+                }
+            }
+        }.throwingFlatMap { messages in
+            try user.popToMain(to: event, context: context).map { messages + $0 }
+        }
+    }
+}

@@ -9,7 +9,7 @@ import Foundation
 import AnyCodable
 import Botter
 
-struct OrderState: Codable {
+public struct OrderState: Codable {
     var type: OrderType!
     var stylistId: UUID?
     var makeuperId: UUID?
@@ -19,7 +19,7 @@ struct OrderState: Codable {
     var price: Int = 0
 }
 
-extension OrderState {
+public extension OrderState {
     var isValid: Bool {
         let requiredParams: [Any?] = [date, studioId, duration]
 //        switch type {
@@ -61,12 +61,12 @@ extension OrderState {
     }
 }
 
-struct CheckoutState: Codable {
+public struct CheckoutState: Codable {
     var order: OrderState
     var promotions: [UUID] = []
 }
 
-enum NodePayload: Codable {
+public enum NodePayload: Codable {
     case editText(messageId: Int)
     case build(type: BuildableType, object: [String: AnyCodable] = [:])
     case page(at: Int)
@@ -91,7 +91,7 @@ extension NodePayload {
         case calendarNeedsConfirm
     }
 
-    internal init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         if container.allKeys.contains(.editTextMessageId), try container.decodeNil(forKey: .editTextMessageId) == false {
@@ -132,7 +132,7 @@ extension NodePayload {
         throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown enum case"))
     }
 
-    internal func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
 
         switch self {

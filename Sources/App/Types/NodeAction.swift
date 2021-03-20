@@ -8,23 +8,20 @@
 import Foundation
 import AnyCodable
 
-enum NodeActionType: String, Codable {
+public enum NodeActionType: String, Codable {
     case messageEdit
-    case setName
-    case buildType
     case createNode
     case uploadPhoto
     case applyPromocode
     case handleCalendar
 }
 
-struct NodeAction: Codable {
+public struct NodeAction: Codable {
     
     let type: NodeActionType
     
     enum Action: AutoCodable {
         case push(target: PushTarget)
-        case moveToBuilder(of: BuildableType)
         case pop
     }
     

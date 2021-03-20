@@ -9,7 +9,7 @@ import Botter
 import Vapor
 
 extension Replyable where Self: PlatformObject {
-    func replyNode(with bot: Bot, user: User, node: Node, payload: NodePayload?, app: Application) throws -> Future<[Message]>? {
-        try bot.sendNode(to: self, user: user, node: node, payload: payload, platform: platform, app: app)
+    func replyNode(node: Node, payload: NodePayload?, context: PhotoBotContextProtocol) throws -> Future<[Message]>? {
+        try context.bot.sendNode(to: self, node: node, payload: payload, platform: platform.any, context: context)
     }
 }

@@ -61,7 +61,7 @@ extension Application {
         task.arguments = ["-c", command]
         task.launchPath = "/bin/zsh"
         task.launch()
-        sleep(3)
+        sleep(5)
         task.interrupt()
         
         let bgTask = Process()
@@ -109,17 +109,17 @@ extension Application {
 
 // configures your application
 public func configure(_ app: Application) throws {
-    try configurePostgres(app)
+    let controllers = try configurePostgres(app)
     //try configureEchoTg(app)
     //try configureEchoVk(app)
     //try configureEchoBotter(app)
-    try configurePhotoBot(app)
+    try configurePhotoBot(app, controllers)
     
     // register routes
     try routes(app)
 }
 
-private func configurePostgres(_ app: Application) throws {
+private func configurePostgres(_ app: Application) throws -> [NodeController] {
     app.databases.use(try .postgres(url: Application.databaseURL), as: .psql)
     
     app.migrations.add([
@@ -152,9 +152,28 @@ private func configurePostgres(_ app: Application) throws {
 //        print("Ok, just start with previous db state")
 //    }
     
+    let controllers: [NodeController] = [
+        MainNodeController(),
+        AboutNodeController(),
+        PortfolioNodeController(),
+        UploadPhotoNodeController(),
+        OrderCheckoutNodeController(),
+        OrderTypesNodeController(),
+        OrderBuilderDateNodeController(),
+        OrderBuilderMainNodeController(),
+        OrderBuilderMakeuperNodeController(),
+        OrderBuilderStudioNodeController(),
+        OrderBuilderStylistNodeController(),
+        ChangeTextNodeController(),
+        ShowcaseNodeController(),
+        WelcomeNodeController(),
+    ]
+    
     if try NodeModel.query(on: app.db).count().wait() == 0 {
         
-        try mainGroup(app)
+        for controller in controllers {
+            try controller.create(app: app).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
+        }
 
         let testPhoto = try PlatformFile.create(platformEntries: [
             .tg("AgACAgQAAxkDAAIHjGAyWdeuTYimywkuaJsCk6cnPBw_AAKIqDEb84k9Ulm1-biSJET0czAfGwAEAQADAgADbQADE8MBAAEeBA"),
@@ -216,116 +235,9 @@ private func configurePostgres(_ app: Application) throws {
                 photos: [testPhoto], price: 123, app: app
             ).throwingFlatMap { try $0.save(app: app) }.wait()
         }
-
-        let showcaseNodeId = try Node.create(
-            name: "Showcase node",
-            messagesGroup: [
-                .init(text: "Тут описание бота в деталях.", keyboard: [[
-                    .init(text: "Перейти в главное меню", action: .callback, eventPayload: .push(.entryPoint(.welcome)))
-                ]])
-            ], app: app
-        ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
-        
-        try Node.create(
-            name: "Welcome guest node",
-            messagesGroup: [
-                .init(text: "Привет, " + .replacing(by: .userFirstName) + "! Похоже ты тут впервые) Хочешь узнать что делает этот бот?", keyboard: [[
-                    .init(text: "Да", action: .callback, eventPayload: .push(.id(showcaseNodeId))),
-                    .init(text: "Нет", action: .callback, eventPayload: .push(.entryPoint(.welcome)))
-                ]])
-            ],
-            entryPoint: .welcomeGuest, app: app
-        ).throwingFlatMap { try $0.save(app: app) }.wait()
-        
-        try Node.create(
-            systemic: true,
-            name: "Change static node text node",
-            messagesGroup: [ .init(text: "Пришли мне новый текст") ],
-            action: .init(.messageEdit, success: .pop), app: app
-        ).throwingFlatMap { try $0.save(app: app) }.wait()
-        
     }
-}
-
-func mainGroup(_ app: Application) throws -> UUID {
-    try Node.create(
-        name: "Upload photo node",
-        messagesGroup: [
-            .init(text: "Пришли мне прямую ссылку.")
-        ],
-        entryPoint: .uploadPhoto,
-        action: .init(.uploadPhoto), app: app
-    ).throwingFlatMap { try $0.save(app: app) }.wait()
     
-    try Node.create(
-        name: "About node",
-        messagesGroup: [
-            .init(text: "Test message here."),
-            .init(text: "And other message.")
-        ],
-        entryPoint: .about, app: app
-    ).throwingFlatMap { try $0.save(app: app) }.wait()
-    
-    try Node.create(
-        name: "Portfolio node",
-        messagesGroup: [
-            .init(text: "Test message here.")
-        ],
-        entryPoint: .portfolio, app: app
-    ).throwingFlatMap { try $0.save(app: app) }.wait()
-    
-    try orderBuilderGroup(app)
-
-    return try Node.create(
-        name: "Welcome node",
-        messagesGroup: .welcome,
-        entryPoint: .welcome, app: app
-    ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
-}
-
-func orderBuilderGroup(_ app: Application) throws -> UUID {
-    try Node.create(
-        name: "Order types node",
-        messagesGroup: .orderTypes,
-        entryPoint: .orderTypes, app: app
-    ).throwingFlatMap { try $0.save(app: app) }.wait()
-    
-    try Node.create(
-        name: "Order builder stylist node",
-        messagesGroup: .list(.stylists),
-        entryPoint: .orderBuilderStylist, app: app
-    ).throwingFlatMap { try $0.save(app: app) }.wait()
-    
-    try Node.create(
-        name: "Order builder makeuper node",
-        messagesGroup: .list(.makeupers),
-        entryPoint: .orderBuilderMakeuper, app: app
-    ).throwingFlatMap { try $0.save(app: app) }.wait()
-    
-    try Node.create(
-        name: "Order builder studio node",
-        messagesGroup: .list(.studios),
-        entryPoint: .orderBuilderStudio, app: app
-    ).throwingFlatMap { try $0.save(app: app) }.wait()
-    
-    try Node.create(
-        name: "Order builder date node",
-        messagesGroup: .calendar,
-        entryPoint: .orderBuilderDate,
-        action: .init(.handleCalendar), app: app
-    ).throwingFlatMap { try $0.save(app: app) }.wait()
-    
-    try Node.create(
-        name: "Order checkout node",
-        messagesGroup: .orderCheckout,
-        entryPoint: .orderCheckout, action: .init(.applyPromocode), app: app
-    ).throwingFlatMap { try $0.save(app: app) }.wait()
-    
-    return try Node.create(
-        name: "Order builder main node",
-        messagesGroup: .orderBuilder,
-        entryPoint: .orderBuilder, app: app
-    ).throwingFlatMap { try $0.saveReturningId(app: app) }.wait()
+    return controllers
 }
 
 func tgSettings(_ app: Application) -> Telegrammer.Bot.Settings {
@@ -352,17 +264,17 @@ private func configureEchoVk(_ app: Application) throws {
     try bot.updater.startWebhooks(serverName: Application.vkServerName).wait()
 }
 
-private func configureEchoBotter(_ app: Application) throws {
-    let bot = try EchoBot(settings: botterSettings(app), app: app)
-    try bot.updater.startWebhooks(vkServerName: Application.vkServerName).wait()
-}
+//private func configureEchoBotter(_ app: Application) throws {
+//    let bot = try EchoBot(settings: botterSettings(app), app: app)
+//    try bot.updater.startWebhooks(vkServerName: Application.vkServerName).wait()
+//}
 
 private func configureEchoTg(_ app: Application) throws {
     let bot = try TgEchoBot(settings: tgSettings(app))
     try bot.updater.startWebhooks().wait()
 }
 
-private func configurePhotoBot(_ app: Application) throws {
-    let bot = try PhotoBot(settings: botterSettings(app), app: app)
+private func configurePhotoBot(_ app: Application, _ controllers: [NodeController]) throws {
+    let bot = try PhotoBot(settings: botterSettings(app), app: app, controllers: controllers)
     try bot.updater.startWebhooks(vkServerName: Application.vkServerName).wait()
 }

@@ -9,19 +9,19 @@ import Botter
 import Vapor
 
 extension Bot {
-    func sendNode<R: Replyable & PlatformObject, Tg, Vk>(to replyable: R, user: User, node: Node, payload: NodePayload?, platform: Platform<Tg, Vk>, app: Application) throws -> Future<[Botter.Message]>? {
-        try node.messagesGroup?.getSendMessages(platform: replyable.platform.any, in: node, app: app, user, payload).throwingFlatMap { messages -> Future<[Botter.Message]> in
-            var future: Future<[Botter.Message]> = app.eventLoopGroup.future([])
+    func sendNode<R: Replyable & PlatformObject>(to replyable: R, node: Node, payload: NodePayload?, platform: AnyPlatform, context: PhotoBotContextProtocol) throws -> Future<[Botter.Message]>? {
+        try node.messagesGroup?.getSendMessages(platform: replyable.platform.any, in: node, payload, context: context).throwingFlatMap { messages -> Future<[Botter.Message]> in
+            var future: Future<[Botter.Message]> = context.app.eventLoopGroup.future([])
             
             for params in messages {
                 params.destination = replyable.destination
                 future = future.flatMap { messages in
                     params.keyboard.buttons.map { buttons in
                         buttons.map(\.payload).map { payload -> Future<String?> in
-                            guard let payload = payload else { return app.eventLoopGroup.future(nil) }
+                            guard let payload = payload else { return context.app.eventLoopGroup.future(nil) }
                             if payload.count > 64 {
                                 return EventPayloadModel(payload)
-                                    .saveWithId(on: app.db)
+                                    .saveWithId(on: context.app.db)
                                     .flatMapThrowing { id in
                                         switch platform {
                                         case .tg: // tg payload is just string like "blahblah"
@@ -31,10 +31,10 @@ extension Bot {
                                         }
                                     }
                             } else {
-                                return app.eventLoopGroup.future(payload)
+                                return context.app.eventLoopGroup.future(payload)
                             }
-                        }.flatten(on: app.eventLoopGroup.next())
-                    }.flatten(on: app.eventLoopGroup.next()).throwingFlatMap { buttonPayloads in
+                        }.flatten(on: context.app.eventLoopGroup.next())
+                    }.flatten(on: context.app.eventLoopGroup.next()).throwingFlatMap { buttonPayloads in
                         for (index, list) in buttonPayloads.enumerated() {
                             for (innerIndex, payload) in list.enumerated() {
                                 if let payload = payload {
@@ -44,8 +44,9 @@ extension Bot {
                         }
                         
                         return try self.sendMessage(
-                            params: params.params!,
-                            platform: platform.any, app: app
+                            params.params!,
+                            platform: platform,
+                            context: context
                         ).map { messages + $0 }
                     }
                 }

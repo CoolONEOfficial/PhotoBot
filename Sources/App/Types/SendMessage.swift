@@ -9,7 +9,7 @@ import Foundation
 import Botter
 import Vapor
 
-class SendMessage: Codable {
+public class SendMessage: Codable {
     
     public var destination: SendDestination?
 
