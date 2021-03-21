@@ -155,6 +155,8 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
     let controllers: [NodeController] = [
         MainNodeController(),
         AboutNodeController(),
+        ReviewsNodeController(),
+        OrdersNodeController(),
         PortfolioNodeController(),
         UploadPhotoNodeController(),
         OrderCheckoutNodeController(),

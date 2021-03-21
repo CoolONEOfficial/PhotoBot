@@ -23,19 +23,21 @@ public enum EntryPoint: String, Codable {
     case orderCheckout
     case about
     case portfolio
+    case orders
     case uploadPhoto
+    case reviews
 }
  
 protocol NodeProtocol: Twinable where TwinType: NodeProtocol {
     var id: UUID? { get set }
-    var systemic: Bool? { get set }
+    var systemic: Bool { get set }
     var name: String? { get set }
     var messagesGroup: SendMessageGroup! { get set }
     var entryPoint: EntryPoint? { get set }
     var action: NodeAction? { get set }
     
     init()
-    static func create(id: UUID?, systemic: Bool?, name: String?, messagesGroup: SendMessageGroup, entryPoint: EntryPoint?, action: NodeAction?, app: Application) -> Future<Self>
+    static func create(id: UUID?, systemic: Bool, name: String?, messagesGroup: SendMessageGroup, entryPoint: EntryPoint?, action: NodeAction?, app: Application) -> Future<Self>
 }
 
 enum NodeCreateError: Error {
@@ -48,7 +50,7 @@ extension NodeProtocol {
         return Self.create(id: other.id, systemic: other.systemic, name: other.name, messagesGroup: messagesGroup, entryPoint: other.entryPoint, action: other.action, app: app)
     }
     
-    static func create(id: UUID? = nil, systemic: Bool? = false, name: String?, messagesGroup: SendMessageGroup, entryPoint: EntryPoint? = nil, action: NodeAction? = nil, app: Application) -> Future<Self> {
+    static func create(id: UUID? = nil, systemic: Bool = false, name: String?, messagesGroup: SendMessageGroup, entryPoint: EntryPoint? = nil, action: NodeAction? = nil, app: Application) -> Future<Self> {
         let instance = Self.init()
         instance.id = id
         instance.systemic = systemic

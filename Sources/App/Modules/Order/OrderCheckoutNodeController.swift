@@ -62,7 +62,7 @@ class OrderCheckoutNodeController: NodeController {
         let platform = event.platform.any
         
         return try OrderModel.create(userId: userId, checkoutState: checkoutState, app: app).flatMap { order in
-            MessageFormatter.shared.format("Заказ успешно создан, в ближайшее время с Вами свяжется @" + .replacing(by: .admin), platform: platform, user: user, app: app)
+            MessageFormatter.shared.format("Заказ успешно создан, в ближайшее время с Вами свяжется @" + .replacing(by: .admin), platform: platform, context: context)
             .throwingFlatMap { message in
                 try event.replyMessage(.init(text: message), context: context)
             }.map { ($0, order) }
@@ -81,7 +81,7 @@ class OrderCheckoutNodeController: NodeController {
                                 .replacing(by: .orderBlock),
                                 .replacing(by: .priceBlock),
                             ].joined(separator: "\n"),
-                            platform: platform, user: user, app: app
+                            platform: platform, context: context
                         )
                     }
 

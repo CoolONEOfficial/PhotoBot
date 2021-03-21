@@ -17,7 +17,7 @@ public final class Node: NodeProtocol {
     
     var id: UUID?
     
-    var systemic: Bool?
+    var systemic: Bool = false
     
     @Validated(.greater(1))
     var name: String?

@@ -72,6 +72,9 @@ final class OrderModel: Model, OrderProtocol {
     
     @Field(key: "price")
     var price: Int
+
+    @Field(key: "promotions")
+    var promotions: [UUID]
     
     required init() { }
     

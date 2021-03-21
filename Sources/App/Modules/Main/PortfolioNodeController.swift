@@ -20,7 +20,11 @@ class PortfolioNodeController: NodeController {
         )
     }
     
+    
     func getListSendMessages(platform: AnyPlatform, in node: Node, _ payload: NodePayload?, context: PhotoBotContextProtocol, listType: MessageListType, indexRange: Range<Int>) throws -> EventLoopFuture<[SendMessage]>? {
-        context.app.eventLoopGroup.future([])
+        guard listType == .portfolio else { return nil }
+        let (app, user) = (context.app, context.user)
+        
+        return context.app.eventLoopGroup.future([])
     }
 }

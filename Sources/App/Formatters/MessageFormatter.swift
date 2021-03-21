@@ -92,7 +92,7 @@ extension ReplacingKey {
                         
                             var dict = dict
                             
-                            var promoBlockElements = [String]()//promotions.isEmpty ? [] : ["Примененные акции:", promotions.compactMap { $0.name }.joined(separator: ", ")]
+                            var promoBlockElements = [String]()
                             if !promotions.contains(where: { $0.promocode != nil }) {
                                 promoBlockElements.append("Если у тебя есть промокод пришли его в ответ на это сообщение и он будет применен")
                             }
@@ -237,7 +237,9 @@ class MessageFormatter {
     
     private init() {}
     
-    func format(_ string: String, platform: AnyPlatform, user: User, app: Application) -> Future<String> {
+    func format(_ string: String, platform: AnyPlatform?, context: PhotoBotContextProtocol) -> Future<String> {
+        let platform = platform ?? context.platform
+        let (_, user) = (context.app, context.user)
         let userPlatformId = user.platformIds.firstValue(platform: platform)
         
         let initialDict: ReplacingDict = [
@@ -248,10 +250,12 @@ class MessageFormatter {
             .username: [userPlatformId?.username ?? ReplacingKey.nope],
         ]
         
-        return format(string, dict: initialDict, platform: platform, user: user, app: app)
+        return format(string, dict: initialDict, platform: platform, context: context)
     }
     
-    private func format(_ string: String, dict: ReplacingDict, platform: AnyPlatform, user: User, app: Application) -> Future<String> {
+    private func format(_ string: String, dict: ReplacingDict, platform: AnyPlatform, context: PhotoBotContextProtocol) -> Future<String> {
+        let (app, user) = (context.app, context.user)
+        
         if let start = string.firstIndex(of: "|"),
            let end = string.secondIndex(of: "|") {
             let range = start...end
@@ -270,7 +274,7 @@ class MessageFormatter {
                     }
                 }
             
-                return future.flatMap { self.format($0.1, dict: $0.0, platform: platform, user: user, app: app) }
+                return future.flatMap { self.format($0.1, dict: $0.0, platform: platform, context: context) }
             }
         }
         return app.eventLoopGroup.future(string)

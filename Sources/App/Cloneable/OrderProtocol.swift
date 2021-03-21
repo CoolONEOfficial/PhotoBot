@@ -40,9 +40,10 @@ protocol OrderProtocol: Twinable where TwinType: OrderProtocol {
     var studioId: UUID? { get set }
     var interval: DateInterval { get set }
     var price: Int { get set }
+    var promotions: [UUID] { get set }
     
     init()
-    static func create(id: UUID?, userId: UUID, type: OrderType, stylistId: UUID?, makeuperId: UUID?, studioId: UUID?, interval: DateInterval, price: Int, app: Application) -> Future<Self>
+    static func create(id: UUID?, userId: UUID, type: OrderType, stylistId: UUID?, makeuperId: UUID?, studioId: UUID?, interval: DateInterval, price: Int, promotions: [UUID], app: Application) -> Future<Self>
 }
 
 enum OrderCreateError: Error {
@@ -50,11 +51,15 @@ enum OrderCreateError: Error {
 }
 
 extension OrderProtocol {
-    static func create(other: TwinType, app: Application) throws -> Future<Self> {
-        Self.create(id: other.id, userId: other.userId, type: other.type, stylistId: other.stylistId, makeuperId: other.makeuperId, studioId: other.studioId, interval: other.interval, price: other.price, app: app)
+    var state: CheckoutState {
+        .init(order: .init(type: type, stylistId: stylistId, makeuperId: makeuperId, studioId: studioId, date: interval.start, duration: interval.duration, price: price), promotions: promotions)
     }
     
-    static func create(id: UUID? = nil, userId: UUID, type: OrderType, stylistId: UUID?, makeuperId: UUID?, studioId: UUID?, interval: DateInterval, price: Int = 0, app: Application) -> Future<Self> {
+    static func create(other: TwinType, app: Application) throws -> Future<Self> {
+        Self.create(id: other.id, userId: other.userId, type: other.type, stylistId: other.stylistId, makeuperId: other.makeuperId, studioId: other.studioId, interval: other.interval, price: other.price, promotions: other.promotions, app: app)
+    }
+    
+    static func create(id: UUID? = nil, userId: UUID, type: OrderType, stylistId: UUID?, makeuperId: UUID?, studioId: UUID?, interval: DateInterval, price: Int = 0, promotions: [UUID], app: Application) -> Future<Self> {
         let instance = Self.init()
         instance.id = id
         instance.userId = userId
@@ -64,6 +69,7 @@ extension OrderProtocol {
         instance.studioId = studioId
         instance.interval = interval
         instance.price = price
+        instance.promotions = promotions
         return instance.saveIfNeeded(app: app)
     }
     
@@ -80,6 +86,7 @@ extension OrderProtocol {
             studioId: order.studioId,
             interval: .init(start: date, duration: duration),
             price: order.price,
+            promotions: checkoutState.promotions,
             app: app
         )
     }

@@ -18,7 +18,7 @@ final class NodeModel: Model, NodeProtocol {
     var id: UUID?
     
     @Field(key: "systemic")
-    var systemic: Bool?
+    var systemic: Bool
     
     @Field(key: "name")
     var name: String?

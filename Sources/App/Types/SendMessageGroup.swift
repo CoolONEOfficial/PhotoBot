@@ -35,6 +35,8 @@ public enum MessageListType: String, Codable {
     case stylists
     case makeupers
     case studios
+    case reviews
+    case orders
 }
 
 public enum SendMessageGroup {
@@ -61,7 +63,7 @@ public enum SendMessageGroup {
         switch self {
         case var .array(arr):
             
-            if !(node.systemic ?? false), user.isValid, user.isAdmin {
+            if !node.systemic, user.isValid, user.isAdmin {
                 for (index, params) in arr.enumerated() {
                     params.keyboard.buttons.insert([
                         try! Button(
@@ -69,11 +71,6 @@ public enum SendMessageGroup {
                             action: .callback,
                             eventPayload: .editText(messageId: index)
                         )
-//                        try! Button( TODO: node creation
-//                            text: "Add node",
-//                            action: .callback,
-//                            eventPayload: .createNode(type: .node)
-//                        )
                     ], at: 0)
                     arr[index] = params
                 }
@@ -95,11 +92,11 @@ public enum SendMessageGroup {
             let indexRange = startIndex..<endIndex
             
             for controller in context.controllers {
-                result = try controller.getListSendMessages(platform: platform, in: node, payload, context: context, listType: type, indexRange: indexRange)?
-                    .map { Self.addPageButtons($0.0, indexRange, $0.1) }
                 if result != nil {
                     break
                 }
+                result = try controller.getListSendMessages(platform: platform, in: node, payload, context: context, listType: type, indexRange: indexRange)?
+                    .map { Self.addPageButtons($0.0, indexRange, $0.1) }
             }
             
         case .orderBuilder:
@@ -149,17 +146,14 @@ public enum SendMessageGroup {
                     try .init(text: "✅ Отправить", action: .callback, eventPayload: .createOrder)
                 ]]
             ) ])
-            
-//        case .calendar:
-//            result = try calendarMessages(app: app, platform: platform, payload)
-            
+
         default: break
         }
         
         guard let resultFuture = result else { throw SendMessageGroupError.messagesNotFound }
 
         return resultFuture.map { Self.addNavigationButtons($0, user) }
-            .flatMapEach(on: app.eventLoopGroup.next()) { Self.formatMessage(platform: platform, $0, user, app: app) }
+            .flatMapEach(on: app.eventLoopGroup.next()) { Self.formatMessage($0, platform: platform, context: context) }
     }
 
     static private func addPageButtons(_ messages: [SendMessage], _ indexRange: Range<Int>, _ count: Int) -> [SendMessage] {
@@ -187,14 +181,14 @@ public enum SendMessageGroup {
         return messages
     }
     
-    static private func formatMessage(platform: AnyPlatform, _ message: SendMessage, _ user: User, app: Application) -> Future<SendMessage> {
+    static private func formatMessage(_ message: SendMessage, platform: AnyPlatform? = nil, context: PhotoBotContextProtocol) -> Future<SendMessage> {
         if let text = message.text {
-            return MessageFormatter.shared.format(text, platform: platform, user: user, app: app).map { text in
+            return MessageFormatter.shared.format(text, platform: platform, context: context).map { text in
                 message.text = text
                 return message
             }
         } else {
-            return app.eventLoopGroup.future(message)
+            return context.app.eventLoopGroup.future(message)
         }
     }
 

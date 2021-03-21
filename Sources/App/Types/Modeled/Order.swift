@@ -11,7 +11,7 @@ import Botter
 import Vapor
 import Fluent
 
-final class Order: OrderProtocol {
+public final class Order: OrderProtocol {
     
     typealias TwinType = OrderModel
     
@@ -23,6 +23,7 @@ final class Order: OrderProtocol {
     var studioId: UUID?
     var interval: DateInterval = .init()
     var price: Int = 0
+    var promotions: [UUID] = []
     
     required init() {}
     

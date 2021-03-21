@@ -19,6 +19,7 @@ struct CreateOrders: Migration {
             .field("price", .int, .required)
             .field("start_date", .datetime, .required)
             .field("end_date", .datetime, .required)
+            .field("promotions", .array(of: .uuid), .required)
             .create()
     }
     

@@ -17,7 +17,7 @@ public protocol PhotoBotContextProtocol: BotContextProtocol {
 public struct PhotoBotContext: PhotoBotContextProtocol {
     public let app: Application
     public let bot: Botter.Bot
-    public let user: User
+    public var user: User
     public let platform: AnyPlatform
     public let controllers: [NodeController]
 }
