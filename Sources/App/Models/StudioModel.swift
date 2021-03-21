@@ -37,7 +37,7 @@ final class StudioModel: Model, StudioProtocol {
     var photosSiblings: AttachableFileSiblings<StudioModel, StudioPhoto>? { $_photos }
     
     @Field(key: "price")
-    var price: Int
+    var price: Float
     
     @Field(key: "coords")
     var coords: Coords?

@@ -30,20 +30,24 @@ extension OrderType {
     }
 }
 
-protocol OrderProtocol: Twinable where TwinType: OrderProtocol {
-    
+protocol OrderProtocol: PromotionsProtocol, Twinable where TwinType: OrderProtocol {
+
+    associatedtype ImplementingModel = OrderModel
+    associatedtype SiblingModel = OrderPromotion
+
     var id: UUID? { get set }
     var userId: UUID! { get set }
     var type: OrderType! { get set }
+    var isCancelled: Bool { get set }
     var stylistId: UUID? { get set }
     var makeuperId: UUID? { get set }
     var studioId: UUID? { get set }
     var interval: DateInterval { get set }
-    var price: Int { get set }
-    var promotions: [UUID] { get set }
+    var price: Float { get set }
+    var promotions: [PromotionModel] { get set }
     
     init()
-    static func create(id: UUID?, userId: UUID, type: OrderType, stylistId: UUID?, makeuperId: UUID?, studioId: UUID?, interval: DateInterval, price: Int, promotions: [UUID], app: Application) -> Future<Self>
+    static func create(id: UUID?, userId: UUID, type: OrderType, stylistId: UUID?, makeuperId: UUID?, studioId: UUID?, interval: DateInterval, price: Float, promotions: [PromotionModel], isCancelled: Bool, app: Application) -> Future<Self>
 }
 
 enum OrderCreateError: Error {
@@ -51,15 +55,19 @@ enum OrderCreateError: Error {
 }
 
 extension OrderProtocol {
-    var state: CheckoutState {
-        .init(order: .init(type: type, stylistId: stylistId, makeuperId: makeuperId, studioId: studioId, date: interval.start, duration: interval.duration, price: price), promotions: promotions)
+    func state(app: Application) -> Future<CheckoutState> {
+        getPromotions(app: app).map { [self] promotions in
+            CheckoutState(order: .init(type: type, stylistId: stylistId, makeuperId: makeuperId, studioId: studioId, date: interval.start, duration: interval.duration, hourPrice: price, isCancelled: isCancelled, id: id), promotions: promotions)
+        }
     }
     
     static func create(other: TwinType, app: Application) throws -> Future<Self> {
-        Self.create(id: other.id, userId: other.userId, type: other.type, stylistId: other.stylistId, makeuperId: other.makeuperId, studioId: other.studioId, interval: other.interval, price: other.price, promotions: other.promotions, app: app)
+        other.getPromotions(app: app).flatMap { promotions in
+            Self.create(id: other.id, userId: other.userId, type: other.type, stylistId: other.stylistId, makeuperId: other.makeuperId, studioId: other.studioId, interval: other.interval, price: other.price, promotions: promotions, isCancelled: other.isCancelled, app: app)
+        }
     }
     
-    static func create(id: UUID? = nil, userId: UUID, type: OrderType, stylistId: UUID?, makeuperId: UUID?, studioId: UUID?, interval: DateInterval, price: Int = 0, promotions: [UUID], app: Application) -> Future<Self> {
+    static func create(id: UUID? = nil, userId: UUID, type: OrderType, stylistId: UUID?, makeuperId: UUID?, studioId: UUID?, interval: DateInterval, price: Float = 0, promotions: [PromotionModel], isCancelled: Bool = false, app: Application) -> Future<Self> {
         let instance = Self.init()
         instance.id = id
         instance.userId = userId
@@ -69,8 +77,10 @@ extension OrderProtocol {
         instance.studioId = studioId
         instance.interval = interval
         instance.price = price
-        instance.promotions = promotions
-        return instance.saveIfNeeded(app: app)
+        instance.isCancelled = isCancelled
+        return instance.saveIfNeeded(app: app).throwingFlatMap {
+            try $0.attachPromotions(promotions, app: app).transform(to: instance)
+        }
     }
     
     static func create(id: UUID? = nil, userId: UUID, checkoutState: CheckoutState, app: Application) throws -> Future<Self> {
@@ -85,8 +95,9 @@ extension OrderProtocol {
             makeuperId: order.makeuperId,
             studioId: order.studioId,
             interval: .init(start: date, duration: duration),
-            price: order.price,
+            price: order.hourPrice,
             promotions: checkoutState.promotions,
+            isCancelled: false,
             app: app
         )
     }

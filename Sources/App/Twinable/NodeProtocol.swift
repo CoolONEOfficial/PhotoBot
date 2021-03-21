@@ -26,6 +26,7 @@ public enum EntryPoint: String, Codable {
     case orders
     case uploadPhoto
     case reviews
+    case messageEdit
 }
  
 protocol NodeProtocol: Twinable where TwinType: NodeProtocol {

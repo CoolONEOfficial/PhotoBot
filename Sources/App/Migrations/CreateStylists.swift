@@ -13,7 +13,7 @@ struct CreateStylists: Migration {
             .id()
             .field("name", .string, .required)
             .field("platform_ids", .array(of: .json))
-            .field("price", .int, .required)
+            .field("price", .float, .required)
             .create()
     }
 

@@ -39,3 +39,15 @@ extension Twinable where Self: Model { // model types
         return self.save(on: app.db).transform(to: self)
     }
 }
+
+extension Twinable where TwinType.TwinType == Self {
+    func toTwin(app: Application) throws -> Future<TwinType> {
+        try TwinType.create(other: self, app: app)
+    }
+}
+
+extension Future where Value: Twinable, Value.TwinType.TwinType == Value {
+    func toTwin(app: Application) -> Future<Value.TwinType> {
+        throwingFlatMap { try $0.toTwin(app: app) }
+    }
+}

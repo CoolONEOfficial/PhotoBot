@@ -24,25 +24,27 @@ class OrderCheckoutNodeController: NodeController {
         
         guard case var .checkout(checkoutState) = user.nodePayload else { throw HandleActionError.nodePayloadInvalid }
         
-        return Promotion.find(promocode: text, app: app).flatMap { [self] promotion in
+        return Promotion.find(promocode: text, app: app).flatMap { promotion in
             guard let promotion = promotion else { return app.eventLoopGroup.future(.failure(.promoNotFound)) }
             
             return promotion.condition.check(state: checkoutState.order, context: context).flatMap { check in
                 guard check else { return app.eventLoopGroup.future(.failure(.promoCondition)) }
 
-                return checkoutState.promotions.map { Promotion.find($0, app: app) }.flatten(on: app.eventLoopGroup.next()).flatMap { promotions in
+                return checkoutState.promotions.map { Promotion.find($0.id, app: app) }.flatten(on: app.eventLoopGroup.next()).throwingFlatMap { promotions in
                     
                     for promo in promotions.compactMap({ $0 }) where !promo.autoApply {
                         if let promoId = promo.id {
-                            if let index = checkoutState.promotions.firstIndex(of: promoId) {
+                            if let index = checkoutState.promotions.compactMap(\.id).firstIndex(of: promoId) {
                                 checkoutState.promotions.remove(at: index)
                             }
                         }
                     }
                     
-                    checkoutState.promotions.append(promotion.id!)
-                    
-                    return user.push(.entryPoint(.orderCheckout), payload: .checkout(checkoutState), to: message, context: context).map { _ in .success }
+                    return try promotion.toTwin(app: app).flatMap { promotionModel in
+                        checkoutState.promotions.append(promotionModel)
+                        
+                        return user.push(.entryPoint(.orderCheckout), payload: .checkout(checkoutState), to: message, context: context).map { _ in .success }
+                    }
                 }
                 
                 
@@ -66,48 +68,51 @@ class OrderCheckoutNodeController: NodeController {
             .throwingFlatMap { message in
                 try event.replyMessage(.init(text: message), context: context)
             }.map { ($0, order) }
-        }.throwingFlatMap { (messages, order) in
-            try User.find(
-                destination: .username(Application.adminNickname(for: platform)),
-                platform: platform,
-                app: app
-            ).flatMap { user in
-                if let user = user, let id = user.platformIds.firstValue(platform: platform)?.id {
+        }.flatMap { (messages, order) in
+            order.state(app: app).throwingFlatMap { orderState in
+                context.user.nodePayload = .checkout(orderState)
+                return try User.find(
+                    destination: .username(Application.adminNickname(for: platform)),
+                    platform: platform,
+                    app: app
+                ).flatMap { user in
+                    if let user = user, let id = user.platformIds.firstValue(platform: platform)?.id {
 
-                    func getMessage(_ platform: AnyPlatform) -> Future<String> {
-                        MessageFormatter.shared.format(
-                            [
-                                "Новый заказ от @" + .replacing(by: .username) + " (" + .replacing(by: .userId) + "):",
-                                .replacing(by: .orderBlock),
-                                .replacing(by: .priceBlock),
-                            ].joined(separator: "\n"),
-                            platform: platform, context: context
-                        )
-                    }
-
-                    return [
-                        getMessage(platform).throwingFlatMap { text in
-                            try bot.sendMessage(.init(
-                                destination: .init(platform: platform, id: id),
-                                text: text
-                            ), platform: platform, context: context)
-                        },
-                        order.fetchWatchers(app: app).flatMap {
-                            $0.map { watcher in
-                                let platformIds = watcher.platformIds
-                                
-                                let platformId = platformIds.first(for: platform) ?? platformIds.first!
-                                return getMessage(platformId.any).throwingFlatMap { text in
-                                    try bot.sendMessage(.init(
-                                        destination: platformId.sendDestination,
-                                        text: text
-                                    ), platform: platformId.any, context: context)
-                                }
-                            }.flatten(on: app.eventLoopGroup.next()).map { messages + $0.reduce([], +) }
+                        func getMessage(_ platform: AnyPlatform) -> Future<String> {
+                            MessageFormatter.shared.format(
+                                [
+                                    "Новый заказ от @" + .replacing(by: .username) + " (" + .replacing(by: .orderId) + "):",
+                                    .replacing(by: .orderBlock),
+                                    .replacing(by: .priceBlock),
+                                ].joined(separator: "\n"),
+                                platform: platform, context: context
+                            )
                         }
-                    ].flatten(on: app.eventLoopGroup.next()).map { $0.reduce([], +) }
-                } else {
-                    return app.eventLoopGroup.future(messages)
+
+                        return [
+                            getMessage(platform).throwingFlatMap { text in
+                                try bot.sendMessage(.init(
+                                    destination: .init(platform: platform, id: id),
+                                    text: text
+                                ), platform: platform, context: context)
+                            },
+                            order.fetchWatchers(app: app).flatMap {
+                                $0.map { watcher in
+                                    let platformIds = watcher.platformIds
+                                    
+                                    let platformId = platformIds.first(for: platform) ?? platformIds.first!
+                                    return getMessage(platformId.any).throwingFlatMap { text in
+                                        try bot.sendMessage(.init(
+                                            destination: platformId.sendDestination,
+                                            text: text
+                                        ), platform: platformId.any, context: context)
+                                    }
+                                }.flatten(on: app.eventLoopGroup.next()).map { messages + $0.reduce([], +) }
+                            }
+                        ].flatten(on: app.eventLoopGroup.next()).map { $0.reduce([], +) }
+                    } else {
+                        return app.eventLoopGroup.future(messages)
+                    }
                 }
             }
         }.throwingFlatMap { messages in

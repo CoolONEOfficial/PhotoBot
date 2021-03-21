@@ -17,6 +17,7 @@ public enum EventPayload {
     case selectDuration(duration: TimeInterval)
     case createOrder
     case pushCheckout(state: OrderState)
+    case cancelOrder(id: UUID)
     
     // MARK: Navigation
     
@@ -37,6 +38,7 @@ extension EventPayload: Codable {
         case selectTime = "selTime"
         case selectDuration = "selDuration"
         case createOrder
+        case cancelOrderId
         case back
         case push
         case pushToCheckoutState
@@ -84,6 +86,11 @@ extension EventPayload: Codable {
         }
         if container.allKeys.contains(.createOrder), try container.decodeNil(forKey: .createOrder) == false {
             self = .createOrder
+            return
+        }
+        if container.allKeys.contains(.cancelOrderId), try container.decodeNil(forKey: .cancelOrderId) == false {
+            let id = try container.decode(UUID.self, forKey: .cancelOrderId)
+            self = .cancelOrder(id: id)
             return
         }
         if container.allKeys.contains(.back), try container.decodeNil(forKey: .back) == false {
@@ -134,6 +141,8 @@ extension EventPayload: Codable {
             try container.encode(duration, forKey: .selectDuration)
         case .createOrder:
             try container.encode(true, forKey: .createOrder)
+        case let .cancelOrder(id):
+            try container.encode(id, forKey: .cancelOrderId)
         case .back:
             _ = container.nestedContainer(keyedBy: CodingKeys.self, forKey: .back)
         case let .push(associatedValue0, associatedValue1, associatedValue2):
@@ -155,7 +164,6 @@ extension EventPayload: Codable {
 public enum PushTarget {
     case id(UUID)
     case entryPoint(EntryPoint)
-    case action(NodeActionType)
 }
 
 enum PushTargetError: Error {
@@ -170,8 +178,6 @@ extension PushTarget: Codable {
             self = .id(id)
         } else if let entryPoint = try? container.decode(EntryPoint.self) {
             self = .entryPoint(entryPoint)
-        } else if let action = try? container.decode(NodeActionType.self) {
-            self = .action(action)
         } else {
             throw PushTargetError.decodeFailed
         }
@@ -186,9 +192,6 @@ extension PushTarget: Codable {
         
         case let .id(id):
             try container.encode(id)
-        
-        case let .action(action):
-            try container.encode(action)
         }
     }
 }

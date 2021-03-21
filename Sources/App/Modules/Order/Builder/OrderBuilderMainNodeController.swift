@@ -30,7 +30,7 @@ class OrderBuilderMainNodeController: NodeController {
             }
             .flatten(on: app.eventLoopGroup.next())
             .flatMap { promotions -> Future<[Message]> in
-                let promotions = promotions.filter(\.check).compactMap(\.promo.id)
+                let promotions = promotions.filter(\.check).map(\.promo)
                 return user.push(.entryPoint(.orderCheckout), payload: .checkout(.init(order: state, promotions: promotions)), to: event, saveMove: true, context: context)
             }
         }

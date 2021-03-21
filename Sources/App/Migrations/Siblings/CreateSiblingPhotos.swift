@@ -8,15 +8,15 @@
 import Fluent
 import Vapor
 
-protocol CreatePhotos: Migration {
+protocol CreateSiblingPhotos: Migration {
     associatedtype TwinType: PhotosProtocol & ModeledType
     
     var name: String { get }
 }
 
-extension CreatePhotos {
+extension CreateSiblingPhotos {
     func prepare(on database: Database) -> EventLoopFuture<Void> {
-        database.schema(TwinType.PhotoModel.schema)
+        database.schema(TwinType.SiblingModel.schema)
             .id()
             .field(.init(stringLiteral: "\(name)_id"), .uuid, .required, .references(TwinType.TwinType.schema, "id"))
             .field("photo_id", .uuid, .required, .references(PlatformFileModel.schema, "id"))
@@ -25,6 +25,6 @@ extension CreatePhotos {
     }
 
     func revert(on database: Database) -> EventLoopFuture<Void> {
-        database.schema(TwinType.PhotoModel.schema).delete()
+        database.schema(TwinType.SiblingModel.schema).delete()
     }
 }

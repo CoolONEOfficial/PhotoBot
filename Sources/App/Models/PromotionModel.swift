@@ -8,6 +8,8 @@
 import Foundation
 import Fluent
 
+typealias AttachablePromotionSiblings<From: Model, Through: Model> = SiblingsProperty<From, PromotionModel, Through>
+
 final class PromotionModel: Model, PromotionProtocol {
     typealias TwinType = Promotion
 
@@ -33,6 +35,9 @@ final class PromotionModel: Model, PromotionProtocol {
     
     @Field(key: "condition")
     var condition: PromotionCondition!
+    
+    @Siblings(through: OrderPromotion.self, from: \.$promotion, to: \.$order)
+    var orders: [OrderModel]
 
     required init() { }
 }

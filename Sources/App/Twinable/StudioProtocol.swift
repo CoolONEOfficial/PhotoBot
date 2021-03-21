@@ -18,7 +18,7 @@ protocol StudioProtocol: PhotosProtocol, Priceable, Twinable where TwinType: Stu
     var coords: Coords? { get set }
 
     init()
-    static func create(id: UUID?, name: String?, description: String?, address: String?, coords: Coords?, photos: [PlatformFileModel]?, price: Int, app: Application) -> Future<Self>
+    static func create(id: UUID?, name: String?, description: String?, address: String?, coords: Coords?, photos: [PlatformFileModel]?, price: Float, app: Application) -> Future<Self>
 }
 
 extension StudioProtocol {
@@ -30,7 +30,7 @@ extension StudioProtocol {
         }
     }
     
-    static func create(id: UUID? = nil, name: String?, description: String?, address: String?, coords: Coords?, photos: [PlatformFileModel]?, price: Int, app: Application) -> Future<Self> {
+    static func create(id: UUID? = nil, name: String?, description: String?, address: String?, coords: Coords?, photos: [PlatformFileModel]?, price: Float, app: Application) -> Future<Self> {
         var instance = Self.init()
         instance.id = id
         instance.name = name
@@ -39,7 +39,7 @@ extension StudioProtocol {
         instance.coords = coords
         instance.price = price
         return instance.saveIfNeeded(app: app).throwingFlatMap {
-            try $0.attachPhotos(photos: photos, app: app).transform(to: instance)
+            try $0.attachPhotos(photos, app: app).transform(to: instance)
         }
     }
 }

@@ -12,11 +12,11 @@ import Botter
 
 protocol PhotosProtocol: class {
     
+    associatedtype ImplementingModel: Model & PhotosProtocol
     associatedtype SiblingModel: Model
-    associatedtype PhotoModel: Model
     
     var photos: [PlatformFileModel] { get set }
-    var photosSiblings: AttachableFileSiblings<SiblingModel, PhotoModel>? { get }
+    var photosSiblings: AttachableFileSiblings<ImplementingModel, SiblingModel>? { get }
 }
 
 extension PhotosProtocol {
@@ -24,9 +24,9 @@ extension PhotosProtocol {
         photosSiblings?.get(on: app.db) ?? app.eventLoopGroup.future(photos)
     }
 
-    var photosSiblings: AttachableFileSiblings<SiblingModel, PhotoModel>? { nil }
+    var photosSiblings: AttachableFileSiblings<ImplementingModel, SiblingModel>? { nil }
     
-    func attachPhotos(photos: [PlatformFileModel]?, app: Application) throws -> Future<Void> {
+    func attachPhotos(_ photos: [PlatformFileModel]?, app: Application) throws -> Future<Void> {
         guard let photos = photos else { return app.eventLoopGroup.future() }
 
         if let _ = self as? AnyModel {

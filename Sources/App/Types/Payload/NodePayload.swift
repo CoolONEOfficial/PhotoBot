@@ -16,10 +16,26 @@ public struct OrderState: Codable {
     var studioId: UUID?
     var date: Date?
     var duration: TimeInterval?
-    var price: Int = 0
+    var hourPrice: Float = 0
+    var isCancelled = false
+    var id: UUID?
+    
+    var price: Float {
+        let hours: Float
+        if let duration = duration {
+            hours = Float(duration / 60 / 60)
+        } else {
+            hours = 1
+        }
+        return hours * hourPrice
+    }
 }
 
 public extension OrderState {
+    var watchers: [UUID] {
+        [makeuperId, stylistId].compactMap { $0 }
+    }
+    
     var isValid: Bool {
         let requiredParams: [Any?] = [date, studioId, duration]
 //        switch type {
@@ -45,7 +61,7 @@ extension OrderState {
                 studioId: studio?.id ?? state.studioId,
                 date: date ?? state.date,
                 duration: duration ?? state.duration,
-                price: state.price + appendingPrice
+                hourPrice: state.hourPrice + appendingPrice
             )
         } else {
             self.init(
@@ -55,7 +71,7 @@ extension OrderState {
                 studioId: studio?.id,
                 date: date,
                 duration: duration,
-                price: appendingPrice
+                hourPrice: appendingPrice
             )
         }
     }
@@ -63,7 +79,7 @@ extension OrderState {
 
 public struct CheckoutState: Codable {
     var order: OrderState
-    var promotions: [UUID] = []
+    var promotions: [PromotionModel] = []
 }
 
 public enum NodePayload: Codable {

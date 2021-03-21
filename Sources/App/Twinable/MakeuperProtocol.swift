@@ -12,14 +12,14 @@ import Botter
 
 protocol MakeuperProtocol: PhotosProtocol, PlatformIdentifiable, Priceable, Twinable where TwinType: MakeuperProtocol {
 
-    associatedtype SiblingModel = MakeuperModel
-    associatedtype PhotoModel = MakeuperPhoto
+    associatedtype ImplementingModel = MakeuperModel
+    associatedtype SiblingModel = MakeuperPhoto
 
     var id: UUID? { get set }
     var name: String? { get set }
 
     init()
-    static func create(id: UUID?, name: String?, platformIds: [TypedPlatform<UserPlatformId>], photos: [PlatformFileModel]?, price: Int, app: Application) -> Future<Self>
+    static func create(id: UUID?, name: String?, platformIds: [TypedPlatform<UserPlatformId>], photos: [PlatformFileModel]?, price: Float, app: Application) -> Future<Self>
 }
 
 extension MakeuperProtocol {
@@ -29,14 +29,14 @@ extension MakeuperProtocol {
         }
     }
 
-    static func create(id: UUID? = nil, name: String?, platformIds: [TypedPlatform<UserPlatformId>], photos: [PlatformFileModel]?, price: Int, app: Application) -> Future<Self> {
+    static func create(id: UUID? = nil, name: String?, platformIds: [TypedPlatform<UserPlatformId>], photos: [PlatformFileModel]?, price: Float, app: Application) -> Future<Self> {
         var instance = Self.init()
         instance.id = id
         instance.name = name
         instance.platformIds = platformIds
         instance.price = price
         return instance.saveIfNeeded(app: app).throwingFlatMap {
-            try $0.attachPhotos(photos: photos, app: app).transform(to: instance)
+            try $0.attachPhotos(photos, app: app).transform(to: instance)
         }
     }
 }

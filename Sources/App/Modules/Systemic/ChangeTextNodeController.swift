@@ -15,7 +15,9 @@ class ChangeTextNodeController: NodeController {
             systemic: true,
             name: "Change static node text node",
             messagesGroup: [ .init(text: "Пришли мне новый текст") ],
-            action: .init(.messageEdit, success: .pop), app: app
+            entryPoint: .messageEdit,
+            action: .init(.messageEdit, success: .pop),
+            app: app
         )
     }
     
@@ -42,7 +44,7 @@ class ChangeTextNodeController: NodeController {
         let (app, user) = (context.app, context.user)
         
         replyText = "Move"
-        return Node.find(.action(.messageEdit), app: app).throwingFlatMap { node in
+        return Node.find(.entryPoint(.messageEdit), app: app).throwingFlatMap { node in
             try user.push(node, payload: .editText(messageId: messageId), to: event, context: context)
         }
     }

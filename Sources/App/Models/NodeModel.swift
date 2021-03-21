@@ -45,10 +45,6 @@ final class NodeModel: Model, NodeProtocol {
         case let .entryPoint(entryPoint):
             return query(on: database).filter(\.$entryPoint == .enumCase(entryPoint.rawValue)).first()
                 .unwrap(or: PhotoBotError.nodeByEntryPointNotFound(entryPoint))
-        
-        case let .action(action):
-            return query(on: database).filter(.sql(raw: "action->>\'type\'"), .equal, .enumCase(action.rawValue)).first()
-                .unwrap(or: PhotoBotError.nodeByActionNotFound)
         }
     }
 }

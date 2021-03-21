@@ -12,14 +12,14 @@ import Botter
 
 protocol StylistProtocol: PhotosProtocol, PlatformIdentifiable, Priceable, Twinable where TwinType: StylistProtocol {
     
-    associatedtype SiblingModel = StylistModel
-    associatedtype PhotoModel = StylistPhoto
+    associatedtype ImplementingModel = StylistModel
+    associatedtype SiblingModel = StylistPhoto
 
     var id: UUID? { get set }
     var name: String? { get set }
 
     init()
-    static func create(id: UUID?, name: String?, platformIds: [TypedPlatform<UserPlatformId>], photos: [PlatformFileModel]?, price: Int, app: Application) -> Future<Self>
+    static func create(id: UUID?, name: String?, platformIds: [TypedPlatform<UserPlatformId>], photos: [PlatformFileModel]?, price: Float, app: Application) -> Future<Self>
 }
 
 extension StylistProtocol {
@@ -29,14 +29,14 @@ extension StylistProtocol {
         }
     }
     
-    static func create(id: UUID? = nil, name: String?, platformIds: [TypedPlatform<UserPlatformId>], photos: [PlatformFileModel]?, price: Int, app: Application) -> Future<Self> {
+    static func create(id: UUID? = nil, name: String?, platformIds: [TypedPlatform<UserPlatformId>], photos: [PlatformFileModel]?, price: Float, app: Application) -> Future<Self> {
         var instance = Self.init()
         instance.id = id
         instance.name = name
         instance.price = price
         instance.platformIds = platformIds
         return instance.saveIfNeeded(app: app).throwingFlatMap {
-            try $0.attachPhotos(photos: photos, app: app).transform(to: instance)
+            try $0.attachPhotos(photos, app: app).transform(to: instance)
         }
     }
 }

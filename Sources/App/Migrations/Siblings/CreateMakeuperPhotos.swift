@@ -7,7 +7,7 @@
 
 import Fluent
 
-struct CreateMakeuperPhotos: CreatePhotos {
+struct CreateMakeuperPhotos: CreateSiblingPhotos {
     typealias TwinType = Makeuper
     
     var name: String { "makeuper" }

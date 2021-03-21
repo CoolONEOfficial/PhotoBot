@@ -15,9 +15,9 @@ import DateHelper
 
 enum PhotoBotError: Error {
     case nodeByEntryPointNotFound(EntryPoint)
-    case nodeByActionNotFound
     case nodeByIdNotFound
     case destinationNotFound
+    case orderByIdNotFound
 }
 
 public enum HandleActionError: Error, LocalizedError {

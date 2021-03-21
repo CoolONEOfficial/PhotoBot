@@ -8,7 +8,7 @@
 import Foundation
 
 protocol Priceable {
-    var price: Int { get set }
+    var price: Float { get set }
 }
 
 extension Priceable {

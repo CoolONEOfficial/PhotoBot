@@ -49,10 +49,8 @@ extension PlatformFile {
     
 }
 
-typealias AttachableFileSiblings<From: Model, Through: Model> = SiblingsProperty<From, PlatformFileModel, Through>
-
-extension Array where Element == PlatformFileModel {
-    func attach<From: Model, Through: Model>(to: AttachableFileSiblings<From, Through>, app: Application) throws -> Future<Void> {
+extension Array where Element: Model {
+    func attach<From: Model, Through: Model>(to: SiblingsProperty<From, Element, Through>, app: Application) throws -> Future<Void> {
         compactMap { to.attach($0, on: app.db) }.flatten(on: app.eventLoopGroup.next())
     }
 }

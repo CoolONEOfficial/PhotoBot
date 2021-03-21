@@ -10,6 +10,8 @@ import Botter
 import Fluent
 import Vapor
 
+typealias AttachableFileSiblings<From: Model, Through: Model> = SiblingsProperty<From, PlatformFileModel, Through>
+
 final class PlatformFileModel: Model, PlatformFileProtocol {
     static let schema = "platform_files"
     

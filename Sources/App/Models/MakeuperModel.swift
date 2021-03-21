@@ -36,7 +36,7 @@ final class MakeuperModel: Model, MakeuperProtocol {
     }
     
     @Field(key: "price")
-    var price: Int
+    var price: Float
     
     required init() {}
 }

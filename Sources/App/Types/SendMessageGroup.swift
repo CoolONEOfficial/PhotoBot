@@ -130,7 +130,7 @@ public enum SendMessageGroup {
                 text: [
                     "Ваш заказ:",
                     .replacing(by: .orderBlock),
-                    "Сумма: " + .replacing(by: .price) + " ₽"
+                    "Сумма: " + .replacing(by: .price)
                 ].joined(separator: "\n"),
                 keyboard: keyboard
             ) ])

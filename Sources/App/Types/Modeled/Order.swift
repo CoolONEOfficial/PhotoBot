@@ -18,12 +18,13 @@ public final class Order: OrderProtocol {
     var id: UUID?
     var userId: UUID!
     var type: OrderType!
+    var isCancelled: Bool = false
     var stylistId: UUID?
     var makeuperId: UUID?
     var studioId: UUID?
     var interval: DateInterval = .init()
-    var price: Int = 0
-    var promotions: [UUID] = []
+    var price: Float = 0
+    var promotions: [PromotionModel] = []
     
     required init() {}
     

@@ -30,6 +30,9 @@ final class OrderModel: Model, OrderProtocol {
     @Field(key: "type")
     var type: OrderType!
     
+    @Field(key: "is_cancelled")
+    var isCancelled: Bool
+    
     @OptionalParent(key: "stylist_id")
     var stylist: StylistModel?
     
@@ -71,10 +74,17 @@ final class OrderModel: Model, OrderProtocol {
     }
     
     @Field(key: "price")
-    var price: Int
+    var price: Float
 
-    @Field(key: "promotions")
-    var promotions: [UUID]
+    @Siblings(through: OrderPromotion.self, from: \.$order, to: \.$promotion)
+    var _promotions: [PromotionModel]
+
+    var promotions: [PromotionModel] {
+        get { _promotions }
+        set { fatalError("Siblings must be attached manually") }
+    }
+
+    var promotionsSiblings: AttachablePromotionSiblings<OrderModel, OrderPromotion>? { $_promotions }
     
     required init() { }
     

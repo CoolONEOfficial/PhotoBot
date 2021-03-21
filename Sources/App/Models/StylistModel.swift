@@ -30,7 +30,7 @@ final class StylistModel: Model, StylistProtocol {
     var _photos: [PlatformFileModel]
 
     @Field(key: "price")
-    var price: Int
+    var price: Float
 
     var photos: [PlatformFileModel] {
         get { _photos }

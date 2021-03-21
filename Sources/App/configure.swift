@@ -134,7 +134,8 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
         CreateStudios(),
         CreatePromotions(),
         CreateStudioPhotos(),
-        CreateOrders()
+        CreateOrders(),
+        CreateOrderPromotions(),
     ])
 
     if app.environment == .development {

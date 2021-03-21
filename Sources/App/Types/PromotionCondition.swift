@@ -81,7 +81,7 @@ extension PromotionCondition.NumericKey {
         
         switch self {
         case .price:
-            return app.eventLoopGroup.future(Int(state.price))
+            return app.eventLoopGroup.future(Int(state.hourPrice))
         case .peopleCount:
             return app.eventLoopGroup.future(0)
         case .propsCount:

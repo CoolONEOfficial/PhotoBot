@@ -23,6 +23,8 @@ enum ReplacingKey: String {
     case admin
     case orderDate
     case orderType
+    case orderStatus
+    case orderId
 
     case promoBlock
     case priceBlock
@@ -43,10 +45,11 @@ extension ReplacingKey: CaseIterable {
         .admin,
         .orderDate,
         .orderType,
+        .orderStatus,
 
         .promoBlock,
         .priceBlock,
-        .orderBlock
+        .orderBlock,
     ]
 }
 
@@ -81,12 +84,14 @@ extension ReplacingKey {
         case .admin:
             dict[.admin] = [Application.adminNickname(for: platform)]
 
-        case .promoBlock, .priceBlock, .price, .totalPrice, .stylist, .makeuper, .studio, .orderDate, .orderType:
+        case .promoBlock, .priceBlock, .price, .totalPrice,
+             .stylist, .makeuper, .studio, .orderDate, .orderType,
+             .orderStatus, .orderId:
             var future: Future<ReplacingDict> = app.eventLoopGroup.future(dict)
             
             if case let .checkout(state) = user.nodePayload {
                 future = future.flatMap { dict in
-                    state.promotions.map { Promotion.find($0, app: app) }.flatten(on: app.eventLoopGroup.next())
+                    state.promotions.map { Promotion.find($0.id, app: app) }.flatten(on: app.eventLoopGroup.next())
                         .map { $0.compactMap { $0 } }
                         .map { promotions in
                         
@@ -98,8 +103,8 @@ extension ReplacingKey {
                             }
                             dict[.promoBlock] = promoBlockElements
                             
-                            let price = Float(state.order.price)
-                            let priceBlockElements = ["Сумма: " + .replacing(by: .price) + " ₽"]
+                            let price = state.order.price
+                            let priceBlockElements = ["Сумма: " + .replacing(by: .price)]
                                 + promotions.map { promo in
                                     var str = promo.impact.description(for: price)
                                     
@@ -109,9 +114,9 @@ extension ReplacingKey {
                                     
                                     return str
                                 }
-                                + ["Общая стоимость: " + .replacing(by: .totalPrice) + " ₽"]
+                                + ["Общая стоимость: " + .replacing(by: .totalPrice)]
                             dict[.priceBlock] = priceBlockElements
-                            dict[.totalPrice] = [promotions.applying(to: price)]
+                            dict[.totalPrice] = ["\(promotions.applying(to: price)) ₽"]
                             return dict
                         }
                 }
@@ -123,13 +128,15 @@ extension ReplacingKey {
 
         case .orderBlock:
             
+            guard let orderState = orderState else { break }
+            
             var str = [
                 "Тип: " + .replacing(by: .orderType),
                 "Студия: " + .replacing(by: .studio),
                 "Дата: " + .replacing(by: .orderDate),
             ]
             
-            switch orderState?.type {
+            switch orderState.type {
             case .family, .loveStory:
                 str.insert(contentsOf: [
                     "Стилист: " + .replacing(by: .stylist),
@@ -138,6 +145,10 @@ extension ReplacingKey {
                 
             default:
                 break
+            }
+            
+            if user.isAdmin || orderState.watchers.contains(user.id!) {
+                str.insert("Статус: " + .replacing(by: .orderStatus), at: 0)
             }
             
             dict[self] = [str.joined(separator: "\n")]
@@ -192,7 +203,18 @@ extension ReplacingKey {
             dict[.orderType] = [orderType]
         }
         
-        dict[.price] = [state?.price ?? 0]
+        dict[.orderId] = [Self.notSelected]
+        if let orderId = state?.id {
+            dict[.orderId] = [orderId]
+        }
+        
+        dict[.orderStatus] = [Self.notSelected]
+        if let isCancelled = state?.isCancelled {
+            dict[.orderStatus] = [isCancelled ? "Отменен" : "Активен"]
+        }
+
+        let price = state?.price ?? 0
+        dict[.price] = ["\(price) ₽\(state?.duration == nil ? " / ч" : "")"]
 
         return future.map { dict }
     }

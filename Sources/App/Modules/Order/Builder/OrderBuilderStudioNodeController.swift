@@ -55,7 +55,7 @@ class OrderBuilderStudioNodeController: NodeController {
         let (app, user) = (context.app, context.user)
         
         replyText = "Selected"
-        return Node.find(.entryPoint(.orderBuilder), app: app).flatMap { [self] node in
+        return Node.find(.entryPoint(.orderBuilder), app: app).flatMap { node in
             Studio.find(studioId, app: app).throwingFlatMap { studio in
                 try user.push(node, payload: .orderBuilder(.init(with: user.history.last?.nodePayload, studio: studio)), to: event, saveMove: false, context: context)
             }
