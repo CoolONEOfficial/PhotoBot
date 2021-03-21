@@ -59,12 +59,13 @@ enum UserNavigationError: Error {
 
 extension User {
 
-    static func create(from user: Botter.User, bot: Bot, app: Application) throws -> Future<User> {
+    static func create(from user: Botter.User, context: BotContextProtocol) throws -> Future<User> {
+        let (app, bot, platform) = (context.app, context.bot, context.platform)
         let firstName = user.firstName
         let lastName = user.lastName
         return try user.getUsername(bot: bot, app: app).flatMap { username in
             let platformId = UserPlatformId(id: user.id, username: username)
-            return User.create(platformIds: [ user.platform.convert(to: platformId) ], firstName: firstName, lastName: lastName, app: app)
+            return User.create(platformIds: [ user.platform.convert(to: platformId) ], isAdmin: Application.adminNickname(for: platform) == username, firstName: firstName, lastName: lastName, app: app)
         }
     }
     
@@ -85,15 +86,15 @@ extension User {
     
     public static func findOrCreate<T: PlatformObject & Replyable & UserFetchable>(
         from instance: T,
-        bot: Bot,
-        app: Application
+        context: BotContextProtocol
     ) throws -> Future<User> {
-        try Self.find(instance, app: app).flatMap { model in
+        let (bot, app) = (context.bot, context.app)
+        return try Self.find(instance, app: app).flatMap { model in
             if let model = model {
                 return app.eventLoopGroup.next().makeSucceededFuture(model)
             } else {
                 return try! bot.getUser(from: instance, app: app)!.throwingFlatMap { botterUser -> Future<User> in
-                    try Self.create(from: botterUser, bot: bot, app: app)
+                    try Self.create(from: botterUser, context: context)
                 }
             }
         }

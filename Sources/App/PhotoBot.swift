@@ -124,7 +124,7 @@ class PhotoBot {
     func handleEvent(_ update: Botter.Update, _ context: BotContextProtocol) throws {
         guard case let .event(event) = update.content else { return }
         
-        let userFuture = try User.findOrCreate(from: event, bot: bot, app: app).throwingFlatMap { [self] user -> Future<[Botter.Message]> in
+        let userFuture = try User.findOrCreate(from: event, context: context).throwingFlatMap { [self] user -> Future<[Botter.Message]> in
             
             let context = PhotoBotContext(app: app, bot: bot, user: user, platform: event.platform.any, controllers: controllers)
             
@@ -161,7 +161,7 @@ class PhotoBot {
     func handleText(_ update: Botter.Update, _ context: BotContextProtocol) throws {
         guard case let .message(message) = update.content else { return }
         
-        let userFuture = try User.findOrCreate(from: message, bot: bot, app: app)
+        let userFuture = try User.findOrCreate(from: message, context: context)
             .throwingFlatMap { [self] user -> Future<[Botter.Message]?> in
                 let context = PhotoBotContext(app: app, bot: bot, user: user, platform: update.platform.any, controllers: controllers)
                 

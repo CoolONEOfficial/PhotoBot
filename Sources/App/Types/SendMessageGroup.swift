@@ -96,6 +96,7 @@ public enum SendMessageGroup {
                     break
                 }
                 result = try controller.getListSendMessages(platform: platform, in: node, payload, context: context, listType: type, indexRange: indexRange)?
+                    .map { ($0.0.isEmpty ? [ SendMessage(text: "Тут пусто") ] : $0.0, $0.1) }
                     .map { Self.addPageButtons($0.0, indexRange, $0.1) }
             }
             
