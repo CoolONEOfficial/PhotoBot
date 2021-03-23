@@ -27,6 +27,8 @@ final class Makeuper: MakeuperProtocol {
     
     var price: Float = 0
 
+    var user: UserModel!
+    
     required init() {}
 
 }

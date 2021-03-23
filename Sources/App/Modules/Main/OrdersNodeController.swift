@@ -9,6 +9,10 @@ import Foundation
 import Botter
 import Vapor
 
+fileprivate enum OrdersNodeControllerError: Error {
+    case userIdNotFound
+}
+
 class OrdersNodeController: NodeController {
     func create(app: Application) throws -> EventLoopFuture<Node> {
         Node.create(
@@ -22,16 +26,25 @@ class OrdersNodeController: NodeController {
     func getListSendMessages(platform: AnyPlatform, in node: Node, _ payload: NodePayload?, context: PhotoBotContextProtocol, listType: MessageListType, indexRange: Range<Int>) throws -> EventLoopFuture<([SendMessage], Int)>? {
         guard listType == .orders else { return nil }
         let (app, user) = (context.app, context.user)
+        guard let userId = user.id else { throw OrdersNodeControllerError.userIdNotFound }
         
         return OrderModel.query(on: app.db).count().flatMap { count in
-            OrderModel.query(on: app.db).range(indexRange).all().throwingFlatMap { orders in
+            OrderModel.query(on: app.db).group(.or) {
+                $0.filter(\.$user.$id, .equal, userId)
+                if let makeuperId = user.makeuperId {
+                    $0.filter(\.$makeuper.$id, .equal, makeuperId)
+                }
+                if let stylistId = user.stylistId {
+                    $0.filter(\.$stylist.$id, .equal, stylistId)
+                }
+            }.range(indexRange).all().throwingFlatMap { orders in
                 try orders.enumerated().map { (index, model) -> Future<SendMessage> in
                     try Order.create(other: model, app: app).flatMap { order in
                         order.state(app: app).flatMap { orderState in
                             context.user.nodePayload = .checkout(orderState)
                             return MessageFormatter.shared.format(
                                 [
-                                    "Заказ от @" + .replacing(by: .username) + " (" + .replacing(by: .orderId) + "):",
+                                    "Заказ от " + .replacing(by: .orderCustomer) + (user.isAdmin ? "\nID заказа (" + .replacing(by: .orderId) + "):" : ""),
                                     .replacing(by: .orderBlock),
                                     .replacing(by: .priceBlock),
                                 ].joined(separator: "\n"),
@@ -40,7 +53,7 @@ class OrdersNodeController: NodeController {
                             ).flatMapThrowing { text in
                                 SendMessage(
                                     text: text,
-                                    keyboard: [ (!order.isCancelled && user.isAdmin) ? [
+                                    keyboard: [ order.cancelAvailable(user: user) ? [
                                         try .init(text: "Отменить", action: .callback, eventPayload: .cancelOrder(id: order.id!))
                                     ] : []]
                                 )
@@ -74,7 +87,7 @@ class OrdersNodeController: NodeController {
                                 context.user.nodePayload = .checkout(orderState)
                                 return MessageFormatter.shared.format(
                                     [
-                                        "Заказ был отменен от @" + .replacing(by: .username) + " (" + .replacing(by: .orderId) + "):",
+                                        "Заказ от " + .replacing(by: .orderCustomer) + " был отменен пользователем " + .replacing(by: .username) + " " + (user.isAdmin ? "\nID заказа (" + .replacing(by: .orderId) + "):" : "") + "",
                                         .replacing(by: .orderBlock),
                                         .replacing(by: .priceBlock),
                                     ].joined(separator: "\n"),

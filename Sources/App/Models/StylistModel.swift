@@ -26,18 +26,28 @@ final class StylistModel: Model, StylistProtocol {
     @Field(key: "platform_ids")
     var platformIds: [TypedPlatform<UserPlatformId>]
     
-    @Siblings(through: StylistPhoto.self, from: \.$stylist, to: \.$photo)
-    var _photos: [PlatformFileModel]
-
     @Field(key: "price")
     var price: Float
+    
+    @Siblings(through: StylistPhoto.self, from: \.$stylist, to: \.$photo)
+    var _photos: [PlatformFileModel]
 
     var photos: [PlatformFileModel] {
         get { _photos }
         set { fatalError("Siblings must be attached manually") }
     }
-
+    
     var photosSiblings: AttachableFileSiblings<StylistModel, StylistPhoto>? { $_photos }
+    
+    @Children(for: \.$_stylist)
+    var users: [UserModel]
+    
+    var user: UserModel! {
+        get { users.first }
+        set { fatalError() }
+    }
+    
+    var usersProperty: ChildrenProperty<StylistModel, UserModel>? { $users }
     
     required init() {}
 }

@@ -19,7 +19,8 @@ public struct OrderState: Codable {
     var hourPrice: Float = 0
     var isCancelled = false
     var id: UUID?
-    
+    var customer: UserModel?
+
     var price: Float {
         let hours: Float
         if let duration = duration {
@@ -50,7 +51,7 @@ public extension OrderState {
 }
 
 extension OrderState {
-    init(with oldPayload: NodePayload?, type: OrderType? = nil, stylist: Stylist? = nil, makeuper: Makeuper? = nil, studio: Studio? = nil, date: Date? = nil, duration: TimeInterval? = nil) {
+    init(with oldPayload: NodePayload?, type: OrderType? = nil, stylist: Stylist? = nil, makeuper: Makeuper? = nil, studio: Studio? = nil, date: Date? = nil, duration: TimeInterval? = nil, customer: UserModel? = nil) {
         let priceables: [Priceable?] = [ stylist, makeuper, studio ]
         let appendingPrice = priceables.compactMap { $0?.price }.reduce(0, +)
         if case let .orderBuilder(state) = oldPayload {
@@ -61,7 +62,8 @@ extension OrderState {
                 studioId: studio?.id ?? state.studioId,
                 date: date ?? state.date,
                 duration: duration ?? state.duration,
-                hourPrice: state.hourPrice + appendingPrice
+                hourPrice: state.hourPrice + appendingPrice,
+                customer: customer ?? state.customer
             )
         } else {
             self.init(
@@ -71,7 +73,8 @@ extension OrderState {
                 studioId: studio?.id,
                 date: date,
                 duration: duration,
-                hourPrice: appendingPrice
+                hourPrice: appendingPrice,
+                customer: customer
             )
         }
     }

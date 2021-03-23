@@ -35,6 +35,11 @@ extension Order: ModeledType {
         true
     }
     
+    func cancelAvailable(user: User) -> Bool {
+        guard !isCancelled else { return false }
+        return user.isAdmin || user.makeuperId == makeuperId || user.stylistId == stylistId || user.id == userId
+    }
+    
     func save(app: Application) throws -> EventLoopFuture<TwinType> {
         guard isValid else {
             throw ModeledTypeError.validationError(self)

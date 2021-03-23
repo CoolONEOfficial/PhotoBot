@@ -125,12 +125,12 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
     app.migrations.add([
         CreateEventPayloads(),
         CreateNodes(),
-        CreateUsers(),
         CreatePlatformFiles(),
         CreateStylists(),
         CreateStylistPhotos(),
         CreateMakeupers(),
         CreateMakeuperPhotos(),
+        CreateUsers(),
         CreateStudios(),
         CreatePromotions(),
         CreateStudioPhotos(),
@@ -188,17 +188,21 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
             .vk("photo-119092254_457239065")
         ], type: .photo, app: app).throwingFlatMap { try $0.save(app: app) }.wait()
         
+        var stylists: [StylistModel] = []
         for num in 1...20 {
-            try Stylist.create(
-                name: "Stylist \(num)", platformIds: [.tg(.init(id: 356008384, username: "cooloneofficial"))], photos: [testPhoto, testPhoto2], price: 123, app: app
-            ).throwingFlatMap { try $0.save(app: app) }.wait()
+            stylists.append(try Stylist.create(
+                name: "Stylist \(num)", platformIds: [.tg(.init(id: 356008384, username: "cooloneofficial"))], photos: [testPhoto, testPhoto2], price: Float(50 * num), app: app
+            ).throwingFlatMap { try $0.save(app: app) }.wait())
         }
         
+        var makeupers: [MakeuperModel] = []
         for num in 1...20 {
-            try Makeuper.create(
-                name: "Makeuper \(num)", platformIds: [.tg(.init(id: 356008384, username: "cooloneofficial"))], photos: [testPhoto, testPhoto2], price: 123, app: app
-            ).throwingFlatMap { try $0.save(app: app) }.wait()
+            makeupers.append(try Makeuper.create(
+                name: "Makeuper \(num)", platformIds: [.tg(.init(id: 356008384, username: "cooloneofficial"))], photos: [testPhoto, testPhoto2], price: Float(50 * num), app: app
+            ).throwingFlatMap { try $0.save(app: app) }.wait())
         }
+        
+        try UserModel.create(history: [], nodeId: nil, nodePayload: nil, platformIds: [ .tg(.init(id: 356008384, username: "cooloneofficial")) ], isAdmin: true, firstName: "Николай", lastName: "Трухин", makeuper: makeupers.first, stylist: stylists.first, app: app).wait()
         
         for num in 1...3 {
             try Promotion.create(

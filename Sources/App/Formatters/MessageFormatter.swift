@@ -25,6 +25,7 @@ enum ReplacingKey: String {
     case orderType
     case orderStatus
     case orderId
+    case orderCustomer
 
     case promoBlock
     case priceBlock
@@ -86,7 +87,7 @@ extension ReplacingKey {
 
         case .promoBlock, .priceBlock, .price, .totalPrice,
              .stylist, .makeuper, .studio, .orderDate, .orderType,
-             .orderStatus, .orderId:
+             .orderStatus, .orderId, .orderCustomer:
             var future: Future<ReplacingDict> = app.eventLoopGroup.future(dict)
             
             if case let .checkout(state) = user.nodePayload {
@@ -191,6 +192,12 @@ extension ReplacingKey {
                     dict[.studio] = [studio?.name ?? Self.notSelected]
                 }
             }
+        }
+        
+        dict[.orderCustomer] = [Self.nope]
+        if let customer = state?.customer,
+           let link = customer.platformLink(for: platform) {
+            dict[.orderCustomer] = [link]
         }
 
         dict[.orderDate] = [Self.notSelected]

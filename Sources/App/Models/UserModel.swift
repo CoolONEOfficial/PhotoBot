@@ -44,6 +44,26 @@ final class UserModel: Model, UserProtocol {
     @OptionalField(key: "last_name")
     var lastName: String?
     
+    @OptionalParent(key: "makeuper_id")
+    var _makeuper: MakeuperModel?
+
+    var makeuper: MakeuperModel? {
+        get { _makeuper }
+        set { $_makeuper.id = newValue?.id }
+    }
+    
+    var makeuperId: UUID? { $_makeuper.id }
+    
+    @OptionalParent(key: "stylist_id")
+    var _stylist: StylistModel?
+
+    var stylist: StylistModel? {
+        get { _stylist }
+        set { $_stylist.id = newValue?.id }
+    }
+    
+    var stylistId: UUID? { $_stylist.id }
+
     required init() { }
 
 }

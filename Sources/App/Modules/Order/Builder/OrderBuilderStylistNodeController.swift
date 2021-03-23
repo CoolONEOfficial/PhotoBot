@@ -55,7 +55,7 @@ class OrderBuilderStylistNodeController: NodeController {
         let (app, user) = (context.app, context.user)
         
         replyText = "Selected"
-        return Node.find(.entryPoint(.orderBuilder), app: app).flatMap { [self] node in
+        return Node.find(.entryPoint(.orderBuilder), app: app).flatMap { node in
             Stylist.find(stylistId, app: app).throwingFlatMap { stylist in
                 try user.push(node, payload: .orderBuilder(.init(with: user.history.last?.nodePayload, stylist: stylist)), to: event, saveMove: false, context: context)
             }

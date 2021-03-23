@@ -32,10 +32,11 @@ class MainNodeController: NodeController {
                     try .init(text: "📷 Заказ фотосессии", action: .callback, eventPayload: .push(.entryPoint(.orderTypes))),
                     try .init(text: "Отзывы", action: .callback, eventPayload: .push(.entryPoint(.reviews))),
                 ],
-                context.user.isAdmin ? [
-                    try .init(text: "Выгрузить фотку", action: .callback, eventPayload: .push(.entryPoint(.uploadPhoto))),
+                [
                     try .init(text: "Заказы", action: .callback, eventPayload: .push(.entryPoint(.orders))),
-                ] : [],
+                ] + (context.user.isAdmin ? [
+                    try .init(text: "Выгрузить фотку", action: .callback, eventPayload: .push(.entryPoint(.uploadPhoto))),
+                ] : []),
             ])
         ])
     }

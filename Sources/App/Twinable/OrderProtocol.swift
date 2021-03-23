@@ -56,8 +56,12 @@ enum OrderCreateError: Error {
 
 extension OrderProtocol {
     func state(app: Application) -> Future<CheckoutState> {
-        getPromotions(app: app).map { [self] promotions in
-            CheckoutState(order: .init(type: type, stylistId: stylistId, makeuperId: makeuperId, studioId: studioId, date: interval.start, duration: interval.duration, hourPrice: price, isCancelled: isCancelled, id: id), promotions: promotions)
+        [
+            UserModel.find(userId, on: app.db).map { $0 as Any },
+            getPromotions(app: app).map { $0 as Any },
+        ].flatten(on: app.eventLoopGroup.next()).map { [self] res in
+            let (user, promotions) = (res[0] as? UserModel, res[1] as? [PromotionModel])
+            return CheckoutState(order: .init(type: type, stylistId: stylistId, makeuperId: makeuperId, studioId: studioId, date: interval.start, duration: interval.duration, hourPrice: price, isCancelled: isCancelled, id: id, customer: user), promotions: promotions ?? [])
         }
     }
     

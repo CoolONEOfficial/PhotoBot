@@ -34,6 +34,14 @@ public final class User: UserProtocol {
     @Validated(.greater(1))
     var lastName: String?
     
+    var makeuper: MakeuperModel?
+    
+    var makeuperId: UUID? { makeuper?.id }
+    
+    var stylist: StylistModel?
+    
+    var stylistId: UUID? { stylist?.id }
+    
     required init() {}
 
 }

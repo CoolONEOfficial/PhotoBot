@@ -26,6 +26,8 @@ final class Stylist: StylistProtocol {
     var photos: [PlatformFileModel] = []
     
     var price: Float = 0
+    
+    var user: UserModel!
 
     required init() {}
 

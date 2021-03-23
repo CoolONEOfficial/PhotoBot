@@ -19,18 +19,20 @@ protocol PhotosProtocol: class {
     var photosSiblings: AttachableFileSiblings<ImplementingModel, SiblingModel>? { get }
 }
 
+extension PhotosProtocol where Self: Twinable, Self.TwinType == ImplementingModel {
+    var photosSiblings: AttachableFileSiblings<ImplementingModel, SiblingModel>? { nil }
+}
+
 extension PhotosProtocol {
     func getPhotos(app: Application) -> Future<[PlatformFileModel]> {
         photosSiblings?.get(on: app.db) ?? app.eventLoopGroup.future(photos)
     }
-
-    var photosSiblings: AttachableFileSiblings<ImplementingModel, SiblingModel>? { nil }
     
     func attachPhotos(_ photos: [PlatformFileModel]?, app: Application) throws -> Future<Void> {
         guard let photos = photos else { return app.eventLoopGroup.future() }
 
-        if let _ = self as? AnyModel {
-            guard let siblings = self.photosSiblings else { fatalError("Photos siblings must be implemented") }
+        if let model = self as? ImplementingModel {
+            guard let siblings = model.photosSiblings else { fatalError("Photos siblings must be implemented") }
             return try photos.attach(to: siblings, app: app)
         } else {
             self.photos = photos

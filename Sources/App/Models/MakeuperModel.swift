@@ -25,6 +25,9 @@ final class MakeuperModel: Model, MakeuperProtocol {
     @Field(key: "platform_ids")
     var platformIds: [TypedPlatform<UserPlatformId>]
     
+    @Field(key: "price")
+    var price: Float
+
     @Siblings(through: MakeuperPhoto.self, from: \.$makeuper, to: \.$photo)
     var _photos: [PlatformFileModel]
     
@@ -35,8 +38,15 @@ final class MakeuperModel: Model, MakeuperProtocol {
         set { _photos = newValue.compactMap { $0 } }
     }
     
-    @Field(key: "price")
-    var price: Float
+    @Children(for: \.$_makeuper)
+    var users: [UserModel]
+    
+    var user: UserModel! {
+        get { users.first }
+        set { fatalError() }
+    }
+    
+    var usersProperty: ChildrenProperty<MakeuperModel, UserModel>? { $users }
     
     required init() {}
 }
