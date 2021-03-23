@@ -40,8 +40,8 @@ class OrdersNodeController: NodeController {
             }.range(indexRange).all().throwingFlatMap { orders in
                 try orders.enumerated().map { (index, model) -> Future<SendMessage> in
                     try Order.create(other: model, app: app).flatMap { order in
-                        order.state(app: app).flatMap { orderState in
-                            context.user.nodePayload = .checkout(orderState)
+                        CheckoutState.create(from: order, app: app).flatMap { checkoutState in
+                            context.user.nodePayload = .checkout(checkoutState)
                             return MessageFormatter.shared.format(
                                 [
                                     "Заказ от " + .replacing(by: .orderCustomer) + (user.isAdmin ? "\nID заказа (" + .replacing(by: .orderId) + "):" : ""),
@@ -81,10 +81,10 @@ class OrdersNodeController: NodeController {
                     try user.pushToActualNode(to: event, context: context)
                 }.flatMap { messages in
                     order.fetchWatchers(app: app).flatMap { watchers in
-                        order.state(app: app).flatMap { orderState in
+                        CheckoutState.create(from: order, app: app).flatMap { checkoutState in
                             
                             func getMessage(_ platform: AnyPlatform) -> Future<String> {
-                                context.user.nodePayload = .checkout(orderState)
+                                context.user.nodePayload = .checkout(checkoutState)
                                 return MessageFormatter.shared.format(
                                     [
                                         "Заказ от " + .replacing(by: .orderCustomer) + " был отменен пользователем " + .replacing(by: .username) + " " + (user.isAdmin ? "\nID заказа (" + .replacing(by: .orderId) + "):" : "") + "",

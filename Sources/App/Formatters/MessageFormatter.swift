@@ -9,7 +9,7 @@ import Foundation
 import Vapor
 import Botter
 
-enum ReplacingKey: String {
+enum ReplacingKey: String, CaseIterable {
     
     case username
     case userId
@@ -17,6 +17,7 @@ enum ReplacingKey: String {
     case userLastName
     case stylist
     case makeuper
+    case photographer
     case studio
     case price
     case totalPrice
@@ -30,28 +31,6 @@ enum ReplacingKey: String {
     case promoBlock
     case priceBlock
     case orderBlock
-}
-
-extension ReplacingKey: CaseIterable {
-    static var allCases: [Self] = [
-        .username,
-        .userId,
-        .userFirstName,
-        .userLastName,
-        .stylist,
-        .makeuper,
-        .studio,
-        .price,
-        .totalPrice,
-        .admin,
-        .orderDate,
-        .orderType,
-        .orderStatus,
-
-        .promoBlock,
-        .priceBlock,
-        .orderBlock,
-    ]
 }
 
 extension ReplacingKey {
@@ -86,7 +65,7 @@ extension ReplacingKey {
             dict[.admin] = [Application.adminNickname(for: platform)]
 
         case .promoBlock, .priceBlock, .price, .totalPrice,
-             .stylist, .makeuper, .studio, .orderDate, .orderType,
+             .stylist, .makeuper, .studio, .photographer, .orderDate, .orderType,
              .orderStatus, .orderId, .orderCustomer:
             var future: Future<ReplacingDict> = app.eventLoopGroup.future(dict)
             
@@ -133,6 +112,7 @@ extension ReplacingKey {
             
             var str = [
                 "Тип: " + .replacing(by: .orderType),
+                "Фотограф: " + .replacing(by: .photographer),
                 "Студия: " + .replacing(by: .studio),
                 "Дата: " + .replacing(by: .orderDate),
             ]
@@ -142,7 +122,7 @@ extension ReplacingKey {
                 str.insert(contentsOf: [
                     "Стилист: " + .replacing(by: .stylist),
                     "Визажист: " + .replacing(by: .makeuper),
-                ], at: 1)
+                ], at: 2)
                 
             default:
                 break
@@ -184,6 +164,18 @@ extension ReplacingKey {
                 }
             }
         }
+        
+        dict[.photographer] = [Self.notSelected]
+        if let photographerId = state?.photographerId {
+            future = future.flatMap { string in
+                PhotographerModel.find(photographerId, on: app.db).map { photographer in
+                    if let photographerName = photographer?.name {
+                        let link = photographer?.platformLink(for: platform)
+                        dict[.photographer] = [photographerName + (link != nil ? " (\(link!))" : "")]
+                    }
+                }
+            }
+        }
 
         dict[.studio] = [Self.notSelected]
         if let studioId = state?.studioId {
@@ -195,9 +187,12 @@ extension ReplacingKey {
         }
         
         dict[.orderCustomer] = [Self.nope]
-        if let customer = state?.customer,
-           let link = customer.platformLink(for: platform) {
-            dict[.orderCustomer] = [link]
+        if let userId = state?.userId {
+            future = future.flatMap { string in
+                UserModel.find(userId, on: app.db).map { user in
+                    dict[.orderCustomer] = [user?.firstName ?? Self.notSelected]
+                }
+            }
         }
 
         dict[.orderDate] = [Self.notSelected]

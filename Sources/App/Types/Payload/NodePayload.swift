@@ -7,19 +7,21 @@
 
 import Foundation
 import AnyCodable
+import Vapor
 import Botter
 
 public struct OrderState: Codable {
     var type: OrderType!
     var stylistId: UUID?
     var makeuperId: UUID?
+    var photographerId: UUID?
     var studioId: UUID?
     var date: Date?
     var duration: TimeInterval?
     var hourPrice: Float = 0
     var isCancelled = false
     var id: UUID?
-    var customer: UserModel?
+    var userId: UUID?
 
     var price: Float {
         let hours: Float
@@ -30,6 +32,32 @@ public struct OrderState: Codable {
         }
         return hours * hourPrice
     }
+    
+    init(type: OrderType? = nil, date: Date? = nil, duration: TimeInterval? = nil, isCancelled: Bool = false, id: UUID? = nil, userId: UUID? = nil) {
+        self.init(type: type, stylistId: nil, makeuperId: nil, photographerId: nil, studioId: nil, date: date, duration: duration, hourPrice: 0, isCancelled: isCancelled, id: id, userId: userId)
+    }
+    
+    private init(type: OrderType? = nil, stylistId: UUID? = nil, makeuperId: UUID? = nil, photographerId: UUID? = nil, studioId: UUID? = nil, date: Date? = nil, duration: TimeInterval? = nil, hourPrice: Float = 0, isCancelled: Bool = false, id: UUID? = nil, userId: UUID? = nil) {
+        self.type = type
+        self.stylistId = stylistId
+        self.makeuperId = makeuperId
+        self.photographerId = photographerId
+        self.studioId = studioId
+        self.date = date
+        self.duration = duration
+        self.hourPrice = hourPrice
+        self.isCancelled = isCancelled
+        self.id = id
+        self.userId = userId
+    }
+}
+
+extension OrderState {
+
+    init<T: OrderProtocol>(from order: T) {
+        self.init(type: order.type, stylistId: order.stylistId, makeuperId: order.makeuperId, studioId: order.studioId, date: order.interval.start, duration: order.interval.duration, hourPrice: order.hourPrice, isCancelled: order.isCancelled, id: order.id, userId: order.userId)
+    }
+
 }
 
 public extension OrderState {
@@ -38,7 +66,7 @@ public extension OrderState {
     }
     
     var isValid: Bool {
-        let requiredParams: [Any?] = [date, studioId, duration]
+        let requiredParams: [Any?] = [date, studioId, duration, photographerId]
 //        switch type {
 //        case .content: break
 //            //requiredParams = [  ]
@@ -51,30 +79,32 @@ public extension OrderState {
 }
 
 extension OrderState {
-    init(with oldPayload: NodePayload?, type: OrderType? = nil, stylist: Stylist? = nil, makeuper: Makeuper? = nil, studio: Studio? = nil, date: Date? = nil, duration: TimeInterval? = nil, customer: UserModel? = nil) {
-        let priceables: [Priceable?] = [ stylist, makeuper, studio ]
+    init(with oldPayload: NodePayload?, type: OrderType? = nil, stylist: Stylist? = nil, makeuper: Makeuper? = nil, photographer: Photographer? = nil, studio: Studio? = nil, date: Date? = nil, duration: TimeInterval? = nil, customer: User? = nil) {
+        let priceables: [Priceable?] = [ stylist, makeuper, photographer, studio ]
         let appendingPrice = priceables.compactMap { $0?.price }.reduce(0, +)
         if case let .orderBuilder(state) = oldPayload {
             self.init(
                 type: type ?? state.type,
                 stylistId: stylist?.id ?? state.stylistId,
                 makeuperId: makeuper?.id ?? state.makeuperId,
+                photographerId: photographer?.id ?? state.photographerId,
                 studioId: studio?.id ?? state.studioId,
                 date: date ?? state.date,
                 duration: duration ?? state.duration,
                 hourPrice: state.hourPrice + appendingPrice,
-                customer: customer ?? state.customer
+                userId: customer?.id ?? state.userId
             )
         } else {
             self.init(
                 type: type,
                 stylistId: stylist?.id,
                 makeuperId: makeuper?.id,
+                photographerId: photographer?.id,
                 studioId: studio?.id,
                 date: date,
                 duration: duration,
                 hourPrice: appendingPrice,
-                customer: customer
+                userId: customer?.id
             )
         }
     }
@@ -83,6 +113,14 @@ extension OrderState {
 public struct CheckoutState: Codable {
     var order: OrderState
     var promotions: [PromotionModel] = []
+}
+
+extension CheckoutState {
+    static func create<T: OrderProtocol>(from order: T, app: Application) -> Future<CheckoutState> {
+        order.getPromotions(app: app).map {
+            .init(order: OrderState(from: order), promotions: $0)
+        }
+    }
 }
 
 public enum NodePayload: Codable {

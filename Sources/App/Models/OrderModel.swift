@@ -73,8 +73,8 @@ final class OrderModel: Model, OrderProtocol {
         }
     }
     
-    @Field(key: "price")
-    var price: Float
+    @Field(key: "hour_price")
+    var hourPrice: Float
 
     @Siblings(through: OrderPromotion.self, from: \.$order, to: \.$promotion)
     var _promotions: [PromotionModel]

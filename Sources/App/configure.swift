@@ -130,6 +130,8 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
         CreateStylistPhotos(),
         CreateMakeupers(),
         CreateMakeuperPhotos(),
+        CreatePhotographers(),
+        CreatePhotographerPhotos(),
         CreateUsers(),
         CreateStudios(),
         CreatePromotions(),
@@ -188,21 +190,30 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
             .vk("photo-119092254_457239065")
         ], type: .photo, app: app).throwingFlatMap { try $0.save(app: app) }.wait()
         
+        let coolonePlatformIds: [TypedPlatform<UserPlatformId>] = [.tg(.init(id: 356008384, username: "cooloneofficial"))]
+        let nastyaPlatformIds: [TypedPlatform<UserPlatformId>] = [.tg(.init(id: 975594669, username: "nastyatsareva"))]
+        
         var stylists: [StylistModel] = []
         for num in 1...20 {
             stylists.append(try Stylist.create(
-                name: "Stylist \(num)", platformIds: [.tg(.init(id: 356008384, username: "cooloneofficial"))], photos: [testPhoto, testPhoto2], price: Float(50 * num), app: app
+                name: "Stylist \(num)", platformIds: coolonePlatformIds, photos: [testPhoto, testPhoto2], price: Float(50 * num), app: app
             ).throwingFlatMap { try $0.save(app: app) }.wait())
         }
         
         var makeupers: [MakeuperModel] = []
         for num in 1...20 {
             makeupers.append(try Makeuper.create(
-                name: "Makeuper \(num)", platformIds: [.tg(.init(id: 356008384, username: "cooloneofficial"))], photos: [testPhoto, testPhoto2], price: Float(50 * num), app: app
+                name: "Makeuper \(num)", platformIds: coolonePlatformIds, photos: [testPhoto, testPhoto2], price: Float(50 * num), app: app
             ).throwingFlatMap { try $0.save(app: app) }.wait())
         }
+
+        let photographer = try Photographer.create(
+            name: "Photographer Nastya", platformIds: nastyaPlatformIds, photos: [testPhoto, testPhoto2], price: 1000, app: app
+        ).throwingFlatMap { try $0.save(app: app) }.wait()
         
         try UserModel.create(history: [], nodeId: nil, nodePayload: nil, platformIds: [ .tg(.init(id: 356008384, username: "cooloneofficial")) ], isAdmin: true, firstName: "Николай", lastName: "Трухин", makeuper: makeupers.first, stylist: stylists.first, app: app).wait()
+        
+        try UserModel.create(history: [], nodeId: nil, nodePayload: nil, platformIds: [ .tg(.init(id: 356008384, username: "cooloneofficial")) ], isAdmin: true, firstName: "Nastya", lastName: "Tsareva", photographer: photographer, app: app).wait()
         
         for num in 1...3 {
             try Promotion.create(

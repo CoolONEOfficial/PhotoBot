@@ -103,9 +103,11 @@ protocol UserProtocol: PlatformIdentifiable, Twinable where TwinType: UserProtoc
     var makeuperId: UUID? { get }
     var stylist: StylistModel? { get set }
     var stylistId: UUID? { get }
+    var photographer: PhotographerModel? { get set }
+    var photographerId: UUID? { get }
     
     init()
-    static func create(id: UUID?, history: [UserHistoryEntry], nodeId: UUID?, nodePayload: NodePayload?, platformIds: [TypedPlatform<UserPlatformId>], isAdmin: Bool, firstName: String?, lastName: String?, makeuper: MakeuperModel?, stylist: StylistModel?, app: Application) -> Future<Self>
+    static func create(id: UUID?, history: [UserHistoryEntry], nodeId: UUID?, nodePayload: NodePayload?, platformIds: [TypedPlatform<UserPlatformId>], isAdmin: Bool, firstName: String?, lastName: String?, makeuper: MakeuperModel?, stylist: StylistModel?, photographer: PhotographerModel?, app: Application) -> Future<Self>
 }
 
 extension UserProtocol {
@@ -113,13 +115,14 @@ extension UserProtocol {
         [
             StylistModel.find(other.stylistId, on: app.db).map { $0 as Any },
             MakeuperModel.find(other.makeuperId, on: app.db).map { $0 as Any },
+            PhotographerModel.find(other.photographerId, on: app.db).map { $0 as Any },
         ].flatten(on: app.eventLoopGroup.next()).flatMap {
-            let (stylist, makeuper) = ($0[0] as? StylistModel, $0[1] as? MakeuperModel)
-            return Self.create(id: other.id, history: other.history, nodeId: other.nodeId, nodePayload: other.nodePayload, platformIds: other.platformIds, isAdmin: other.isAdmin, firstName: other.firstName, lastName: other.lastName, makeuper: makeuper, stylist: stylist, app: app)
+            let (stylist, makeuper, photographer) = ($0[0] as? StylistModel, $0[1] as? MakeuperModel, $0[2] as? PhotographerModel)
+            return Self.create(id: other.id, history: other.history, nodeId: other.nodeId, nodePayload: other.nodePayload, platformIds: other.platformIds, isAdmin: other.isAdmin, firstName: other.firstName, lastName: other.lastName, makeuper: makeuper, stylist: stylist, photographer: photographer, app: app)
         }
     }
     
-    static func create(id: UUID? = nil, history: [UserHistoryEntry] = [], nodeId: UUID? = nil, nodePayload: NodePayload? = nil, platformIds: [TypedPlatform<UserPlatformId>], isAdmin: Bool = false, firstName: String?, lastName: String?, makeuper: MakeuperModel? = nil, stylist: StylistModel? = nil, app: Application) -> Future<Self> {
+    static func create(id: UUID? = nil, history: [UserHistoryEntry] = [], nodeId: UUID? = nil, nodePayload: NodePayload? = nil, platformIds: [TypedPlatform<UserPlatformId>], isAdmin: Bool = false, firstName: String?, lastName: String?, makeuper: MakeuperModel? = nil, stylist: StylistModel? = nil, photographer: PhotographerModel? = nil, app: Application) -> Future<Self> {
         var instance = Self.init()
         instance.id = id
         instance.history = history
@@ -131,6 +134,7 @@ extension UserProtocol {
         instance.lastName = lastName
         instance.makeuper = makeuper
         instance.stylist = stylist
+        instance.photographer = photographer
         return instance.saveIfNeeded(app: app)
     }
 }

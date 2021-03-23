@@ -64,6 +64,16 @@ final class UserModel: Model, UserProtocol {
     
     var stylistId: UUID? { $_stylist.id }
 
+    @OptionalParent(key: "photographer_id")
+    var _photographer: PhotographerModel?
+
+    var photographer: PhotographerModel? {
+        get { _photographer }
+        set { $_photographer.id = newValue?.id }
+    }
+    
+    var photographerId: UUID? { $_photographer.id }
+
     required init() { }
 
 }

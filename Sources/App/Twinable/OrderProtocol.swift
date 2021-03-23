@@ -43,7 +43,7 @@ protocol OrderProtocol: PromotionsProtocol, Twinable where TwinType: OrderProtoc
     var makeuperId: UUID? { get set }
     var studioId: UUID? { get set }
     var interval: DateInterval { get set }
-    var price: Float { get set }
+    var hourPrice: Float { get set }
     var promotions: [PromotionModel] { get set }
     
     init()
@@ -55,19 +55,9 @@ enum OrderCreateError: Error {
 }
 
 extension OrderProtocol {
-    func state(app: Application) -> Future<CheckoutState> {
-        [
-            UserModel.find(userId, on: app.db).map { $0 as Any },
-            getPromotions(app: app).map { $0 as Any },
-        ].flatten(on: app.eventLoopGroup.next()).map { [self] res in
-            let (user, promotions) = (res[0] as? UserModel, res[1] as? [PromotionModel])
-            return CheckoutState(order: .init(type: type, stylistId: stylistId, makeuperId: makeuperId, studioId: studioId, date: interval.start, duration: interval.duration, hourPrice: price, isCancelled: isCancelled, id: id, customer: user), promotions: promotions ?? [])
-        }
-    }
-    
     static func create(other: TwinType, app: Application) throws -> Future<Self> {
         other.getPromotions(app: app).flatMap { promotions in
-            Self.create(id: other.id, userId: other.userId, type: other.type, stylistId: other.stylistId, makeuperId: other.makeuperId, studioId: other.studioId, interval: other.interval, price: other.price, promotions: promotions, isCancelled: other.isCancelled, app: app)
+            Self.create(id: other.id, userId: other.userId, type: other.type, stylistId: other.stylistId, makeuperId: other.makeuperId, studioId: other.studioId, interval: other.interval, price: other.hourPrice, promotions: promotions, isCancelled: other.isCancelled, app: app)
         }
     }
     
@@ -80,7 +70,7 @@ extension OrderProtocol {
         instance.makeuperId = makeuperId
         instance.studioId = studioId
         instance.interval = interval
-        instance.price = price
+        instance.hourPrice = price
         instance.isCancelled = isCancelled
         return instance.saveIfNeeded(app: app).throwingFlatMap {
             try $0.attachPromotions(promotions, app: app).transform(to: instance)

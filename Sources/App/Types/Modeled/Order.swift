@@ -23,7 +23,7 @@ public final class Order: OrderProtocol {
     var makeuperId: UUID?
     var studioId: UUID?
     var interval: DateInterval = .init()
-    var price: Float = 0
+    var hourPrice: Float = 0
     var promotions: [PromotionModel] = []
     
     required init() {}

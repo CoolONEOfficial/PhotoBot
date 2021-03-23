@@ -23,17 +23,18 @@ class OrderTypesNodeController: NodeController {
         
         let (app, user) = (context.app, context.user)
         
-        return try user.toTwin(app: app).flatMapThrowing { userModel in
+        return PhotographerModel.query(on: app.db).first().optionalThrowingFlatMap { try $0.toTwin(app: app) }
+            .flatMapThrowing { photographer in
             [
                 .init(text: "Выберите тип фотосессии:"),
                 .init(text: "Love story", keyboard: [[
-                    try .init(text: "Выбрать", action: .callback, eventPayload: .push(.entryPoint(.orderBuilder), payload: .orderBuilder(.init(type: .loveStory, customer: userModel))))
+                    try .init(text: "Выбрать", action: .callback, eventPayload: .push(.entryPoint(.orderBuilder), payload: .orderBuilder(.init(with: nil, type: .loveStory, photographer: photographer, customer: user))))
                 ]]),
                 .init(text: "Контент сьемка", keyboard: [[
-                    try .init(text: "Выбрать", action: .callback, eventPayload: .push(.entryPoint(.orderBuilder), payload: .orderBuilder(.init(type: .content, customer: userModel))))
+                    try .init(text: "Выбрать", action: .callback, eventPayload: .push(.entryPoint(.orderBuilder), payload: .orderBuilder(.init(with: nil, type: .content, photographer: photographer, customer: user))))
                 ]]),
                 .init(text: "Семейная фотосессия", keyboard: [[
-                    try .init(text: "Выбрать", action: .callback, eventPayload: .push(.entryPoint(.orderBuilder), payload: .orderBuilder(.init(type: .family, customer: userModel))))
+                    try .init(text: "Выбрать", action: .callback, eventPayload: .push(.entryPoint(.orderBuilder), payload: .orderBuilder(.init(with: nil, type: .family, photographer: photographer, customer: user))))
                 ]]),
             ]
         }

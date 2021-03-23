@@ -42,6 +42,10 @@ public final class User: UserProtocol {
     
     var stylistId: UUID? { stylist?.id }
     
+    var photographer: PhotographerModel?
+
+    var photographerId: UUID? { photographer?.id }
+    
     required init() {}
 
 }

@@ -69,7 +69,7 @@ class OrderCheckoutNodeController: NodeController {
                 try event.replyMessage(.init(text: message), context: context)
             }.map { ($0, order) }
         }.flatMap { (messages, order) in
-            order.state(app: app).throwingFlatMap { orderState in
+            CheckoutState.create(from: order, app: app).throwingFlatMap { orderState in
                 context.user.nodePayload = .checkout(orderState)
                 return try User.find(
                     destination: .username(Application.adminNickname(for: platform)),

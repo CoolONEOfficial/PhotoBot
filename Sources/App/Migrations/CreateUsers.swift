@@ -20,6 +20,7 @@ struct CreateUsers: Migration {
             .field("node_payload", .json)
             .field("makeuper_id", .uuid, .references(MakeuperModel.schema, .id))
             .field("stylist_id", .uuid, .references(StylistModel.schema, .id))
+            .field("photographer_id", .uuid, .references(PhotographerModel.schema, .id))
             .create()
     }
 
