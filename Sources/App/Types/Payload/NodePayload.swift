@@ -81,8 +81,9 @@ public extension OrderState {
 extension OrderState {
     init(with oldPayload: NodePayload?, type: OrderType? = nil, stylist: Stylist? = nil, makeuper: Makeuper? = nil, photographer: Photographer? = nil, studio: Studio? = nil, date: Date? = nil, duration: TimeInterval? = nil, customer: User? = nil) {
         let priceables: [Priceable?] = [ stylist, makeuper, photographer, studio ]
-        let appendingPrice = priceables.compactMap { $0?.price }.reduce(0, +)
+        
         if case let .orderBuilder(state) = oldPayload {
+            let appendingPrice = priceables.compactMap { $0?.prices[type ?? state.type] }.reduce(0, +)
             self.init(
                 type: type ?? state.type,
                 stylistId: stylist?.id ?? state.stylistId,
@@ -95,6 +96,13 @@ extension OrderState {
                 userId: customer?.id ?? state.userId
             )
         } else {
+            let appendingPrice = priceables.compactMap {
+                if let type = type {
+                    return $0?.prices[type]
+                } else {
+                    return $0?.prices.first?.value
+                }
+            }.reduce(Float(0), +)
             self.init(
                 type: type,
                 stylistId: stylist?.id,

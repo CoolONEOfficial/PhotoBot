@@ -27,7 +27,7 @@ final class Studio: StudioProtocol {
 
     var photos: [PlatformFileModel] = []
 
-    var price: Float = 0
+    var prices: [OrderType: Float] = [:]
     
     required init() {}
     

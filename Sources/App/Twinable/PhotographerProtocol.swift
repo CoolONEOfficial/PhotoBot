@@ -20,7 +20,7 @@ protocol PhotographerProtocol: PhotosProtocol, UsersProtocol, PlatformIdentifiab
     var user: UserModel! { get set }
 
     init()
-    static func create(id: UUID?, name: String?, platformIds: [TypedPlatform<UserPlatformId>], photos: [PlatformFileModel]?, price: Float, user: UserModel?, app: Application) -> Future<Self>
+    static func create(id: UUID?, name: String?, platformIds: [TypedPlatform<UserPlatformId>], photos: [PlatformFileModel]?, prices: [OrderType: Float], user: UserModel?, app: Application) -> Future<Self>
 }
 
 fileprivate enum PhotographerCreateError: Error {
@@ -34,16 +34,16 @@ extension PhotographerProtocol {
             other.getPhotos(app: app).map { $0 as Any },
         ].flatten(on: app.eventLoopGroup.next()).flatMap {
             let (user, photos) = ($0[0] as? UserModel, $0[1] as? [PlatformFileModel])
-            return Self.create(id: other.id, name: other.name, platformIds: other.platformIds, photos: photos, price: other.price, user: user, app: app)
+            return Self.create(id: other.id, name: other.name, platformIds: other.platformIds, photos: photos, prices: other.prices, user: user, app: app)
         }
     }
 
-    static func create(id: UUID? = nil, name: String?, platformIds: [TypedPlatform<UserPlatformId>], photos: [PlatformFileModel]?, price: Float, user: UserModel? = nil, app: Application) -> Future<Self> {
+    static func create(id: UUID? = nil, name: String?, platformIds: [TypedPlatform<UserPlatformId>], photos: [PlatformFileModel]?, prices: [OrderType: Float], user: UserModel? = nil, app: Application) -> Future<Self> {
         var instance = Self.init()
         instance.id = id
         instance.name = name
         instance.platformIds = platformIds
-        instance.price = price
+        instance.prices = prices
         return instance.saveIfNeeded(app: app).throwingFlatMap {
             var futures = [
                 try $0.attachPhotos(photos, app: app),

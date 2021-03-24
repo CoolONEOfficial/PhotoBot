@@ -13,7 +13,7 @@ struct CreateMakeupers: Migration {
             .id()
             .field("name", .string)
             .field("platform_ids", .array(of: .json))
-            .field("price", .float, .required)
+            .field("prices", .dictionary(of: .float), .required)
             .create()
     }
 

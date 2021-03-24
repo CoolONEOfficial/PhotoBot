@@ -196,24 +196,36 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
         var stylists: [StylistModel] = []
         for num in 1...20 {
             stylists.append(try Stylist.create(
-                name: "Stylist \(num)", platformIds: coolonePlatformIds, photos: [testPhoto, testPhoto2], price: Float(50 * num), app: app
+                name: "Stylist \(num)", platformIds: coolonePlatformIds, photos: [testPhoto, testPhoto2], prices: [
+                    .loveStory: Float(50 * num),
+                    .content: Float(51 * num),
+                    .family: Float(52 * num)
+                ], app: app
             ).throwingFlatMap { try $0.save(app: app) }.wait())
         }
         
         var makeupers: [MakeuperModel] = []
         for num in 1...20 {
             makeupers.append(try Makeuper.create(
-                name: "Makeuper \(num)", platformIds: coolonePlatformIds, photos: [testPhoto, testPhoto2], price: Float(50 * num), app: app
+                name: "Makeuper \(num)", platformIds: coolonePlatformIds, photos: [testPhoto, testPhoto2], prices: [
+                    .loveStory: Float(50 * num),
+                    .content: Float(51 * num),
+                    .family: Float(52 * num)
+                ], app: app
             ).throwingFlatMap { try $0.save(app: app) }.wait())
         }
 
         let photographer = try Photographer.create(
-            name: "Photographer Nastya", platformIds: nastyaPlatformIds, photos: [testPhoto, testPhoto2], price: 1000, app: app
+            name: "Photographer Nastya", platformIds: nastyaPlatformIds, photos: [testPhoto, testPhoto2], prices: [
+                .loveStory: Float(1000),
+                .content: Float(800),
+                .family: Float(2500)
+            ], app: app
         ).throwingFlatMap { try $0.save(app: app) }.wait()
         
         try UserModel.create(history: [], nodeId: nil, nodePayload: nil, platformIds: [ .tg(.init(id: 356008384, username: "cooloneofficial")) ], isAdmin: true, firstName: "Николай", lastName: "Трухин", makeuper: makeupers.first, stylist: stylists.first, app: app).wait()
         
-        try UserModel.create(history: [], nodeId: nil, nodePayload: nil, platformIds: [ .tg(.init(id: 356008384, username: "cooloneofficial")) ], isAdmin: true, firstName: "Nastya", lastName: "Tsareva", photographer: photographer, app: app).wait()
+        try UserModel.create(history: [], nodeId: nil, nodePayload: nil, platformIds: [ .tg(.init(id: 975594669, username: "nastyatsarevax")) ], isAdmin: true, firstName: "Nastya", lastName: "Tsareva", photographer: photographer, app: app).wait()
         
         for num in 1...3 {
             try Promotion.create(
@@ -250,7 +262,11 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
                 description: "Studio desc",
                 address: "adsdsad",
                 coords: .init(lat: 0, long: 0),
-                photos: [testPhoto], price: 123, app: app
+                photos: [testPhoto], prices: [
+                    .loveStory: Float(50 * num),
+                    .content: Float(51 * num),
+                    .family: Float(52 * num)
+                ], app: app
             ).throwingFlatMap { try $0.save(app: app) }.wait()
         }
     }

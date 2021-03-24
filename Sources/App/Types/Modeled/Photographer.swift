@@ -25,7 +25,7 @@ final class Photographer: PhotographerProtocol {
     
     var photos: [PlatformFileModel] = []
     
-    var price: Float = 0
+    var prices: [OrderType: Float] = [:]
 
     var user: UserModel!
     

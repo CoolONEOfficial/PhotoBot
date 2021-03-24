@@ -20,17 +20,18 @@ class OrderBuilderStudioNodeController: NodeController {
     
     func getListSendMessages(platform: AnyPlatform, in node: Node, _ payload: NodePayload?, context: PhotoBotContextProtocol, listType: MessageListType, indexRange: Range<Int>) throws -> EventLoopFuture<([SendMessage], Int)>? {
         guard listType == .studios else { return nil }
-        let app = context.app
+        let (app, user) = (context.app, context.user)
+        guard case let .orderBuilder(state) = user.history.last?.nodePayload, let orderType = state.type else { throw SendMessageGroupError.invalidPayload }
         let model = StudioModel.self
         return model.query(on: app.db).count().flatMap { count in
-            model.query(on: app.db).range(indexRange).all().flatMap { studios in
+            model.query(on: app.db).filter(.sql(raw: "prices ? '\(orderType.rawValue)'")).range(indexRange).all().flatMap { studios in
                 studios.enumerated().map { (index, studio) -> Future<SendMessage> in
                     studio.$_photos.get(on: app.db).throwingFlatMap { photos -> Future<SendMessage> in
                         try photos.map { try PlatformFile.create(other: $0, app: app) }
                             .flatten(on: app.eventLoopGroup.next())
                             .flatMapThrowing { attachments -> SendMessage in
                                 SendMessage(
-                                    text: "\(studio.name ?? "")\n\(studio.price) ₽ / час",
+                                    text: "\(studio.name ?? "")\n\(studio.prices[orderType]!) ₽ / час",
                                     keyboard: [ [
                                         try Button(
                                             text: "Выбрать",

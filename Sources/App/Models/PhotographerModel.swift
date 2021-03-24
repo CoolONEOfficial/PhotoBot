@@ -25,8 +25,8 @@ final class PhotographerModel: Model, PhotographerProtocol {
     @Field(key: "platform_ids")
     var platformIds: [TypedPlatform<UserPlatformId>]
     
-    @Field(key: "price")
-    var price: Float
+    @Field(key: "prices")
+    var _prices: [String: Float]
 
     @Siblings(through: PhotographerPhoto.self, from: \.$photographer, to: \.$photo)
     var _photos: [PlatformFileModel]

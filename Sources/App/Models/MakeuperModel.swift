@@ -25,8 +25,8 @@ final class MakeuperModel: Model, MakeuperProtocol {
     @Field(key: "platform_ids")
     var platformIds: [TypedPlatform<UserPlatformId>]
     
-    @Field(key: "price")
-    var price: Float
+    @Field(key: "prices")
+    var _prices: [String: Float]
 
     @Siblings(through: MakeuperPhoto.self, from: \.$makeuper, to: \.$photo)
     var _photos: [PlatformFileModel]
