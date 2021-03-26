@@ -21,9 +21,13 @@ final class EventPayloadModel: Model {
     @Field(key: "instance")
     var instance: String
     
+    @Parent(key: "owner_id")
+    var owner: UserModel
+
     required init() {}
 
-    init(_ instance: String) {
+    init<T: UserProtocol>(instance: String, owner: T) {
         self.instance = instance
+        self.$owner.id = owner.id!
     }
 }

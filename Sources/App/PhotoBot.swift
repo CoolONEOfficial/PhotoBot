@@ -141,6 +141,7 @@ class PhotoBot {
                 nextFuture = EventPayloadModel.find(eventPayloadId, on: app.db)
                     .optionalFlatMapThrowing { model in try EventPayload(from: model.instance) }
                     .optionalThrowingFlatMap { eventPayload in try handleEventPayload(event, eventPayload, &replyText, context: context) }
+                    .flatMap { res in EventPayloadModel.query(on: app.db).filter(\.$owner.$id == user.id!).delete().map { res } }
             } else if let eventPayload: EventPayload = try? event.decodeData() {
                 nextFuture = try handleEventPayload(event, eventPayload, &replyText, context: context).map { Optional($0) }
             }

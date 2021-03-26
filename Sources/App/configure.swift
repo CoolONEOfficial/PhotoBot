@@ -123,7 +123,6 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
     app.databases.use(try .postgres(url: Application.databaseURL), as: .psql)
     
     app.migrations.add([
-        CreateEventPayloads(),
         CreateNodes(),
         CreatePlatformFiles(),
         CreateStylists(),
@@ -133,6 +132,7 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
         CreatePhotographers(),
         CreatePhotographerPhotos(),
         CreateUsers(),
+        CreateEventPayloads(),
         CreateStudios(),
         CreatePromotions(),
         CreateStudioPhotos(),

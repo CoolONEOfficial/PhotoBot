@@ -73,6 +73,9 @@ final class UserModel: Model, UserProtocol {
     }
     
     var photographerId: UUID? { $_photographer.id }
+    
+    @Children(for: \.$owner)
+    var payloads: [EventPayloadModel]
 
     required init() { }
 
