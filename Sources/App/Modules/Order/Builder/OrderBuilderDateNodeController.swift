@@ -60,16 +60,20 @@ class OrderBuilderDateNodeController: NodeController {
             }
         } else if time != nil {
             return app.eventLoopGroup.future([
-                .init(text: "Выберите продолжительность для \(date.toString(style: .short)):"),
-                .init(text: "Полчаса\nза полчаса можно тото", keyboard: [[
-                    try .init(text: "Выбрать", action: .callback, eventPayload: .selectDuration(duration: 60*30))
-                ]]),
-                .init(text: "Час\nза час можно тото", keyboard: [[
-                    try .init(text: "Выбрать", action: .callback, eventPayload: .selectDuration(duration: 60*60))
-                ]]),
-                .init(text: "Два часа\nза два часа можно тото", keyboard: [[
-                    try .init(text: "Выбрать", action: .callback, eventPayload: .selectDuration(duration: 60*60*2))
-                ]])
+                .init(text: "Выберите продолжительность для \(date.toString(style: .short)):", keyboard: [[
+                    try .init(text: "30 минут", action: .callback, eventPayload: .selectDuration(duration: 60*30)),
+                    try .init(text: "1 час", action: .callback, eventPayload: .selectDuration(duration: 60*60)),
+                    try .init(text: "2 часа", action: .callback, eventPayload: .selectDuration(duration: 60*60*2))
+                ]])//,
+//                .init(text: "Полчаса\nза полчаса можно тото", keyboard: [[
+//                    try .init(text: "Выбрать", action: .callback, eventPayload: .selectDuration(duration: 60*30))
+//                ]]),
+//                .init(text: "Час\nза час можно тото", keyboard: [[
+//                    try .init(text: "Выбрать", action: .callback, eventPayload: .selectDuration(duration: 60*60))
+//                ]]),
+//                .init(text: "Два часа\nза два часа можно тото", keyboard: [[
+//                    try .init(text: "Выбрать", action: .callback, eventPayload: .selectDuration(duration: 60*60*2))
+//                ]])
             ])
         
         } else if day != nil {

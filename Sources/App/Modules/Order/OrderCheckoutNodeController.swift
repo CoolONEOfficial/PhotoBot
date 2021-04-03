@@ -76,43 +76,43 @@ class OrderCheckoutNodeController: NodeController {
                     platform: platform,
                     app: app
                 ).flatMap { user in
-                    if let user = user, let id = user.platformIds.firstValue(platform: platform)?.id {
-
-                        func getMessage(_ platform: AnyPlatform) -> Future<String> {
-                            MessageFormatter.shared.format(
-                                [
-                                    "Новый заказ от @" + .replacing(by: .username) + " (" + .replacing(by: .orderId) + "):",
-                                    .replacing(by: .orderBlock),
-                                    .replacing(by: .priceBlock),
-                                ].joined(separator: "\n"),
-                                platform: platform, context: context
-                            )
-                        }
-
-                        return [
-                            getMessage(platform).throwingFlatMap { text in
-                                try bot.sendMessage(.init(
-                                    destination: .init(platform: platform, id: id),
-                                    text: text
-                                ), platform: platform, context: context)
-                            },
-                            order.fetchWatchers(app: app).flatMap {
-                                $0.map { watcher in
-                                    let platformIds = watcher.platformIds
-                                    
-                                    let platformId = platformIds.first(for: platform) ?? platformIds.first!
-                                    return getMessage(platformId.any).throwingFlatMap { text in
-                                        try bot.sendMessage(.init(
-                                            destination: platformId.sendDestination,
-                                            text: text
-                                        ), platform: platformId.any, context: context)
-                                    }
-                                }.flatten(on: app.eventLoopGroup.next()).map { messages + $0.reduce([], +) }
-                            }
-                        ].flatten(on: app.eventLoopGroup.next()).map { $0.reduce([], +) }
-                    } else {
-                        return app.eventLoopGroup.future(messages)
+                    func getMessage(_ platform: AnyPlatform) -> Future<String> {
+                        MessageFormatter.shared.format(
+                            [
+                                "Новый заказ от @" + .replacing(by: .username) + " (" + .replacing(by: .orderId) + "):",
+                                .replacing(by: .orderBlock),
+                                .replacing(by: .priceBlock),
+                            ].joined(separator: "\n"),
+                            platform: platform, context: context
+                        )
                     }
+                    
+                    var futures: [Future<[Message]>] = [
+                        order.fetchWatchers(app: app).flatMap {
+                            $0.map { watcher in
+                                let platformIds = watcher.platformIds
+                                
+                                let platformId = platformIds.first(for: platform) ?? platformIds.first!
+                                return getMessage(platformId.any).throwingFlatMap { text in
+                                    try bot.sendMessage(.init(
+                                        destination: platformId.sendDestination,
+                                        text: text
+                                    ), platform: platformId.any, context: context)
+                                }
+                            }.flatten(on: app.eventLoopGroup.next()).map { messages + $0.reduce([], +) }
+                        }
+                    ]
+                    
+//                    if let user = user, let id = user.platformIds.firstValue(platform: platform)?.id {
+//                        futures.append(getMessage(platform).throwingFlatMap { text in
+//                            try bot.sendMessage(.init(
+//                                destination: .init(platform: platform, id: id),
+//                                text: text
+//                            ), platform: platform, context: context)
+//                        })
+//                    }
+                    
+                    return futures.flatten(on: app.eventLoopGroup.next()).map { $0.reduce([], +) }
                 }
             }
         }.throwingFlatMap { messages in

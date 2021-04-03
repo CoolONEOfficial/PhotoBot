@@ -14,8 +14,8 @@ class ShowcaseNodeController: NodeController {
         Node.create(
             name: "Showcase node",
             messagesGroup: [
-                .init(text: "Тут описание бота в деталях.", keyboard: [[
-                    try .init(text: "Перейти в главное меню", action: .callback, eventPayload: .push(.entryPoint(.welcome)))
+                .init(text: "Это - бот Насти Царевой. Тут ты сможешь посмотреть мое портфолио, отзывы, заказать сьемку и многое другое.", keyboard: [[
+                    try .init(text: "🔥 Вперед", action: .callback, eventPayload: .push(.entryPoint(.welcome)))
                 ]])
             ],
             entryPoint: .showcase,

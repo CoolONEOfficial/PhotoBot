@@ -44,7 +44,7 @@ extension Application {
         
         switch targetPlatform{
         case "TG":
-            port = 8443
+            port = tgWebhooksPort
         
         case "VK":
             port = 80
@@ -87,7 +87,7 @@ extension Application {
             }
         }
 
-        let res = matches(for: "\\S+(localhost.run)", in: output).first!
+        let res = matches(for: "\\S+(localhost.run)", in: output).last!
 
         return res
     }()
@@ -223,9 +223,9 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
             ], app: app
         ).throwingFlatMap { try $0.save(app: app) }.wait()
         
-        try UserModel.create(history: [], nodeId: nil, nodePayload: nil, platformIds: [ .tg(.init(id: 356008384, username: "cooloneofficial")) ], isAdmin: true, firstName: "Николай", lastName: "Трухин", makeuper: makeupers.first, stylist: stylists.first, app: app).wait()
+        try UserModel.create(history: [], nodeId: nil, nodePayload: nil, platformIds: coolonePlatformIds, isAdmin: true, firstName: "Николай", lastName: "Трухин", stylist: stylists.first, app: app).wait()
         
-        try UserModel.create(history: [], nodeId: nil, nodePayload: nil, platformIds: [ .tg(.init(id: 975594669, username: "nastyatsarevax")) ], isAdmin: true, firstName: "Nastya", lastName: "Tsareva", photographer: photographer, app: app).wait()
+        try UserModel.create(history: [], nodeId: nil, nodePayload: nil, platformIds: nastyaPlatformIds, isAdmin: true, firstName: "Nastya", lastName: "Tsareva", makeuper: makeupers.first, photographer: photographer, app: app).wait()
         
         for num in 1...3 {
             try Promotion.create(

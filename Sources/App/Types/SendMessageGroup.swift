@@ -175,7 +175,7 @@ public enum SendMessageGroup {
     static private func addNavigationButtons(_ messages: [SendMessage], _ user: User) -> [SendMessage] {
         if !user.history.isEmpty, let lastMessage = messages.last {
             lastMessage.keyboard.buttons.safeAppend([ try! .init(
-                text: user.history.last?.nodeId == user.nodeId ? "❌ Отменить действие" : "👈 Назад",
+                text: user.history.last?.nodeId == user.nodeId ? "❌ Отменить выбор" : "👈 Назад",
                 action: .callback, eventPayload: .back
             ) ])
         }
