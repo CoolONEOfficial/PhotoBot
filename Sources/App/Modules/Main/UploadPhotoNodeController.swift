@@ -42,7 +42,7 @@ class UploadPhotoNodeController: NodeController {
                     .init(type: .photo, content: .url(text))
                 ]
             ), platform: platform, context: context)
-            .flatMap { res -> Future<PlatformFile.Entry> in
+            .throwingFlatMap { res -> Future<PlatformFile.Entry> in
                 guard let attachment = res.first?.attachments.first else { throw HandleActionError.noAttachments }
                 var text = ""
                 switch platform {
