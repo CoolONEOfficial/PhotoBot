@@ -19,7 +19,7 @@ public struct OrderState: Codable {
     var date: Date?
     var duration: TimeInterval?
     var hourPrice: Float = 0
-    var isCancelled = false
+    var status: OrderStatus?
     var id: UUID?
     var userId: UUID?
 
@@ -33,11 +33,11 @@ public struct OrderState: Codable {
         return hours * hourPrice
     }
     
-    init(type: OrderType? = nil, date: Date? = nil, duration: TimeInterval? = nil, isCancelled: Bool = false, id: UUID? = nil, userId: UUID? = nil) {
-        self.init(type: type, stylistId: nil, makeuperId: nil, photographerId: nil, studioId: nil, date: date, duration: duration, hourPrice: 0, isCancelled: isCancelled, id: id, userId: userId)
+    init(type: OrderType? = nil, date: Date? = nil, duration: TimeInterval? = nil, status: OrderStatus? = nil, id: UUID? = nil, userId: UUID? = nil) {
+        self.init(type: type, stylistId: nil, makeuperId: nil, photographerId: nil, studioId: nil, date: date, duration: duration, hourPrice: 0, status: status, id: id, userId: userId)
     }
     
-    private init(type: OrderType? = nil, stylistId: UUID? = nil, makeuperId: UUID? = nil, photographerId: UUID? = nil, studioId: UUID? = nil, date: Date? = nil, duration: TimeInterval? = nil, hourPrice: Float = 0, isCancelled: Bool = false, id: UUID? = nil, userId: UUID? = nil) {
+    private init(type: OrderType? = nil, stylistId: UUID? = nil, makeuperId: UUID? = nil, photographerId: UUID? = nil, studioId: UUID? = nil, date: Date? = nil, duration: TimeInterval? = nil, hourPrice: Float = 0, status: OrderStatus? = nil, id: UUID? = nil, userId: UUID? = nil) {
         self.type = type
         self.stylistId = stylistId
         self.makeuperId = makeuperId
@@ -46,7 +46,7 @@ public struct OrderState: Codable {
         self.date = date
         self.duration = duration
         self.hourPrice = hourPrice
-        self.isCancelled = isCancelled
+        self.status = status
         self.id = id
         self.userId = userId
     }
@@ -55,7 +55,7 @@ public struct OrderState: Codable {
 extension OrderState {
 
     init<T: OrderProtocol>(from order: T) {
-        self.init(type: order.type, stylistId: order.stylistId, makeuperId: order.makeuperId, studioId: order.studioId, date: order.interval.start, duration: order.interval.duration, hourPrice: order.hourPrice, isCancelled: order.isCancelled, id: order.id, userId: order.userId)
+        self.init(type: order.type, stylistId: order.stylistId, makeuperId: order.makeuperId, studioId: order.studioId, date: order.interval.start, duration: order.interval.duration, hourPrice: order.hourPrice, status: order.status, id: order.id, userId: order.userId)
     }
 
 }

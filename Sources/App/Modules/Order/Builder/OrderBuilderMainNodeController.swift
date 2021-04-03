@@ -18,6 +18,45 @@ class OrderBuilderMainNodeController: NodeController {
         )
     }
     
+    func getSendMessages(platform: AnyPlatform, in node: Node, _ payload: NodePayload?, context: PhotoBotContextProtocol, group: SendMessageGroup) throws -> EventLoopFuture<[SendMessage]>? {
+        guard case .orderBuilder = group else { return nil }
+        
+        let app = context.app
+        
+        guard case let .orderBuilder(state) = payload, let type = state.type else {
+            return app.eventLoopGroup.future(error: SendMessageGroupError.invalidPayload)
+        }
+        
+        var keyboard: Keyboard = [[
+            try .init(text: "Студия", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderStudio))),
+            try .init(text: "Дата", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderDate)))
+        ]]
+
+        switch type {
+        case .loveStory, .family:
+            keyboard.buttons[0].insert(contentsOf: [
+                try .init(text: "Стилист", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderStylist))),
+                try .init(text: "Визажист", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderMakeuper))),
+            ], at: 0)
+        case .content: break
+        }
+        
+        if state.isValid {
+            keyboard.buttons.safeAppend([
+                try .init(text: "👌 К завершению", action: .callback, eventPayload: .pushCheckout(state: state))
+            ])
+        }
+        
+        return app.eventLoopGroup.future([ .init(
+            text: [
+                "Ваш заказ:",
+                .replacing(by: .orderBlock),
+                "Сумма: " + .replacing(by: .price)
+            ].joined(separator: "\n"),
+            keyboard: keyboard
+        ) ])
+    }
+    
     func handleEventPayload(_ event: MessageEvent, _ eventPayload: EventPayload, _ replyText: inout String, context: PhotoBotContextProtocol) throws -> Future<[Botter.Message]>? {
         guard case let .pushCheckout(state) = eventPayload else { return nil }
         let (app, user) = (context.app, context.user)

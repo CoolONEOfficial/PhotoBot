@@ -47,6 +47,7 @@ public enum SendMessageGroup {
     case orderCheckout
     case welcome
     case calendar
+    case orderAgreement
     
     func getSendMessages(platform: AnyPlatform, in node: Node, _ payload: NodePayload?, context: PhotoBotContextProtocol) throws -> Future<[SendMessage]> {
         var result: Future<[SendMessage]>?
@@ -99,54 +100,6 @@ public enum SendMessageGroup {
                     .map { ($0.0.isEmpty ? [ SendMessage(text: "Тут пусто") ] : $0.0, $0.1) }
                     .map { Self.addPageButtons($0.0, indexRange, $0.1) }
             }
-            
-        case .orderBuilder:
-            
-            guard case let .orderBuilder(state) = payload, let type = state.type else {
-                return app.eventLoopGroup.future(error: SendMessageGroupError.invalidPayload)
-            }
-            
-            var keyboard: Keyboard = [[
-                try .init(text: "Студия", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderStudio))),
-                try .init(text: "Дата", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderDate)))
-            ]]
-
-            switch type {
-            case .loveStory, .family:
-                keyboard.buttons[0].insert(contentsOf: [
-                    try .init(text: "Стилист", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderStylist))),
-                    try .init(text: "Визажист", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderMakeuper))),
-                ], at: 0)
-            case .content: break
-            }
-            
-            if state.isValid {
-                keyboard.buttons.safeAppend([
-                    try .init(text: "👌 К завершению", action: .callback, eventPayload: .pushCheckout(state: state))
-                ])
-            }
-            
-            result = app.eventLoopGroup.future([ .init(
-                text: [
-                    "Ваш заказ:",
-                    .replacing(by: .orderBlock),
-                    "Сумма: " + .replacing(by: .price)
-                ].joined(separator: "\n"),
-                keyboard: keyboard
-            ) ])
-            
-        case .orderCheckout:
-            result = app.eventLoopGroup.future([ .init(
-                text: [
-                    "Оформление заказа",
-                    .replacing(by: .orderBlock),
-                    .replacing(by: .priceBlock),
-                    .replacing(by: .promoBlock),
-                ].joined(separator: "\n"),
-                keyboard: [[
-                    try .init(text: "✅ Отправить", action: .callback, eventPayload: .createOrder)
-                ]]
-            ) ])
 
         default: break
         }
@@ -206,6 +159,7 @@ extension SendMessageGroup: Codable {
         case orderTypes
         case welcome
         case calendar
+        case orderAgreement
     }
 
     public init(from decoder: Decoder) throws {
@@ -241,6 +195,10 @@ extension SendMessageGroup: Codable {
             self = .calendar
             return
         }
+        if container.allKeys.contains(.orderAgreement), try container.decodeNil(forKey: .orderAgreement) == false {
+            self = .orderAgreement
+            return
+        }
         throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown enum case"))
     }
 
@@ -262,6 +220,8 @@ extension SendMessageGroup: Codable {
             try container.encode(true, forKey: .calendar)
         case .orderTypes:
             try container.encode(true, forKey: .orderTypes)
+        case .orderAgreement:
+            try container.encode(true, forKey: .orderAgreement)
         }
     }
 

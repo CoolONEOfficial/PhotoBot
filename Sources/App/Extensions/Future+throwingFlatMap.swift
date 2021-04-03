@@ -18,18 +18,6 @@ extension Future {
         }
     }
     
-//    public func optionalThrowingFlatMap<Wrapped, Result>(
-//        _ transform: @escaping (_ unwrapped: Wrapped) throws -> Future<Result?>
-//    ) -> Future<Result> where Value == Optional<Wrapped> {
-//        optionalFlatMap { value in
-//            do {
-//                return try transform(value)
-//            } catch {
-//                return self.eventLoop.makeFailedFuture(error)
-//            }
-//        }
-//    }
-    
     public func optionalThrowingFlatMap<Wrapped, Result>(
         _ closure: @escaping (_ unwrapped: Wrapped) throws -> Future<Result>
     ) -> Future<Result?> where Value == Optional<Wrapped> {

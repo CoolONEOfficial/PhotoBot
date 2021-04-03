@@ -30,6 +30,31 @@ extension OrderType {
     }
 }
 
+enum OrderStatus: String, Codable {
+    case inAgreement
+    case inProgress
+    case finished
+    case cancelled
+}
+
+extension OrderStatus: CustomStringConvertible {
+    var description: String {
+        switch self {
+        case .inAgreement:
+            return "На согласовании"
+
+        case .inProgress:
+            return "На исполнении"
+            
+        case .finished:
+            return "Завершен"
+
+        case .cancelled:
+            return "Отменен"
+        }
+    }
+}
+
 protocol OrderProtocol: PromotionsProtocol, Twinable where TwinType: OrderProtocol {
 
     associatedtype ImplementingModel = OrderModel
@@ -38,16 +63,17 @@ protocol OrderProtocol: PromotionsProtocol, Twinable where TwinType: OrderProtoc
     var id: UUID? { get set }
     var userId: UUID! { get set }
     var type: OrderType! { get set }
-    var isCancelled: Bool { get set }
+    var status: OrderStatus { get set }
     var stylistId: UUID? { get set }
     var makeuperId: UUID? { get set }
+    var photographerId: UUID? { get set }
     var studioId: UUID? { get set }
     var interval: DateInterval { get set }
     var hourPrice: Float { get set }
     var promotions: [PromotionModel] { get set }
     
     init()
-    static func create(id: UUID?, userId: UUID, type: OrderType, stylistId: UUID?, makeuperId: UUID?, studioId: UUID?, interval: DateInterval, price: Float, promotions: [PromotionModel], isCancelled: Bool, app: Application) -> Future<Self>
+    static func create(id: UUID?, userId: UUID, type: OrderType, stylistId: UUID?, makeuperId: UUID?, studioId: UUID?, interval: DateInterval, price: Float, promotions: [PromotionModel], status: OrderStatus, app: Application) -> Future<Self>
 }
 
 enum OrderCreateError: Error {
@@ -57,11 +83,11 @@ enum OrderCreateError: Error {
 extension OrderProtocol {
     static func create(other: TwinType, app: Application) throws -> Future<Self> {
         other.getPromotions(app: app).flatMap { promotions in
-            Self.create(id: other.id, userId: other.userId, type: other.type, stylistId: other.stylistId, makeuperId: other.makeuperId, studioId: other.studioId, interval: other.interval, price: other.hourPrice, promotions: promotions, isCancelled: other.isCancelled, app: app)
+            Self.create(id: other.id, userId: other.userId, type: other.type, stylistId: other.stylistId, makeuperId: other.makeuperId, studioId: other.studioId, interval: other.interval, price: other.hourPrice, promotions: promotions, status: other.status, app: app)
         }
     }
     
-    static func create(id: UUID? = nil, userId: UUID, type: OrderType, stylistId: UUID?, makeuperId: UUID?, studioId: UUID?, interval: DateInterval, price: Float = 0, promotions: [PromotionModel], isCancelled: Bool = false, app: Application) -> Future<Self> {
+    static func create(id: UUID? = nil, userId: UUID, type: OrderType, stylistId: UUID?, makeuperId: UUID?, studioId: UUID?, interval: DateInterval, price: Float = 0, promotions: [PromotionModel], status: OrderStatus = .inAgreement, app: Application) -> Future<Self> {
         let instance = Self.init()
         instance.id = id
         instance.userId = userId
@@ -71,7 +97,7 @@ extension OrderProtocol {
         instance.studioId = studioId
         instance.interval = interval
         instance.hourPrice = price
-        instance.isCancelled = isCancelled
+        instance.status = status
         return instance.saveIfNeeded(app: app).throwingFlatMap {
             try $0.attachPromotions(promotions, app: app).transform(to: instance)
         }
@@ -91,7 +117,6 @@ extension OrderProtocol {
             interval: .init(start: date, duration: duration),
             price: order.hourPrice,
             promotions: checkoutState.promotions,
-            isCancelled: false,
             app: app
         )
     }

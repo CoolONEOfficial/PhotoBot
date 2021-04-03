@@ -18,9 +18,10 @@ public final class Order: OrderProtocol {
     var id: UUID?
     var userId: UUID!
     var type: OrderType!
-    var isCancelled: Bool = false
+    var status: OrderStatus = .inAgreement
     var stylistId: UUID?
     var makeuperId: UUID?
+    var photographerId: UUID?
     var studioId: UUID?
     var interval: DateInterval = .init()
     var hourPrice: Float = 0
@@ -35,9 +36,13 @@ extension Order: ModeledType {
         true
     }
     
+    var watcherIds: [UUID] {
+        [makeuperId, photographerId, studioId].compactMap { $0 }
+    }
+    
     func cancelAvailable(user: User) -> Bool {
-        guard !isCancelled else { return false }
-        return user.isAdmin || user.makeuperId == makeuperId || user.stylistId == stylistId || user.id == userId
+        guard status == .inAgreement || status == .inProgress else { return false }
+        return user.isAdmin || user.watcherIds.contains { watcherIds.contains($0) } || user.id == userId
     }
     
     func save(app: Application) throws -> EventLoopFuture<TwinType> {

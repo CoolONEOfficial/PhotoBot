@@ -216,7 +216,7 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
         }
 
         let photographer = try Photographer.create(
-            name: "Photographer Nastya", platformIds: nastyaPlatformIds, photos: [testPhoto, testPhoto2], prices: [
+            name: "Настя Царева", platformIds: nastyaPlatformIds, photos: [testPhoto, testPhoto2], prices: [
                 .loveStory: Float(1000),
                 .content: Float(800),
                 .family: Float(2500)

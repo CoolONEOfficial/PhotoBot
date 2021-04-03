@@ -18,6 +18,7 @@ public enum EventPayload {
     case createOrder
     case pushCheckout(state: OrderState)
     case cancelOrder(id: UUID)
+    case handleOrderAgreement(Bool)
     
     // MARK: Navigation
     
@@ -44,6 +45,7 @@ extension EventPayload: Codable {
         case pushToCheckoutState
         case previousPage
         case nextPage
+        case orderAgreement
     }
 
     public init(from decoder: Decoder) throws {
@@ -118,6 +120,11 @@ extension EventPayload: Codable {
             self = .pushCheckout(state: state)
             return
         }
+        if container.allKeys.contains(.orderAgreement), try container.decodeNil(forKey: .orderAgreement) == false {
+            let agreement = try container.decode(Bool.self, forKey: .orderAgreement)
+            self = .handleOrderAgreement(agreement)
+            return
+        }
         throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown enum case"))
     }
 
@@ -152,6 +159,8 @@ extension EventPayload: Codable {
             try associatedValues.encode(associatedValue2)
         case let .pushCheckout(state):
             try container.encode(state, forKey: .pushToCheckoutState)
+        case let .handleOrderAgreement(agreement):
+            try container.encode(agreement, forKey: .orderAgreement)
         case .previousPage:
             try container.encode(true, forKey: .previousPage)
         case .nextPage:

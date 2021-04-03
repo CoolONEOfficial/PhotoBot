@@ -128,7 +128,7 @@ extension ReplacingKey {
                 break
             }
             
-            if user.isAdmin || orderState.watchers.contains(user.id!) {
+            if user.isAdmin || orderState.watchers.contains(user.id!), orderState.status != nil {
                 str.insert("Статус: " + .replacing(by: .orderStatus), at: 0)
             }
             
@@ -211,8 +211,8 @@ extension ReplacingKey {
         }
         
         dict[.orderStatus] = [Self.notSelected]
-        if let isCancelled = state?.isCancelled {
-            dict[.orderStatus] = [isCancelled ? "Отменен" : "Активен"]
+        if let status = state?.status?.description {
+            dict[.orderStatus] = [status]
         }
 
         let price = state?.price ?? 0

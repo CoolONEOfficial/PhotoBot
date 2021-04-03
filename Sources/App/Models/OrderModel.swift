@@ -30,8 +30,8 @@ final class OrderModel: Model, OrderProtocol {
     @Field(key: "type")
     var type: OrderType!
     
-    @Field(key: "is_cancelled")
-    var isCancelled: Bool
+    @Field(key: "status")
+    var status: OrderStatus
     
     @OptionalParent(key: "stylist_id")
     var stylist: StylistModel?
@@ -39,6 +39,14 @@ final class OrderModel: Model, OrderProtocol {
     var stylistId: UUID? {
         get { self.$stylist.id }
         set { self.$stylist.id = newValue }
+    }
+    
+    @OptionalParent(key: "photographer_id")
+    var photographer: PhotographerModel?
+    
+    var photographerId: UUID? {
+        get { self.$photographer.id }
+        set { self.$photographer.id = newValue }
     }
     
     @OptionalParent(key: "makeuper_id")
@@ -94,7 +102,16 @@ extension OrderModel {
     func fetchWatchers(app: Application) -> Future<[PlatformIdentifiable]> {
         [
             $makeuper.get(on: app.db).optionalMap { $0 as PlatformIdentifiable },
-            $stylist.get(on: app.db).optionalMap { $0 as PlatformIdentifiable }
+            $stylist.get(on: app.db).optionalMap { $0 as PlatformIdentifiable },
+            $stylist.get(on: app.db).optionalMap { $0 as PlatformIdentifiable },
+        ].flatten(on: app.eventLoopGroup.next()).map { $0.compactMap { $0 } }
+    }
+    
+    func fetchWatchersUsers(app: Application) -> Future<[UserModel]> {
+        [
+            $makeuper.get(on: app.db).optionalFlatMap { $0.getUser(app: app) },
+            $stylist.get(on: app.db).optionalFlatMap { $0.getUser(app: app) },
+            $stylist.get(on: app.db).optionalFlatMap { $0.getUser(app: app) },
         ].flatten(on: app.eventLoopGroup.next()).map { $0.compactMap { $0 } }
     }
 }

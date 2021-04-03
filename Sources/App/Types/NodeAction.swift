@@ -14,6 +14,7 @@ public enum NodeActionType: String, Codable {
     case uploadPhoto
     case applyPromocode
     case handleCalendar
+    case handleOrderAgreement
 }
 
 public struct NodeAction: Codable {

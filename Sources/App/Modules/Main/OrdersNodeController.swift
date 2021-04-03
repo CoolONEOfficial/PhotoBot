@@ -75,7 +75,7 @@ class OrdersNodeController: NodeController {
             .unwrap(or: PhotoBotError.orderByIdNotFound)
             .flatMap { order in
             
-                order.isCancelled = true
+                order.status = .cancelled
                 
                 return order.save(on: app.db).throwingFlatMap { _ in
                     try user.pushToActualNode(to: event, context: context)

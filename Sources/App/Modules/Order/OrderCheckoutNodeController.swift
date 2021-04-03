@@ -18,6 +18,24 @@ class OrderCheckoutNodeController: NodeController {
         )
     }
     
+    func getSendMessages(platform: AnyPlatform, in node: Node, _ payload: NodePayload?, context: PhotoBotContextProtocol, group: SendMessageGroup) throws -> EventLoopFuture<[SendMessage]>? {
+        guard case .orderCheckout = group else { return nil }
+        
+        let app = context.app
+
+        return app.eventLoopGroup.future([ .init(
+            text: [
+                "Оформление заказа",
+                .replacing(by: .orderBlock),
+                .replacing(by: .priceBlock),
+                .replacing(by: .promoBlock),
+            ].joined(separator: "\n"),
+            keyboard: [[
+                try .init(text: "✅ Отправить", action: .callback, eventPayload: .createOrder)
+            ]]
+        ) ])
+    }
+    
     func handleAction(_ action: NodeAction, _ message: Message, _ text: String, context: PhotoBotContextProtocol) throws -> EventLoopFuture<Result<Void, HandleActionError>>? {
         guard case .applyPromocode = action.type else { return nil }
         let (app, user) = (context.app, context.user)
@@ -87,7 +105,7 @@ class OrderCheckoutNodeController: NodeController {
                         )
                     }
                     
-                    var futures: [Future<[Message]>] = [
+                    let futures: [Future<[Message]>] = [
                         order.fetchWatchers(app: app).flatMap {
                             $0.map { watcher in
                                 let platformIds = watcher.platformIds

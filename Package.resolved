@@ -29,6 +29,15 @@
         }
       },
       {
+        "package": "Botter",
+        "repositoryURL": "https://github.com/CoolONEOfficial/Botter.git",
+        "state": {
+          "branch": "main",
+          "revision": "ec030d0b54975f722d9e2aa0ae75842db6d91dd8",
+          "version": null
+        }
+      },
+      {
         "package": "console-kit",
         "repositoryURL": "https://github.com/vapor/console-kit.git",
         "state": {

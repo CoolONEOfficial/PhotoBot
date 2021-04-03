@@ -111,6 +111,10 @@ protocol UserProtocol: PlatformIdentifiable, Twinable where TwinType: UserProtoc
 }
 
 extension UserProtocol {
+    var watcherIds: [UUID] {
+        [stylistId, photographerId, makeuperId].compactMap { $0 }
+    }
+
     static func create(other: TwinType, app: Application) throws -> Future<Self> {
         [
             StylistModel.find(other.stylistId, on: app.db).map { $0 as Any },
