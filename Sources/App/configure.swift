@@ -138,6 +138,7 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
         CreateStudioPhotos(),
         CreateOrders(),
         CreateOrderPromotions(),
+        CreateReviews(),
     ])
 
     if app.environment == .development {
@@ -192,6 +193,13 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
         
         let coolonePlatformIds: [TypedPlatform<UserPlatformId>] = [.tg(.init(id: 356008384, username: "cooloneofficial"))]
         let nastyaPlatformIds: [TypedPlatform<UserPlatformId>] = [.tg(.init(id: 975594669, username: "nastyatsareva"))]
+        
+        for _ in 1...15 {
+            try Review.create(
+                screenshot: testPhoto,
+                app: app
+            ).throwingFlatMap { try $0.save(app: app) }.wait()
+        }
         
         var stylists: [StylistModel] = []
         for num in 1...20 {
