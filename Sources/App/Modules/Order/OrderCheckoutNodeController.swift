@@ -36,8 +36,8 @@ class OrderCheckoutNodeController: NodeController {
         ) ])
     }
     
-    func handleAction(_ action: NodeAction, _ message: Message, _ text: String, context: PhotoBotContextProtocol) throws -> EventLoopFuture<Result<Void, HandleActionError>>? {
-        guard case .applyPromocode = action.type else { return nil }
+    func handleAction(_ action: NodeAction, _ message: Message, context: PhotoBotContextProtocol) throws -> EventLoopFuture<Result<Void, HandleActionError>>? {
+        guard case .applyPromocode = action.type, let text = message.text else { return nil }
         let (app, user) = (context.app, context.user)
         
         guard case var .checkout(checkoutState) = user.nodePayload else { throw HandleActionError.nodePayloadInvalid }

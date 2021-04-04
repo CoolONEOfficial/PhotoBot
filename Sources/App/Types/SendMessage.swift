@@ -16,6 +16,8 @@ public class SendMessage: Codable {
     /// Текст личного сообщения.
     public var text: String?
     
+    public var formatText: Bool
+    
     /// Объект, описывающий клавиатуру бота.
     public var keyboard: Keyboard
     
@@ -26,13 +28,14 @@ public class SendMessage: Codable {
         Bot.SendMessageParams(to: self, text: text, keyboard: keyboard, attachments: attachments)
     }
     
-    convenience init(to replyable: Replyable, text: String? = nil, keyboard: Keyboard = .init(), attachments: [FileInfo]? = nil) {
+    convenience init(to replyable: Replyable, text: String? = nil, formatText: Bool = true, keyboard: Keyboard = .init(), attachments: [FileInfo]? = nil) {
         self.init(destination: replyable.destination, text: text, keyboard: keyboard, attachments: attachments)
     }
     
-    init(destination: SendDestination? = nil, text: String? = nil, keyboard: Keyboard = .init(), attachments: [FileInfo]? = nil) {
+    init(destination: SendDestination? = nil, text: String? = nil, formatText: Bool = true, keyboard: Keyboard = .init(), attachments: [FileInfo]? = nil) {
         self.destination = destination
         self.text = text
+        self.formatText = formatText
         self.keyboard = keyboard
         self.attachments = attachments
     }

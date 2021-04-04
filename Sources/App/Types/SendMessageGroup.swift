@@ -48,6 +48,7 @@ public enum SendMessageGroup {
     case welcome
     case calendar
     case orderAgreement
+    case editNodeText
     
     func getSendMessages(platform: AnyPlatform, in node: Node, _ payload: NodePayload?, context: PhotoBotContextProtocol) throws -> Future<[SendMessage]> {
         var result: Future<[SendMessage]>?
@@ -136,7 +137,7 @@ public enum SendMessageGroup {
     }
     
     static private func formatMessage(_ message: SendMessage, platform: AnyPlatform? = nil, context: PhotoBotContextProtocol) -> Future<SendMessage> {
-        if let text = message.text {
+        if let text = message.text, message.formatText {
             return MessageFormatter.shared.format(text, platform: platform, context: context).map { text in
                 message.text = text
                 return message
@@ -160,6 +161,7 @@ extension SendMessageGroup: Codable {
         case welcome
         case calendar
         case orderAgreement
+        case editNodeText
     }
 
     public init(from decoder: Decoder) throws {
@@ -181,6 +183,10 @@ extension SendMessageGroup: Codable {
         }
         if container.allKeys.contains(.orderCheckout), try container.decodeNil(forKey: .orderCheckout) == false {
             self = .orderCheckout
+            return
+        }
+        if container.allKeys.contains(.editNodeText), try container.decodeNil(forKey: .editNodeText) == false {
+            self = .editNodeText
             return
         }
         if container.allKeys.contains(.orderTypes), try container.decodeNil(forKey: .orderTypes) == false {
@@ -222,6 +228,8 @@ extension SendMessageGroup: Codable {
             try container.encode(true, forKey: .orderTypes)
         case .orderAgreement:
             try container.encode(true, forKey: .orderAgreement)
+        case .editNodeText:
+            try container.encode(true, forKey: .editNodeText)
         }
     }
 

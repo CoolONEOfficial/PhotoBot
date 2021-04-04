@@ -14,15 +14,36 @@ class ChangeTextNodeController: NodeController {
         Node.create(
             systemic: true,
             name: "Change static node text node",
-            messagesGroup: [ .init(text: "Пришли мне новый текст") ],
+            messagesGroup: .editNodeText,
             entryPoint: .messageEdit,
             action: .init(.messageEdit, success: .pop),
             app: app
         )
     }
     
-    func handleAction(_ action: NodeAction, _ message: Message, _ text: String, context: PhotoBotContextProtocol) throws -> EventLoopFuture<Result<Void, HandleActionError>>? {
-        guard case .messageEdit = action.type else { return nil }
+    func getSendMessages(platform: AnyPlatform, in node: Node, _ payload: NodePayload?, context: PhotoBotContextProtocol, group: SendMessageGroup) throws -> EventLoopFuture<[SendMessage]>? {
+        guard case .editNodeText = group else { return nil }
+        
+        let (app, user) = (context.app, context.user)
+        
+        return Node.find(.id(user.history.last!.nodeId), app: app).flatMapThrowing { node in
+            guard let nodePayload = user.nodePayload,
+                  case let .editText(messageId) = nodePayload,
+                  case let .array(messages) = node.messagesGroup else {
+                throw HandleActionError.nodePayloadInvalid
+            }
+            let message = messages[messageId]
+            
+            return [
+                .init(text: "Актуальный текст ноды:"),
+                .init(text: message.text, formatText: false),
+                .init(text: "Пришли мне новый текст"),
+            ]
+        }
+    }
+    
+    func handleAction(_ action: NodeAction, _ message: Message, context: PhotoBotContextProtocol) throws -> EventLoopFuture<Result<Void, HandleActionError>>? {
+        guard case .messageEdit = action.type, let text = message.text else { return nil }
         
         let (app, user) = (context.app, context.user)
         
@@ -35,7 +56,9 @@ class ChangeTextNodeController: NodeController {
 
             node.messagesGroup?.updateText(at: messageId, text: text)
             
-            return try node.save(app: app).map { _ in .success }
+            return try node.save(app: app)
+                .throwingFlatMap { _ in try message.reply(.init(text: "Текст успешно изменен."), context: context) }
+                .map { _ in .success }
         }
     }
     

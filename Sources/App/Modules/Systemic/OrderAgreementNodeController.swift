@@ -21,7 +21,7 @@ class OrderAgreementNodeController: NodeController {
         )
     }
     
-//    func handleAction(_ action: NodeAction, _ message: Message, _ text: String, context: PhotoBotContextProtocol) throws -> EventLoopFuture<Result<Void, HandleActionError>>? {
+//    func handleAction(_ action: NodeAction, _ message: Message,, context: PhotoBotContextProtocol) throws -> EventLoopFuture<Result<Void, HandleActionError>>? {
 //        guard case .handleOrderAgreement = action.type else { return nil }
 //
 //        let (app, user) = (context.app, context.user)

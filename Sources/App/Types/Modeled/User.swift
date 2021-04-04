@@ -122,7 +122,8 @@ extension User {
         _ target: PushTarget, payload: NodePayload? = nil,
         to replyable: T, saveMove: Bool = true, context: PhotoBotContextProtocol
     ) -> Future<[Message]> {
-        Node.find(target, app: context.app).throwingFlatMap { node in
+        assert(replyable.destination != nil)
+        return Node.find(target, app: context.app).throwingFlatMap { node in
             try self.push(node, payload: payload, to: replyable, saveMove: saveMove, context: context)
         }
     }

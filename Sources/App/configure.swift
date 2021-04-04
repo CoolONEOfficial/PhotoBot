@@ -191,15 +191,39 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
             .vk("photo-119092254_457239065")
         ], type: .photo, app: app).throwingFlatMap { try $0.save(app: app) }.wait()
         
+        let reviewPhotos: [PlatformFileModel] = [
+            try PlatformFile.create(platformEntries: [
+                .tg("AgACAgIAAxkBAAIdMGBpsjawdLtVu2FT22IWVBHb1rNrAAKIszEbMbpRS9e8uuCD16jMUS4lmy4AAwEAAwIAA3gAA-bbBQABHgQ"),
+                .vk("photo-119092254_457239082")
+            ], type: .photo, app: app).throwingFlatMap { try $0.save(app: app) }.wait(),
+            try PlatformFile.create(platformEntries: [
+                .tg("AgACAgIAAxkBAAIdL2BpsjbtHwj2a29Gdhk6WPvNPgvAAAKHszEbMbpRS7FEamIW-ryVFm9Yoi4AAwEAAwIAA3gAA863AAIeBA"),
+                .vk("photo-119092254_457239081")
+            ], type: .photo, app: app).throwingFlatMap { try $0.save(app: app) }.wait(),
+            try PlatformFile.create(platformEntries: [
+                .tg("AgACAgIAAxkBAAIdMWBpsjZoqvgM72INK3ymYHT3S6k4AAKJszEbMbpRS902COwTqrpYDk-poi4AAwEAAwIAA3gAA5KwAAIeBA"),
+                .vk("photo-119092254_457239083")
+            ], type: .photo, app: app).throwingFlatMap { try $0.save(app: app) }.wait(),
+            try PlatformFile.create(platformEntries: [
+                .tg("AgACAgIAAxkBAAIdMmBpsjZGg6Oy50xOp3ybEU5xRhDFAAKKszEbMbpRS5h1SO6J-3HzLF_9ni4AAwEAAwIAA3gAAwyiAgABHgQ"),
+                .vk("photo-119092254_457239084")
+            ], type: .photo, app: app).throwingFlatMap { try $0.save(app: app) }.wait(),
+            try PlatformFile.create(platformEntries: [
+                .tg("AgACAgIAAxkBAAIdM2BpsjYqTOyqKdf9GSV9-SESc1nCAAKLszEbMbpRS4rBPnQ4N4MeoZKboi4AAwEAAwIAA3gAA-KeAAIeBA"),
+                .vk("photo-119092254_457239085")
+            ], type: .photo, app: app).throwingFlatMap { try $0.save(app: app) }.wait(),
+            try PlatformFile.create(platformEntries: [
+                .tg("AgACAgIAAxkBAAIdNWBpsja0j9IW3lQi-wfQgGMU2usEAAKNszEbMbpRSwYswZ_hjzmuXl2Poi4AAwEAAwIAA3gAA2K9AAIeBA"),
+                .vk("photo-119092254_457239086")
+            ], type: .photo, app: app).throwingFlatMap { try $0.save(app: app) }.wait(),
+        ]
+
+        try reviewPhotos.map {
+            try Review.create(screenshot: $0, app: app).throwingFlatMap { try $0.save(app: app) }.wait()
+        }
+        
         let coolonePlatformIds: [TypedPlatform<UserPlatformId>] = [.tg(.init(id: 356008384, username: "cooloneofficial"))]
         let nastyaPlatformIds: [TypedPlatform<UserPlatformId>] = [.tg(.init(id: 975594669, username: "nastyatsareva"))]
-        
-        for _ in 1...15 {
-            try Review.create(
-                screenshot: testPhoto,
-                app: app
-            ).throwingFlatMap { try $0.save(app: app) }.wait()
-        }
         
         var stylists: [StylistModel] = []
         for num in 1...20 {

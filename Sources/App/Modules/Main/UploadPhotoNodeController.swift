@@ -14,20 +14,20 @@ class UploadPhotoNodeController: NodeController {
         Node.create(
             name: "Upload photo node",
             messagesGroup: [
-                .init(text: "Пришли мне прямую ссылку.")
+                .init(text: "Пришли мне ссылки на фото и/или приложи их.")
             ],
             entryPoint: .uploadPhoto,
             action: .init(.uploadPhoto), app: app
         )
     }
     
-    func handleAction(_ action: NodeAction, _ message: Message, _ text: String, context: PhotoBotContextProtocol) throws -> EventLoopFuture<Result<Void, HandleActionError>>? {
+    func handleAction(_ action: NodeAction, _ message: Message, context: PhotoBotContextProtocol) throws -> EventLoopFuture<Result<Void, HandleActionError>>? {
         guard case .uploadPhoto = action.type else { return nil }
         let (app, bot) = (context.app, context.bot)
         
         let availablePlatforms: [AnyPlatform] = .available(bot: bot)
         
-        return try availablePlatforms.map { platform -> Future<PlatformFile.Entry> in
+        return try availablePlatforms.map { platform -> Future<[PlatformFile.Entry]> in
             let destination: SendDestination
             switch platform {
             case .tg:
@@ -35,31 +35,46 @@ class UploadPhotoNodeController: NodeController {
             case .vk:
                 destination = .userId(Application.vkBufferUserId)
             }
-            return try bot.sendMessage(.init(
-                destination: destination,
-                text: "Загружаю вот эту фото",
-                attachments: [
-                    .init(type: .photo, content: .url(text))
-                ]
-            ), platform: platform, context: context)
-            .throwingFlatMap { res -> Future<PlatformFile.Entry> in
-                guard let attachment = res.first?.attachments.first else { throw HandleActionError.noAttachments }
-                var text = ""
-                switch platform {
-                case .tg:
-                    text.append("tg id: ")
-                    
-                case .vk:
-                    text.append("vk id: ")
-                }
-                text.append(attachment.attachmentId)
-                return try message.reply(.init(text: text), context: context)
-                    .map { _ in platform.convert(to: attachment.attachmentId) }
+            
+            var contentArray = [
+                try message.attachments.compactMap { attachment in
+                    try attachment.getUrl(context: context)?.optionalMap { url -> (FileInfo.Content, Attachment?) in
+                        (.url(url), attachment)
+                    }
+                }.flatten(on: app.eventLoopGroup.next()).map { $0.compactMap { $0 } }
+            ]
+            if let text = message.text {
+                contentArray.append(app.eventLoopGroup.future(text.extractUrls.map { (.url($0.absoluteString), nil) }))
             }
-        }.flatten(on: app.eventLoopGroup.next()).flatMap { platformEntries in
-            PlatformFile.create(platformEntries: platformEntries, type: .photo, app: app).throwingFlatMap { try $0.saveReturningId(app: app) }.throwingFlatMap { savedId in
-                try message.reply(.init(text: "локальный id: \(savedId)"), context: context)
-                    
+            
+            return contentArray.flatten(on: app.eventLoopGroup.next()).map { $0.reduce([], +) }.throwingFlatMap { contentArray in
+                try contentArray.map { (content, attachment) in
+                    let attachmentFuture: Future<Attachment>
+                    if let attachment = attachment, message.platform.same(platform) {
+                        attachmentFuture = app.eventLoopGroup.future(attachment)
+                    } else {
+                        attachmentFuture = try bot.sendMessage(.init(
+                            destination: destination,
+                            text: "Загружаю вот эту фото",
+                            attachments: [
+                                .init(type: .photo, content: content)
+                            ]
+                        ), platform: platform, context: context)
+                        .map(\.first?.attachments.first)
+                        .unwrap(orError: HandleActionError.noAttachments)
+                    }
+                    return attachmentFuture.map { attachment in platform.convert(to: attachment.attachmentId) }
+                }.flatten(on: app.eventLoopGroup.next())
+            }
+        }.flatten(on: app.eventLoopGroup.next())
+        .map { $0.reduce([], +) }
+        .flatMap { platformEntries in
+            PlatformFile.create(platformEntries: platformEntries, type: .photo, app: app)
+                .throwingFlatMap { try $0.saveReturningId(app: app) }
+                .throwingFlatMap { savedId -> Future<[Message]> in
+                var text = "локальный id: \(savedId)"
+                text = platformEntries.map { $0.name + ": " + $0.description + "\n" }.joined() + text
+                return try message.reply(.init(text: text), context: context)
             }
         }.map { _ in .success }
     }

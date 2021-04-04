@@ -67,7 +67,7 @@ class PhotoBot {
         self.app = app
         self.controllers = controllers
 
-        dispatcher.add(handler: Botter.MessageHandler(filters: .text, callback: handleText))
+        dispatcher.add(handler: Botter.MessageHandler(callback: handleMessage))
         dispatcher.add(handler: Botter.MessageEventHandler(callback: handleEvent))
     }
     
@@ -159,7 +159,7 @@ class PhotoBot {
         userFuture.whenFailure { [weak self] in self?.handleError(event, err: $0, context: context) }
     }
 
-    func handleText(_ update: Botter.Update, _ context: BotContextProtocol) throws {
+    func handleMessage(_ update: Botter.Update, _ context: BotContextProtocol) throws {
         guard case let .message(message) = update.content else { return }
         
         let userFuture = try User.findOrCreate(from: message, context: context)
@@ -196,7 +196,7 @@ class PhotoBot {
                                     }
                                 }
                             } else {
-                                nextFuture = try message.reply(.init(text: "В этом месте не принимается текст. Попробуй нажать на подходящую кнопку."), context: context).map(\.first).optionalThrowingFlatMap { message in
+                                nextFuture = try message.reply(.init(text: "В этом месте не принимается текст. Попробуй нажать на подходящую кнопку."), context: context).map(\.first).optionalThrowingFlatMap { _ in
                                     try user.pushToActualNode(to: message, context: context).map { $0 + [message] }
                                 }
                             }
@@ -213,10 +213,9 @@ class PhotoBot {
     }
 
     func handleAction(_ action: NodeAction, _ message: Botter.Message, context: PhotoBotContextProtocol) throws -> Future<Result<Void, HandleActionError>> {
-        guard let text = message.text else { return app.eventLoopGroup.future(error: HandleActionError.textNotFound) }
-        
+
         for controller in controllers {
-            if let result = try controller.handleAction(action, message, text, context: context) {
+            if let result = try controller.handleAction(action, message, context: context) {
                 return result
             }
         }
