@@ -236,15 +236,6 @@
         }
       },
       {
-        "package": "ValidatedPropertyKit",
-        "repositoryURL": "https://github.com/SvenTiigi/ValidatedPropertyKit.git",
-        "state": {
-          "branch": null,
-          "revision": "760c3c708e88c5e3c113e3a4dc26324ebaf351f7",
-          "version": "0.0.4"
-        }
-      },
-      {
         "package": "vapor",
         "repositoryURL": "https://github.com/vapor/vapor.git",
         "state": {
