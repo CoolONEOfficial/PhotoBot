@@ -6,9 +6,7 @@
 
 PhotoBot is chatbot for photographers and other people related to photography.
 
-[![Language](https://img.shields.io/badge/language-Swift%205.1-orange.svg)](https://swift.org/download/)
-[![Platform](https://img.shields.io/badge/platform-Linux%20/%20macOS-ffc713.svg)](https://swift.org/download/)
-[![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](https://github.com/CoolONEOfficial/Vkontakter/blob/master/LICENSE)
+[![Build Status](https://travis-ci.com/CoolONEOfficial/photobot.svg?branch=master)](https://travis-ci.com/CoolONEOfficial/photobot)[![Language](https://img.shields.io/badge/language-Swift%205.1-orange.svg)](https://swift.org/download/)[![Platform](https://img.shields.io/badge/platform-Linux%20/%20macOS-ffc713.svg)](https://swift.org/download/)[![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](https://github.com/CoolONEOfficial/Vkontakter/blob/master/LICENSE)
 
 
 What does it do
