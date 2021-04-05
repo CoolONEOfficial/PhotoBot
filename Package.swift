@@ -11,7 +11,7 @@ let package = Package(
         .package(url: "https://github.com/vapor/vapor.git", from: "4.35.0"),
         .package(url: "https://github.com/vapor/fluent.git", from: "4.0.0"),
         .package(url: "https://github.com/vapor/fluent-postgres-driver.git", from: "2.0.0"),
-        .package(url: "https://github.com/CoolONEOfficial/Botter.git", from: "0.1.0"),
+        .package(url: "https://github.com/CoolONEOfficial/Botter.git", .branch("main")),
         .package(url: "https://github.com/SvenTiigi/ValidatedPropertyKit.git", .exact("0.0.4")),
         .package(url: "https://github.com/CoolONEOfficial/DateHelper.git", .branch("master")), // TODO: replace by https://github.com/melvitax/DateHelper.git
     ],
