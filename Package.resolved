@@ -33,7 +33,7 @@
         "repositoryURL": "https://github.com/CoolONEOfficial/Botter.git",
         "state": {
           "branch": "main",
-          "revision": "89822fea6b3c0c2b564ee42342d13ab1f80e079f",
+          "revision": "96bde817518d5c02e1474f22a4c2f1b8382c9fb1",
           "version": null
         }
       },
@@ -51,7 +51,7 @@
         "repositoryURL": "https://github.com/CoolONEOfficial/DateHelper.git",
         "state": {
           "branch": "master",
-          "revision": "9527daa09ec8138622370d44d586b265d984d09a",
+          "revision": "608a8d76b14296a59893d5e3e2dfe2421fd62d87",
           "version": null
         }
       },
@@ -258,7 +258,7 @@
         "repositoryURL": "https://github.com/CoolONEOfficial/Vkontakter.git",
         "state": {
           "branch": null,
-          "revision": "62611337a90f6a9d76e8f5aedc1d401c43910c02",
+          "revision": "935ca32cafa1bc829c37d31b8fe2af4cc1d4c529",
           "version": "0.1.0"
         }
       },

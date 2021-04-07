@@ -1,10 +1,10 @@
-// swift-tools-version:5.3
+// swift-tools-version:5.2
 import PackageDescription
 
 let package = Package(
     name: "photobot",
     platforms: [
-       .macOS(.v11)
+        .macOS(.v10_15)
     ],
     dependencies: [
         // 💧 A server-side Swift web framework.
@@ -13,7 +13,8 @@ let package = Package(
         .package(url: "https://github.com/vapor/fluent-postgres-driver.git", from: "2.0.0"),
         .package(url: "https://github.com/CoolONEOfficial/Botter.git", .branch("main")),
         .package(url: "https://github.com/SvenTiigi/ValidatedPropertyKit.git", .exact("0.0.4")),
-        .package(url: "https://github.com/CoolONEOfficial/DateHelper.git", .branch("master")), // TODO: replace by https://github.com/melvitax/DateHelper.git
+        .package(path: "../SwiftyChrono"),
+        .package(url: "https://github.com/melvitax/DateHelper.git", from: "4.5.3"),
     ],
     targets: [
         .target(
@@ -25,6 +26,7 @@ let package = Package(
                 .product(name: "Botter", package: "Botter"),
                 .product(name: "ValidatedPropertyKit", package: "ValidatedPropertyKit"),
                 .product(name: "DateHelper", package: "DateHelper"),
+                .product(name: "SwiftyChrono", package: "SwiftyChrono"),
             ],
             swiftSettings: [
                 // Enable better optimizations when building in Release configuration. Despite the use of
