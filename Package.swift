@@ -13,7 +13,7 @@ let package = Package(
         .package(url: "https://github.com/vapor/fluent-postgres-driver.git", from: "2.0.0"),
         .package(url: "https://github.com/CoolONEOfficial/Botter.git", .branch("main")),
         .package(url: "https://github.com/SvenTiigi/ValidatedPropertyKit.git", .exact("0.0.4")),
-        .package(path: "../SwiftyChrono"),
+        .package(url: "https://github.com/CoolONEOfficial/SwiftyChrono.git", .branch("master")),
         .package(url: "https://github.com/melvitax/DateHelper.git", from: "4.5.3"),
     ],
     targets: [
