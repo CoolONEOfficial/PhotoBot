@@ -9,7 +9,7 @@ import Botter
 import SwiftyChrono
 
 extension Application {
-    static let databaseURL: URL = URL(string: Environment.get("DATABASE_URL")! + "?sslmode=require")!
+    static let databaseURL: URL = URL(string: Environment.get("DATABASE_URL")!)!
     static let tgToken = Environment.get("TG_BOT_TOKEN")!
     static let tgBufferUserId = Int64(Environment.get("TG_BUFFER_USER_ID")!)!
     static let vkBufferUserId = Int64(Environment.get("VK_BUFFER_USER_ID")!)!
@@ -123,7 +123,9 @@ public func configure(_ app: Application) throws {
 }
 
 private func configurePostgres(_ app: Application) throws -> [NodeController] {
-    app.databases.use(try .postgres(url: Application.databaseURL), as: .psql)
+    var postgresConfig = PostgresConfiguration(url: Application.databaseURL)!
+    postgresConfig.tlsConfiguration = .forClient(certificateVerification: .none)
+    app.databases.use(.postgres(configuration: postgresConfig), as: .psql)
     
     app.migrations.add([
         CreateNodes(),
