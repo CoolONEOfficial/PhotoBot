@@ -8,6 +8,7 @@
 import Foundation
 import Botter
 import Vapor
+import SwiftyChrono
 
 class OrderBuilderDateNodeController: NodeController {
     func create(app: Application) throws -> EventLoopFuture<Node> {
@@ -160,8 +161,8 @@ class OrderBuilderDateNodeController: NodeController {
     func handleAction(_ action: NodeAction, _ message: Message, context: PhotoBotContextProtocol) throws -> EventLoopFuture<Result<Void, HandleActionError>>? {
         guard case .handleCalendar = action.type, let text = message.text else { return nil }
         let (user, app) = (context.user, context.app)
-        
-        if var date = Date(detectFromString: text) {
+
+        if var date = Chrono().parseDate(text: text) {
             while date.compare(.isInThePast) {
                 date = date.adjust(.year, offset: 1)
             }

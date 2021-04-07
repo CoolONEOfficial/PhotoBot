@@ -6,6 +6,7 @@ import Telegrammer
 import Vkontakter
 import VkontakterMiddleware
 import Botter
+import SwiftyChrono
 
 extension Application {
     static let databaseURL: URL = URL(string: Environment.get("DATABASE_URL")!)!
@@ -109,6 +110,8 @@ extension Application {
 
 // configures your application
 public func configure(_ app: Application) throws {
+    Chrono.preferredLanguage = .russian
+    
     let controllers = try configurePostgres(app)
     //try configureEchoTg(app)
     //try configureEchoVk(app)

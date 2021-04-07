@@ -14,7 +14,7 @@ let package = Package(
         .package(url: "https://github.com/CoolONEOfficial/Botter.git", .branch("main")),
         .package(url: "https://github.com/SvenTiigi/ValidatedPropertyKit.git", .exact("0.0.4")),
         .package(url: "https://github.com/CoolONEOfficial/SwiftyChrono.git", .branch("master")),
-        .package(url: "https://github.com/melvitax/DateHelper.git", .branch("master")),
+        .package(url: "https://github.com/CoolONEOfficial/DateHelper.git", .branch("master")),
     ],
     targets: [
         .target(

@@ -51,7 +51,7 @@
         "repositoryURL": "https://github.com/CoolONEOfficial/DateHelper.git",
         "state": {
           "branch": "master",
-          "revision": "608a8d76b14296a59893d5e3e2dfe2421fd62d87",
+          "revision": "28e9e6493349a1846168891feae88f416396bbde",
           "version": null
         }
       },
@@ -218,6 +218,15 @@
         }
       },
       {
+        "package": "SwiftyChrono",
+        "repositoryURL": "https://github.com/CoolONEOfficial/SwiftyChrono.git",
+        "state": {
+          "branch": "master",
+          "revision": "1c51aa32cb348c56910d4557cff3e1f52e9f57e4",
+          "version": null
+        }
+      },
+      {
         "package": "Telegrammer",
         "repositoryURL": "https://github.com/givip/Telegrammer.git",
         "state": {
@@ -249,8 +258,8 @@
         "repositoryURL": "https://github.com/vapor/vapor.git",
         "state": {
           "branch": null,
-          "revision": "73d57959a96ceca719558e70c320b2f729d2b25b",
-          "version": "4.41.10"
+          "revision": "d3479446b6a61c13d75f86a4a503f61904f2061d",
+          "version": "4.43.0"
         }
       },
       {
