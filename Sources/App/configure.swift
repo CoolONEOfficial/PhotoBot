@@ -9,7 +9,7 @@ import Botter
 import SwiftyChrono
 
 extension Application {
-    static let databaseURL: URL = URL(string: Environment.get("DATABASE_URL")!)!
+    static let databaseURL: URL = URL(string: Environment.get("DATABASE_URL")! + "?sslmode=require")!
     static let tgToken = Environment.get("TG_BOT_TOKEN")!
     static let tgBufferUserId = Int64(Environment.get("TG_BUFFER_USER_ID")!)!
     static let vkBufferUserId = Int64(Environment.get("VK_BUFFER_USER_ID")!)!
