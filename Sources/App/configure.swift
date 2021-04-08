@@ -91,11 +91,11 @@ extension Application {
     
     #else
     
-    static let webhooksUrl: String = {
+    static let webhooksUrl: String = { () -> String in
         let url = "https://\(Environment.get("HEROKU_APP_NAME")!).herokuapp.com"
         debugPrint("WEBHOOKS_URL is \(url)")
         return url
-    }
+    }()
     
     #endif
     
