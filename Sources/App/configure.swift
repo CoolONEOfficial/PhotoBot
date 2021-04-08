@@ -37,9 +37,11 @@ extension Application {
     
     #if DEBUG
 
-    static let targetPlatform = Environment.get("TARGET_PLATFORM")!
+    static let targetPlatform: String = Environment.get("TARGET_PLATFORM")!
     
     static let test: String = {
+        
+        debugPrint("Starting localhost process...")
         
         let port: Int
         
