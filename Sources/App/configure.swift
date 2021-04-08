@@ -100,7 +100,7 @@ extension Application {
     #if DEBUG
     static let webhooksPort: Int = Int(Environment.get("WEBHOOKS_PORT")!)!
     #else
-    static let webhooksPort: Int = Int(Environment.get("PORT")!)!
+    static let webhooksPort: Int = Int(Environment.get("TEST_PORT")!)!
     #endif
 }
 
