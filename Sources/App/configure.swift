@@ -8,13 +8,20 @@ import VkontakterMiddleware
 import Botter
 import SwiftyChrono
 
+enum TargetPlatform: String {
+    case tg = "TG"
+    case vk = "VK"
+}
+
 extension Application {
-    static let databaseURL: URL = URL(string: Environment.get("DATABASE_URL")!)!
+    static let targetPlatform = TargetPlatform(rawValue: Environment.get("TARGET_PLATFORM")!)!
+    
+    static let databaseURL = URL(string: Environment.get("DATABASE_URL")!)!
     static let tgToken = Environment.get("TG_BOT_TOKEN")!
     static let tgBufferUserId = Int64(Environment.get("TG_BUFFER_USER_ID")!)!
     static let vkBufferUserId = Int64(Environment.get("VK_BUFFER_USER_ID")!)!
-    static let vkAdminNickname: String = Environment.get("VK_ADMIN_NICKNAME")!
-    static let tgAdminNickname: String = Environment.get("TG_ADMIN_NICKNAME")!
+    static let vkAdminNickname = Environment.get("VK_ADMIN_NICKNAME")!
+    static let tgAdminNickname = Environment.get("TG_ADMIN_NICKNAME")!
     
     static func adminNickname(for platform: AnyPlatform) -> String {
         switch platform {
@@ -36,25 +43,12 @@ extension Application {
     }()
     
     #if DEBUG
-
-    static let targetPlatform: String = Environment.get("TARGET_PLATFORM")!
     
-    static let test: String = {
+    static let webhooksUrl: String = {
         
         debugPrint("Starting localhost process...")
         
-        let port: Int
-        
-        switch targetPlatform{
-        case "TG":
-            port = tgWebhooksPort
-        
-        case "VK":
-            port = 80
-    
-        default:
-            fatalError("Where is test platform env vars?")
-        }
+        let port = 80
         
         let command = "ssh -R 80:localhost:\(port) localhost.run"
         
@@ -95,22 +89,18 @@ extension Application {
         return res
     }()
     
-    static let vkWebhooksUrl: String = test
-    static let tgWebhooksUrl: String = test
-    
     #else
     
-    static let vkWebhooksUrl: String = Environment.get("WEBHOOKS_VK_URL")!
-    static let tgWebhooksUrl: String = Environment.get("WEBHOOKS_TG_URL")!
+    static let webhooksUrl: String = "https://\(Environment.get("HEROKU_APP_NAME")!).herokuapp.com"
     
     #endif
     
     static let vkServerName: String? = Environment.get("VK_NEW_SERVER_NAME")
     
     #if DEBUG
-    static let tgWebhooksPort: Int = Int(Environment.get("WEBHOOKS_TG_PORT")!)!
+    static let webhooksPort: Int = Int(Environment.get("WEBHOOKS_PORT")!)!
     #else
-    static let tgWebhooksPort: Int = Int(Environment.get("PORT")!)!
+    static let webhooksPort: Int = Int(Environment.get("PORT")!)!
     #endif
 }
 
@@ -319,37 +309,37 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
 
 func tgSettings(_ app: Application) -> Telegrammer.Bot.Settings {
     var tgSettings = Telegrammer.Bot.Settings(token: Application.tgToken, debugMode: !app.environment.isRelease)
-    tgSettings.webhooksConfig = .init(ip: "0.0.0.0", baseUrl: Application.tgWebhooksUrl, port: Application.tgWebhooksPort)
+    tgSettings.webhooksConfig = .init(ip: "0.0.0.0", baseUrl: Application.webhooksUrl, port: Application.webhooksPort)
     return tgSettings
 }
 
 func vkSettings(_ app: Application) -> Vkontakter.Bot.Settings {
     var vkSettings: Vkontakter.Bot.Settings = .init(token: Application.vkToken, debugMode: !app.environment.isRelease)
-    vkSettings.webhooksConfig = .init(ip: "0.0.0.0", baseUrl: Application.vkWebhooksUrl, groupId: Application.vkGroupId)
+    vkSettings.webhooksConfig = .init(ip: "0.0.0.0", baseUrl: Application.webhooksUrl, port: Application.webhooksPort, groupId: Application.vkGroupId)
     return vkSettings
 }
 
 func botterSettings(_ app: Application) -> Botter.Bot.Settings {
     .init(
-        vk: vkSettings(app),
-        tg: tgSettings(app)
+        vk: Application.targetPlatform == .vk ? vkSettings(app) : nil,
+        tg: Application.targetPlatform == .tg ? tgSettings(app) : nil
     )
 }
 
-private func configureEchoVk(_ app: Application) throws {
-    let bot = try VkEchoBot(settings: vkSettings(app))
-    try bot.updater.startWebhooks(serverName: Application.vkServerName).wait()
-}
+//private func configureEchoVk(_ app: Application) throws {
+//    let bot = try VkEchoBot(settings: vkSettings(app))
+//    try bot.updater.startWebhooks(serverName: Application.vkServerName).wait()
+//}
 
 //private func configureEchoBotter(_ app: Application) throws {
 //    let bot = try EchoBot(settings: botterSettings(app), app: app)
 //    try bot.updater.startWebhooks(vkServerName: Application.vkServerName).wait()
 //}
 
-private func configureEchoTg(_ app: Application) throws {
-    let bot = try TgEchoBot(settings: tgSettings(app))
-    try bot.updater.startWebhooks().wait()
-}
+//private func configureEchoTg(_ app: Application) throws {
+//    let bot = try TgEchoBot(settings: tgSettings(app))
+//    try bot.updater.startWebhooks().wait()
+//}
 
 private func configurePhotoBot(_ app: Application, _ controllers: [NodeController]) throws {
     let bot = try PhotoBot(settings: botterSettings(app), app: app, controllers: controllers)
