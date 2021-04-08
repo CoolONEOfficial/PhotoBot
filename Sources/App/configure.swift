@@ -107,7 +107,11 @@ extension Application {
     
     static let vkServerName: String? = Environment.get("VK_NEW_SERVER_NAME")
     
+    #if DEBUG
     static let tgWebhooksPort: Int = Int(Environment.get("WEBHOOKS_TG_PORT")!)!
+    #else
+    static let tgWebhooksPort: Int = Int(Environment.get("PORT")!)!
+    #endif
 }
 
 // configures your application
