@@ -91,7 +91,11 @@ extension Application {
     
     #else
     
-    static let webhooksUrl: String = "https://\(Environment.get("HEROKU_APP_NAME")!).herokuapp.com"
+    static let webhooksUrl: String = {
+        let url = "https://\(Environment.get("HEROKU_APP_NAME")!).herokuapp.com"
+        debugPrint("WEBHOOKS_URL is \(url)")
+        return url
+    }
     
     #endif
     
@@ -100,7 +104,7 @@ extension Application {
     #if DEBUG
     static let webhooksPort: Int = Int(Environment.get("WEBHOOKS_PORT")!)!
     #else
-    static let webhooksPort: Int = Int(Environment.get("TEST_PORT")!)!
+    static let webhooksPort: Int = Int(Environment.get("PORT")!)!
     #endif
 }
 
