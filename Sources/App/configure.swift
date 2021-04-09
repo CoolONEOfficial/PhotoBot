@@ -42,70 +42,59 @@ extension Application {
         return nil
     }()
     
-    #if DEBUG
-    
-    static let webhooksUrl: String = {
-        
-        debugPrint("Starting localhost process...")
-        
-        let port = 80
-        
-        let command = "ssh -R 80:localhost:\(port) localhost.run"
-        
-        let task = Process()
-        let pipe = Pipe()
-        task.standardOutput = pipe
-        task.arguments = ["-c", command]
-        task.launchPath = "/bin/zsh"
-        task.launch()
-        sleep(5)
-        task.interrupt()
-        
-        let bgTask = Process()
-        bgTask.arguments = ["-c", command]
-        bgTask.launchPath = "/bin/zsh"
-        bgTask.launch()
-        
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        let output = String(data: data, encoding: .utf8)!
-        
-        func matches(for regex: String, in text: String) -> [String] {
+    func webhooksUrl() -> String {
+        if environment == .production {
+            let url = "https://\(Environment.get("HEROKU_APP_NAME")!).herokuapp.com"
+            debugPrint("WEBHOOKS_URL is \(url)")
+            return url
+        } else {
+            debugPrint("Starting localhost process...")
+            
+            let port = 80
+            
+            let command = "ssh -R 80:localhost:\(port) localhost.run"
+            
+            let task = Process()
+            let pipe = Pipe()
+            task.standardOutput = pipe
+            task.arguments = ["-c", command]
+            task.launchPath = "/bin/zsh"
+            task.launch()
+            sleep(5)
+            task.interrupt()
+            
+            let bgTask = Process()
+            bgTask.arguments = ["-c", command]
+            bgTask.launchPath = "/bin/zsh"
+            bgTask.launch()
+            
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8)!
+            
+            func matches(for regex: String, in text: String) -> [String] {
 
-            do {
-                let regex = try NSRegularExpression(pattern: regex)
-                let results = regex.matches(in: text,
-                                            range: NSRange(text.startIndex..., in: text))
-                return results.map {
-                    String(text[Range($0.range, in: text)!])
+                do {
+                    let regex = try NSRegularExpression(pattern: regex)
+                    let results = regex.matches(in: text,
+                                                range: NSRange(text.startIndex..., in: text))
+                    return results.map {
+                        String(text[Range($0.range, in: text)!])
+                    }
+                } catch let error {
+                    print("invalid regex: \(error.localizedDescription)")
+                    return []
                 }
-            } catch let error {
-                print("invalid regex: \(error.localizedDescription)")
-                return []
             }
+
+            let res = matches(for: "\\S+(localhost.run)", in: output).last!
+
+            return res
         }
+    }
 
-        let res = matches(for: "\\S+(localhost.run)", in: output).last!
-
-        return res
-    }()
-    
-    #else
-    
-    static let webhooksUrl: String = { () -> String in
-        let url = "https://\(Environment.get("HEROKU_APP_NAME")!).herokuapp.com"
-        debugPrint("WEBHOOKS_URL is \(url)")
-        return url
-    }()
-    
-    #endif
-    
     static let vkServerName: String? = Environment.get("VK_NEW_SERVER_NAME")
     
-    #if DEBUG
-    static let webhooksPort: Int = Int(Environment.get("WEBHOOKS_PORT")!)!
-    #else
     static let webhooksPort: Int = Int(Environment.get("PORT")!)!
-    #endif
 }
 
 // configures your application
@@ -313,13 +302,13 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
 
 func tgSettings(_ app: Application) -> Telegrammer.Bot.Settings {
     var tgSettings = Telegrammer.Bot.Settings(token: Application.tgToken, debugMode: !app.environment.isRelease)
-    tgSettings.webhooksConfig = .init(ip: "0.0.0.0", baseUrl: Application.webhooksUrl, port: Application.webhooksPort)
+    tgSettings.webhooksConfig = .init(ip: "0.0.0.0", baseUrl: app.webhooksUrl(), port: Application.webhooksPort)
     return tgSettings
 }
 
 func vkSettings(_ app: Application) -> Vkontakter.Bot.Settings {
     var vkSettings: Vkontakter.Bot.Settings = .init(token: Application.vkToken, debugMode: !app.environment.isRelease)
-    vkSettings.webhooksConfig = .init(ip: "0.0.0.0", baseUrl: Application.webhooksUrl, port: Application.webhooksPort, groupId: Application.vkGroupId)
+    vkSettings.webhooksConfig = .init(ip: "0.0.0.0", baseUrl: app.webhooksUrl(), port: 80, groupId: Application.vkGroupId)
     return vkSettings
 }
 
