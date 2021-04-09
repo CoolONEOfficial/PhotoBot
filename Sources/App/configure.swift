@@ -308,7 +308,7 @@ func tgSettings(_ app: Application) -> Telegrammer.Bot.Settings {
 
 func vkSettings(_ app: Application) -> Vkontakter.Bot.Settings {
     var vkSettings: Vkontakter.Bot.Settings = .init(token: Application.vkToken, debugMode: !app.environment.isRelease)
-    vkSettings.webhooksConfig = .init(ip: "0.0.0.0", baseUrl: app.webhooksUrl(), port: 80, groupId: Application.vkGroupId)
+    vkSettings.webhooksConfig = .init(ip: "0.0.0.0", baseUrl: app.webhooksUrl(), port: Application.webhooksPort, groupId: Application.vkGroupId)
     return vkSettings
 }
 
