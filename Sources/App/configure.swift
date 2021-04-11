@@ -43,12 +43,12 @@ extension Application {
     }()
     
     func webhooksUrl() -> String {
-        if environment == .production {
+        if let url = Enviroment.get("WEBHOOKS_URL") {
+            return url
+        } else if environment == .production {
             let url: String
             if let herokuName = Environment.get("HEROKU_APP_NAME") {
                 url = "https://\(herokuName).herokuapp.com"
-            } else if let _url = Enviroment.get("WEBHOOKS_URL") {
-                url = _url
             } else {
                 fatalError("You should specify HEROKU_APP_NAME or WEBHOOKS_URL")
             }
