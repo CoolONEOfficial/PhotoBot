@@ -42,12 +42,14 @@ extension Application {
         return nil
     }()
     
+    static let herokuName = Environment.get("HEROKU_APP_NAME")
+    
     func webhooksUrl() -> String {
         if let url = Enviroment.get("WEBHOOKS_URL") {
             return url
         } else if environment == .production {
             let url: String
-            if let herokuName = Environment.get("HEROKU_APP_NAME") {
+            if let herokuName = Self.herokuName {
                 url = "https://\(herokuName).herokuapp.com"
             } else {
                 fatalError("You should specify HEROKU_APP_NAME or WEBHOOKS_URL")
@@ -122,7 +124,9 @@ public func configure(_ app: Application) throws {
 
 private func configurePostgres(_ app: Application) throws -> [NodeController] {
     var postgresConfig = PostgresConfiguration(url: Application.databaseURL)!
-    postgresConfig.tlsConfiguration = .forClient(certificateVerification: .none)
+    if Application.herokuName != nil {
+        postgresConfig.tlsConfiguration = .forClient(certificateVerification: .none)
+    }
     app.databases.use(.postgres(configuration: postgresConfig), as: .psql)
     
     app.migrations.add([
