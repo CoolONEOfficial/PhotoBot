@@ -14,7 +14,7 @@ enum TargetPlatform: String {
 }
 
 extension Application {
-    static let targetPlatform = TargetPlatform(rawValue: Environment.get("TARGET_PLATFORM")!)!
+    static let targetPlatform = TargetPlatform(rawValue: Environment.get("TARGET_PLATFORM") ?? .init())
     
     static let databaseURL = URL(string: Environment.get("DATABASE_URL")!)!
     static let tgToken = Environment.get("TG_BOT_TOKEN")!
@@ -44,7 +44,14 @@ extension Application {
     
     func webhooksUrl() -> String {
         if environment == .production {
-            let url = "https://\(Environment.get("HEROKU_APP_NAME")!).herokuapp.com"
+            let url: String
+            if let herokuName = Environment.get("HEROKU_APP_NAME") {
+                url = "https://\(herokuName).herokuapp.com"
+            } else if let _url = Enviroment.get("WEBHOOKS_URL") {
+                url = _url
+            } else {
+                fatalError("You should specify HEROKU_APP_NAME or WEBHOOKS_URL")
+            }
             debugPrint("WEBHOOKS_URL is \(url)")
             return url
         } else {
@@ -92,9 +99,11 @@ extension Application {
         }
     }
 
-    static let vkServerName: String? = Environment.get("VK_NEW_SERVER_NAME")
+    static let vkServerName = Environment.get("VK_NEW_SERVER_NAME")
     
-    static let webhooksPort: Int = Int(Environment.get("PORT")!)!
+    static let webhooksPort = Int(Environment.get("PORT") ?? .init()) ?? 80
+    static let vkWebhooksPort = Int(Environment.get("VK_PORT") ?? .init())
+    static let tgWebhooksPort = Int(Environment.get("TG_PORT") ?? .init())
 }
 
 // configures your application
@@ -302,20 +311,20 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
 
 func tgSettings(_ app: Application) -> Telegrammer.Bot.Settings {
     var tgSettings = Telegrammer.Bot.Settings(token: Application.tgToken, debugMode: !app.environment.isRelease)
-    tgSettings.webhooksConfig = .init(ip: "0.0.0.0", baseUrl: app.webhooksUrl(), port: Application.webhooksPort)
+    tgSettings.webhooksConfig = .init(ip: "0.0.0.0", baseUrl: app.webhooksUrl(), port: Application.tgWebhooksPort ?? Application.webhooksPort)
     return tgSettings
 }
 
 func vkSettings(_ app: Application) -> Vkontakter.Bot.Settings {
     var vkSettings: Vkontakter.Bot.Settings = .init(token: Application.vkToken, debugMode: !app.environment.isRelease)
-    vkSettings.webhooksConfig = .init(ip: "0.0.0.0", baseUrl: app.webhooksUrl(), port: Application.webhooksPort, groupId: Application.vkGroupId)
+    vkSettings.webhooksConfig = .init(ip: "0.0.0.0", baseUrl: app.webhooksUrl(), port: Application.vkWebhooksPort ?? Application.webhooksPort, groupId: Application.vkGroupId)
     return vkSettings
 }
 
 func botterSettings(_ app: Application) -> Botter.Bot.Settings {
     .init(
-        vk: Application.targetPlatform == .vk ? vkSettings(app) : nil,
-        tg: Application.targetPlatform == .tg ? tgSettings(app) : nil
+        vk: Application.targetPlatform ?? .vk == .vk ? vkSettings(app) : nil,
+        tg: Application.targetPlatform ?? .tg == .tg ? tgSettings(app) : nil
     )
 }
 
