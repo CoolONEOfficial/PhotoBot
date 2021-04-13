@@ -354,12 +354,14 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
 func tgSettings(_ app: Application) -> Telegrammer.Bot.Settings {
     var tgSettings = Telegrammer.Bot.Settings(token: Application.tgToken, debugMode: !app.environment.isRelease)
     tgSettings.webhooksConfig = .init(ip: "0.0.0.0", baseUrl: app.webhooksUrl(for: .tg), port: app.serverPort(for: .tg))
+    debugPrint("Starting webhooks vk on url \(tgSettings.webhooksConfig?.url ?? "nope") port \(tgSettings.webhooksConfig?.port)")
     return tgSettings
 }
 
 func vkSettings(_ app: Application) -> Vkontakter.Bot.Settings {
     var vkSettings: Vkontakter.Bot.Settings = .init(token: Application.vkToken, debugMode: !app.environment.isRelease)
     vkSettings.webhooksConfig = .init(ip: "0.0.0.0", baseUrl: app.webhooksUrl(for: .vk), port: app.serverPort(for: .vk), groupId: Application.vkGroupId)
+    debugPrint("Starting webhooks vk on url \(vkSettings.webhooksConfig?.url ?? "nope") port \(vkSettings.webhooksConfig?.port)")
     return vkSettings
 }
 
