@@ -38,6 +38,7 @@ WEBHOOKS_URL=... (Optional)
 Documentation
 ---------------
 
+- Read [our wiki](https://github.com/CoolONEOfficial/PhotoBot/wiki)
 - Read [An official documentation of Vapor](https://docs.vapor.codes/4.0/)
 
 Requirements
