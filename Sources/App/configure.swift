@@ -44,14 +44,26 @@ extension Application {
     
     static let herokuName = Environment.get("HEROKU_APP_NAME")
     
-    func port(for platform: AnyPlatform) -> Int {
+    func webhooksPort(for platform: AnyPlatform) -> Int {
         switch platform {
         case .tg:
-            return Application.tgWebhooksPort ?? Application.webhooksPort ?? (environment == .development ? 80 : 8443)
+            return Application.tgWebhooksPort ?? Application.webhooksPort ?? (environment == .development ? 80 : 1314)
             
         case .vk:
-            return Application.vkWebhooksPort ?? Application.webhooksPort ?? 80
+            return Application.vkWebhooksPort ?? Application.webhooksPort ?? (environment == .development ? 80 : 1313)
         }
+    }
+    
+    func serverPort(for platform: AnyPlatform) -> Int {
+        let port: Int?
+        switch platform {
+        case .tg:
+            port = Application.tgServerPort
+            
+        case .vk:
+            port = Application.vkServerPort
+        }
+        return port ?? webhooksPort(for: platform)
     }
     
     func webhooksUrl(for platform: AnyPlatform) -> String {
@@ -108,7 +120,7 @@ extension Application {
             url = matches(for: "\\S+(localhost.run)", in: output).last!
         }
         
-        let port = self.port(for: platform)
+        let port = self.webhooksPort(for: platform)
         if port != 80 {
             return "\(url):\(port)"
         }
@@ -120,7 +132,9 @@ extension Application {
     
     static let webhooksPort = Int(Environment.get("PORT") ?? .init())
     static let vkWebhooksPort = Int(Environment.get("VK_PORT") ?? .init())
-    static let tgWebhooksPort = Int(Environment.get("TG_PORT") ?? .init()) 
+    static let tgWebhooksPort = Int(Environment.get("TG_PORT") ?? .init())
+    static let vkServerPort = Int(Environment.get("VK_SERVER_PORT") ?? .init())
+    static let tgServerPort = Int(Environment.get("TG_SERVER_PORT") ?? .init())
 }
 
 // configures your application
@@ -330,13 +344,13 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
 
 func tgSettings(_ app: Application) -> Telegrammer.Bot.Settings {
     var tgSettings = Telegrammer.Bot.Settings(token: Application.tgToken, debugMode: !app.environment.isRelease)
-    tgSettings.webhooksConfig = .init(ip: "0.0.0.0", baseUrl: app.webhooksUrl(for: .tg), port: app.port(for: .tg))
+    tgSettings.webhooksConfig = .init(ip: "0.0.0.0", baseUrl: app.webhooksUrl(for: .tg), port: app.serverPort(for: .tg))
     return tgSettings
 }
 
 func vkSettings(_ app: Application) -> Vkontakter.Bot.Settings {
     var vkSettings: Vkontakter.Bot.Settings = .init(token: Application.vkToken, debugMode: !app.environment.isRelease)
-    vkSettings.webhooksConfig = .init(ip: "0.0.0.0", baseUrl: app.webhooksUrl(for: .vk), port: app.port(for: .vk), groupId: Application.vkGroupId)
+    vkSettings.webhooksConfig = .init(ip: "0.0.0.0", baseUrl: app.webhooksUrl(for: .vk), port: app.serverPort(for: .vk), groupId: Application.vkGroupId)
     return vkSettings
 }
 
