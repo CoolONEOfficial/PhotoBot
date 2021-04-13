@@ -44,6 +44,10 @@ extension Application {
     
     static let herokuName = Environment.get("HEROKU_APP_NAME")
     
+    static var isHeroku: Bool {
+        herokuName != nil
+    }
+    
     func webhooksPort(for platform: AnyPlatform) -> Int {
         switch platform {
         case .tg:
@@ -55,6 +59,10 @@ extension Application {
     }
     
     func serverPort(for platform: AnyPlatform) -> Int {
+        if Self.isHeroku {
+            return 443
+        }
+
         let port: Int?
         switch platform {
         case .tg:
@@ -81,7 +89,7 @@ extension Application {
         } else {
             debugPrint("Starting localhost process...")
             
-            let port = 80
+            let port = serverPort(for: platform)
             
             let command = "ssh -R 80:localhost:\(port) localhost.run"
             
@@ -153,7 +161,8 @@ public func configure(_ app: Application) throws {
 
 private func configurePostgres(_ app: Application) throws -> [NodeController] {
     var postgresConfig = PostgresConfiguration(url: Application.databaseURL)!
-    if Application.herokuName != nil {
+
+    if Application.isHeroku {
         postgresConfig.tlsConfiguration = .forClient(certificateVerification: .none)
     }
     app.databases.use(.postgres(configuration: postgresConfig), as: .psql)
