@@ -67,13 +67,13 @@ extension Application {
     }
     
     func webhooksUrl(for platform: AnyPlatform) -> String {
-        let url: String
+        let url: URL
 
-        if let _url = Enviroment.get("WEBHOOKS_URL") {
+        if let urlStr = Enviroment.get("WEBHOOKS_URL"), let _url = URL(string: urlStr) {
             url = _url
         } else if environment == .production {
-            if let herokuName = Self.herokuName {
-                url = "https://\(herokuName).herokuapp.com"
+            if let herokuName = Self.herokuName, let _url = URL("https://\(herokuName).herokuapp.com") {
+                url = _url
             } else {
                 fatalError("You should specify HEROKU_APP_NAME or WEBHOOKS_URL")
             }
@@ -117,15 +117,15 @@ extension Application {
                 }
             }
 
-            url = matches(for: "\\S+(localhost.run)", in: output).last!
+            url = URL(string: matches(for: "\\S+(localhost.run)", in: output).last!)!
         }
         
         let port = self.webhooksPort(for: platform)
-        if port != 80 {
+        if (port != 80 && url.scheme == "http") || (port != 443 && url.scheme == "https") {
             return "\(url):\(port)"
         }
         
-        return url
+        return url.absoluteString
     }
 
     static let vkServerName = Environment.get("VK_NEW_SERVER_NAME")
