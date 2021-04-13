@@ -6,12 +6,14 @@
 //
 
 import SwiftyChrono
+import Foundation
 
 #if os(Linux)
 
 extension Date {
-    init(detectFromString str: String) {
-        Chrono().parseDate(text: text)
+    init?(detectFromString text: String) {
+        guard let date = Chrono().parseDate(text: text) else { return nil }
+        self = date
     }
 }
 
