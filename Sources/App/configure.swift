@@ -72,7 +72,7 @@ extension Application {
         if let urlStr = Enviroment.get("WEBHOOKS_URL"), let _url = URL(string: urlStr) {
             url = _url
         } else if environment == .production {
-            if let herokuName = Self.herokuName, let _url = URL("https://\(herokuName).herokuapp.com") {
+            if let herokuName = Self.herokuName, let _url = URL(string: "https://\(herokuName).herokuapp.com") {
                 url = _url
             } else {
                 fatalError("You should specify HEROKU_APP_NAME or WEBHOOKS_URL")
