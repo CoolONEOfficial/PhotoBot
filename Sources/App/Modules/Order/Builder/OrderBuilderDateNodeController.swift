@@ -162,7 +162,7 @@ class OrderBuilderDateNodeController: NodeController {
         guard case .handleCalendar = action.type, let text = message.text else { return nil }
         let (user, app) = (context.user, context.app)
 
-        if var date = Chrono().parseDate(text: text) {
+        if var date = Date(detectFromString: text) {
             while date.compare(.isInThePast) {
                 date = date.adjust(.year, offset: 1)
             }
