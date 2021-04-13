@@ -60,5 +60,5 @@ Author
 Nikolai Trukhin
 
 [coolone.official@gmail.com](mailto:coolone.official@gmail.com)
-[@cooloneofficial](tg://user?id=356008384)
+[@cooloneofficial](https://t.me/cooloneofficial)
 
