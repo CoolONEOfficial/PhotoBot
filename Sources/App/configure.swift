@@ -43,12 +43,16 @@ extension Application {
     }()
     
     static let herokuName = Environment.get("HEROKU_APP_NAME")
-    
+    static let herokuServerPort = Int(Environment.get("PORT") ?? .init())
+
     static var isHeroku: Bool {
-        herokuName != nil
+        herokuName != nil || herokuServerPort != nil
     }
     
     func webhooksPort(for platform: AnyPlatform) -> Int {
+        if Self.isHeroku {
+            return 443
+        }
         switch platform {
         case .tg:
             return Application.tgWebhooksPort ?? Application.webhooksPort ?? (environment == .development ? 80 : 1314)
@@ -59,10 +63,6 @@ extension Application {
     }
     
     func serverPort(for platform: AnyPlatform) -> Int {
-        if Self.isHeroku {
-            return 443
-        }
-
         let port: Int?
         switch platform {
         case .tg:
@@ -71,7 +71,7 @@ extension Application {
         case .vk:
             port = Application.vkServerPort
         }
-        return port ?? webhooksPort(for: platform)
+        return Self.herokuServerPort ?? port ?? webhooksPort(for: platform)
     }
     
     func webhooksUrl(for platform: AnyPlatform) -> String {
@@ -137,10 +137,10 @@ extension Application {
     }
 
     static let vkServerName = Environment.get("VK_NEW_SERVER_NAME")
-    
-    static let webhooksPort = Int(Environment.get("PORT") ?? .init())
-    static let vkWebhooksPort = Int(Environment.get("VK_PORT") ?? .init())
-    static let tgWebhooksPort = Int(Environment.get("TG_PORT") ?? .init())
+
+    static let webhooksPort = Int(Environment.get("WH_PORT") ?? .init())
+    static let vkWebhooksPort = Int(Environment.get("VK_WH_PORT") ?? .init())
+    static let tgWebhooksPort = Int(Environment.get("TG_WH_PORT") ?? .init())
     static let vkServerPort = Int(Environment.get("VK_SERVER_PORT") ?? .init())
     static let tgServerPort = Int(Environment.get("TG_SERVER_PORT") ?? .init())
 }
@@ -354,7 +354,7 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
 func tgSettings(_ app: Application) -> Telegrammer.Bot.Settings {
     var tgSettings = Telegrammer.Bot.Settings(token: Application.tgToken, debugMode: !app.environment.isRelease)
     tgSettings.webhooksConfig = .init(ip: "0.0.0.0", baseUrl: app.webhooksUrl(for: .tg), port: app.serverPort(for: .tg))
-    debugPrint("Starting webhooks vk on url \(tgSettings.webhooksConfig?.url ?? "nope") port \(tgSettings.webhooksConfig?.port)")
+    debugPrint("Starting webhooks tg on url \(tgSettings.webhooksConfig?.url ?? "nope") port \(tgSettings.webhooksConfig?.port)")
     return tgSettings
 }
 
