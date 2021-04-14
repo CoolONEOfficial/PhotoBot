@@ -32,4 +32,4 @@ jobs:
           cd ${{ secrets.REPO_PATH }}
           git pull
           swift build -c release
-          supervisorctl restart photobot
+          /opt/homebrew/bin/supervisorctl restart photobot
