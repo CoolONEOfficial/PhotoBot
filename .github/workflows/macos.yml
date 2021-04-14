@@ -15,11 +15,16 @@ jobs:
     - uses: actions/checkout@v2
     - name: Build
       run: swift build -v
-    - name: executing remote ssh commands using password
-      uses: fifsky/ssh-action@master
+        
+  post_build:
+  
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Deployment
+      uses: appleboy/ssh-action@master
       with:
-        command: |
-          ls -a
         host: ${{ secrets.HOST }}
-        user: ${{ secrets.USERNAME }}
-        pass: ${{ secrets.PASSWORD}}
+        username: ${{ secrets.USERNAME }}
+        password: ${{ secrets.PASSWORD }}
+        script: whoami
