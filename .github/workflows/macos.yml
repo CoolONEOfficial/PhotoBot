@@ -16,7 +16,7 @@ jobs:
     - name: Build
       run: swift build -v
         
-  post_build:
+  deploy:
   
     runs-on: ubuntu-latest
     needs: [build]
@@ -28,4 +28,8 @@ jobs:
         host: ${{ secrets.HOST }}
         username: ${{ secrets.USERNAME }}
         password: ${{ secrets.PASSWORD }}
-        script: whoami
+        script: |
+          cd ${{ secrets.REPO_PATH }}
+          git pull
+          swift build -c release
+          supervisorctl restart photobot
