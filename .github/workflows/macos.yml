@@ -16,10 +16,10 @@ jobs:
     - name: Build
       run: swift build -v
     - name: executing remote ssh commands using password
-      uses: appleboy/ssh-action@master
+      uses: fifsky/ssh-action@master
       with:
+        command: |
+          ls -a
         host: ${{ secrets.HOST }}
-        username: ${{ secrets.USERNAME }}
-        password: ${{ secrets.PASSWORD }}
-        port: ${{ secrets.PORT }}
-        script: whoami
+        user: ${{ secrets.USERNAME }}
+        pass: ${{ secrets.PASSWORD}}
