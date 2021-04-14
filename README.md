@@ -6,7 +6,8 @@
 
 PhotoBot is chatbot for photographers and other people related to photography.
 
-[![MacOS and Linux build](https://github.com/CoolONEOfficial/PhotoBot/actions/workflows/swift.yml/badge.svg)](https://github.com/CoolONEOfficial/PhotoBot/actions/workflows/swift.yml)
+[![MacOS build and deploy](https://github.com/CoolONEOfficial/PhotoBot/actions/workflows/macos.yml/badge.svg)](https://github.com/CoolONEOfficial/PhotoBot/actions/workflows/macos.yml)
+[![Linux build and deploy](https://github.com/CoolONEOfficial/PhotoBot/actions/workflows/macos.yml/badge.svg)](https://github.com/CoolONEOfficial/PhotoBot/actions/workflows/macos.yml)
 [![Language](https://img.shields.io/badge/language-Swift%205.1-orange.svg)](https://swift.org/download/)
 [![Platform](https://img.shields.io/badge/platform-Linux%20/%20macOS-ffc713.svg)](https://swift.org/download/)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](https://github.com/CoolONEOfficial/Vkontakter/blob/master/LICENSE)
