@@ -19,6 +19,7 @@ jobs:
   post_build:
   
     runs-on: ubuntu-latest
+    needs: [build]
 
     steps:
     - name: Deployment
