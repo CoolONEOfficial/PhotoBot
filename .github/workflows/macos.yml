@@ -1,0 +1,35 @@
+name: MacOS
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build
+      run: swift build -v
+        
+  deploy:
+  
+    runs-on: ubuntu-latest
+    needs: [build]
+
+    steps:
+    - name: Deployment
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        password: ${{ secrets.PASSWORD }}
+        script: |
+          cd ${{ secrets.REPO_PATH }}
+          git pull
+          swift build -c release
+          /opt/homebrew/bin/supervisorctl restart photobot

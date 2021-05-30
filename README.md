@@ -6,7 +6,11 @@
 
 PhotoBot is chatbot for photographers and other people related to photography.
 
-[![Build Status](https://travis-ci.com/CoolONEOfficial/photobot.svg?branch=master)](https://travis-ci.com/CoolONEOfficial/photobot)[![Language](https://img.shields.io/badge/language-Swift%205.1-orange.svg)](https://swift.org/download/)[![Platform](https://img.shields.io/badge/platform-Linux%20/%20macOS-ffc713.svg)](https://swift.org/download/)[![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](https://github.com/CoolONEOfficial/Vkontakter/blob/master/LICENSE)
+[![MacOS build and deploy](https://github.com/CoolONEOfficial/PhotoBot/actions/workflows/macos.yml/badge.svg)](https://github.com/CoolONEOfficial/PhotoBot/actions/workflows/macos.yml)
+[![Linux build and deploy](https://github.com/CoolONEOfficial/PhotoBot/actions/workflows/ubuntu.yml/badge.svg)](https://github.com/CoolONEOfficial/PhotoBot/actions/workflows/ubuntu.yml)
+[![Language](https://img.shields.io/badge/language-Swift%205.1-orange.svg)](https://swift.org/download/)
+[![Platform](https://img.shields.io/badge/platform-Linux%20/%20macOS-ffc713.svg)](https://swift.org/download/)
+[![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](https://github.com/CoolONEOfficial/Vkontakter/blob/master/LICENSE)
 
 <p align="center"><img width=200 src="macstadium.png" alt="MacStadium logo"></p>
 
@@ -38,6 +42,8 @@ WEBHOOKS_URL=... (Optional)
 Documentation
 ---------------
 
+- Read [our wiki](https://github.com/CoolONEOfficial/PhotoBot/wiki)
+- Read [Botter documentation](https://github.com/CoolONEOfficial/Botter)
 - Read [An official documentation of Vapor](https://docs.vapor.codes/4.0/)
 
 Requirements
@@ -59,5 +65,5 @@ Author
 Nikolai Trukhin
 
 [coolone.official@gmail.com](mailto:coolone.official@gmail.com)
-[@cooloneofficial](tg://user?id=356008384)
+[@cooloneofficial](https://t.me/cooloneofficial)
 
