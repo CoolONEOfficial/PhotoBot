@@ -2,6 +2,15 @@
   "object": {
     "pins": [
       {
+        "package": "AnyCodable",
+        "repositoryURL": "https://github.com/Flight-School/AnyCodable.git",
+        "state": {
+          "branch": null,
+          "revision": "876d162385e9862ae8b3c8d65dc301312b040005",
+          "version": "0.6.0"
+        }
+      },
+      {
         "package": "async-http-client",
         "repositoryURL": "https://github.com/swift-server/async-http-client.git",
         "state": {
@@ -17,6 +26,15 @@
           "branch": null,
           "revision": "5760c79afb8ebc24fd3251fdd9724af225fdf1f9",
           "version": "1.3.0"
+        }
+      },
+      {
+        "package": "Botter",
+        "repositoryURL": "https://github.com/CoolONEOfficial/Botter.git",
+        "state": {
+          "branch": "main",
+          "revision": "58ec46ae3a6cd8167b4cb43549a643cb16e50b58",
+          "version": null
         }
       },
       {
@@ -191,11 +209,38 @@
         }
       },
       {
+        "package": "SwiftSoup",
+        "repositoryURL": "https://github.com/scinfu/SwiftSoup.git",
+        "state": {
+          "branch": null,
+          "revision": "774dc9c7213085db8aa59595e27c1cd22e428904",
+          "version": "2.3.2"
+        }
+      },
+      {
         "package": "SwiftyChrono",
         "repositoryURL": "https://github.com/CoolONEOfficial/SwiftyChrono.git",
         "state": {
           "branch": "master",
           "revision": "1c51aa32cb348c56910d4557cff3e1f52e9f57e4",
+          "version": null
+        }
+      },
+      {
+        "package": "Telegrammer",
+        "repositoryURL": "https://github.com/CoolONEOfficial/Telegrammer.git",
+        "state": {
+          "branch": "patch-2",
+          "revision": "4bff4ef3bc1919903fac1f81f82a47e75e8d973d",
+          "version": null
+        }
+      },
+      {
+        "package": "telegrammer-vapor-middleware",
+        "repositoryURL": "https://github.com/nerzh/telegrammer-vapor-middleware.git",
+        "state": {
+          "branch": "master",
+          "revision": "eea70f6567b0e732fc3f22e1708fe76e6c766a52",
           "version": null
         }
       },
@@ -215,6 +260,24 @@
           "branch": null,
           "revision": "eef16e1a56c04f05d55e775ccf7bfd512edd7d58",
           "version": "4.43.2"
+        }
+      },
+      {
+        "package": "Vkontakter",
+        "repositoryURL": "https://github.com/CoolONEOfficial/Vkontakter.git",
+        "state": {
+          "branch": null,
+          "revision": "56521384764704678bfe7fc9236b72880590ad7e",
+          "version": "0.1.3"
+        }
+      },
+      {
+        "package": "vkontakter-vapor-middleware",
+        "repositoryURL": "https://github.com/CoolONEOfficial/vkontakter-vapor-middleware.git",
+        "state": {
+          "branch": null,
+          "revision": "76d8b5a797dc9b03130c9ac8ee3fac604a4627f5",
+          "version": "0.1.0"
         }
       },
       {
