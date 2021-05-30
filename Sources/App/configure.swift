@@ -55,10 +55,10 @@ extension Application {
         }
         switch platform {
         case .tg:
-            return Application.tgWebhooksPort ?? Application.webhooksPort ?? (environment == .development ? 80 : 1314)
+            return Application.tgWebhooksPort ?? Application.webhooksPort ?? (environment == .development ? 443 : 1314)
             
         case .vk:
-            return Application.vkWebhooksPort ?? Application.webhooksPort ?? (environment == .development ? 80 : 1313)
+            return Application.vkWebhooksPort ?? Application.webhooksPort ?? (environment == .development ? 443 : 1313)
         }
     }
     
@@ -227,38 +227,38 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
         }
 
         let testPhoto = try PlatformFile.create(platformEntries: [
-            .tg("AgACAgQAAxkDAAIHjGAyWdeuTYimywkuaJsCk6cnPBw_AAKIqDEb84k9Ulm1-biSJET0czAfGwAEAQADAgADbQADE8MBAAEeBA"),
+            .tg("AgACAgIAAxkBAAN2YLIvRKdBuPchyfcsMpZpJLh9gcAAAv2zMRuHOJFJINW0txSyW6DgxiakLgADAQADAgADeQADBK0BAAEfBA"),
             .vk("photo-119092254_457239065")
         ], type: .photo, app: app).throwingFlatMap { try $0.save(app: app) }.wait()
         
         let testPhoto2 = try PlatformFile.create(platformEntries: [
-            .tg("AgACAgQAAxkDAAIHjGAyWdeuTYimywkuaJsCk6cnPBw_AAKIqDEb84k9Ulm1-biSJET0czAfGwAEAQADAgADbQADE8MBAAEeBA"),
+            .tg("AgACAgIAAxkBAAN2YLIvRKdBuPchyfcsMpZpJLh9gcAAAv2zMRuHOJFJINW0txSyW6DgxiakLgADAQADAgADeQADBK0BAAEfBA"),
             .vk("photo-119092254_457239065")
         ], type: .photo, app: app).throwingFlatMap { try $0.save(app: app) }.wait()
         
         let reviewPhotos: [PlatformFileModel] = [
             try PlatformFile.create(platformEntries: [
-                .tg("AgACAgIAAxkBAAIdMGBpsjawdLtVu2FT22IWVBHb1rNrAAKIszEbMbpRS9e8uuCD16jMUS4lmy4AAwEAAwIAA3gAA-bbBQABHgQ"),
+                .tg("AgACAgIAAxkBAAN2YLIvRKdBuPchyfcsMpZpJLh9gcAAAv2zMRuHOJFJINW0txSyW6DgxiakLgADAQADAgADeQADBK0BAAEfBA"),
                 .vk("photo-119092254_457239082")
             ], type: .photo, app: app).throwingFlatMap { try $0.save(app: app) }.wait(),
             try PlatformFile.create(platformEntries: [
-                .tg("AgACAgIAAxkBAAIdL2BpsjbtHwj2a29Gdhk6WPvNPgvAAAKHszEbMbpRS7FEamIW-ryVFm9Yoi4AAwEAAwIAA3gAA863AAIeBA"),
+                .tg("AgACAgIAAxkBAAN2YLIvRKdBuPchyfcsMpZpJLh9gcAAAv2zMRuHOJFJINW0txSyW6DgxiakLgADAQADAgADeQADBK0BAAEfBA"),
                 .vk("photo-119092254_457239081")
             ], type: .photo, app: app).throwingFlatMap { try $0.save(app: app) }.wait(),
             try PlatformFile.create(platformEntries: [
-                .tg("AgACAgIAAxkBAAIdMWBpsjZoqvgM72INK3ymYHT3S6k4AAKJszEbMbpRS902COwTqrpYDk-poi4AAwEAAwIAA3gAA5KwAAIeBA"),
+                .tg("AgACAgIAAxkBAAN2YLIvRKdBuPchyfcsMpZpJLh9gcAAAv2zMRuHOJFJINW0txSyW6DgxiakLgADAQADAgADeQADBK0BAAEfBA"),
                 .vk("photo-119092254_457239083")
             ], type: .photo, app: app).throwingFlatMap { try $0.save(app: app) }.wait(),
             try PlatformFile.create(platformEntries: [
-                .tg("AgACAgIAAxkBAAIdMmBpsjZGg6Oy50xOp3ybEU5xRhDFAAKKszEbMbpRS5h1SO6J-3HzLF_9ni4AAwEAAwIAA3gAAwyiAgABHgQ"),
+                .tg("AgACAgIAAxkBAAN2YLIvRKdBuPchyfcsMpZpJLh9gcAAAv2zMRuHOJFJINW0txSyW6DgxiakLgADAQADAgADeQADBK0BAAEfBA"),
                 .vk("photo-119092254_457239084")
             ], type: .photo, app: app).throwingFlatMap { try $0.save(app: app) }.wait(),
             try PlatformFile.create(platformEntries: [
-                .tg("AgACAgIAAxkBAAIdM2BpsjYqTOyqKdf9GSV9-SESc1nCAAKLszEbMbpRS4rBPnQ4N4MeoZKboi4AAwEAAwIAA3gAA-KeAAIeBA"),
+                .tg("AgACAgIAAxkBAAN2YLIvRKdBuPchyfcsMpZpJLh9gcAAAv2zMRuHOJFJINW0txSyW6DgxiakLgADAQADAgADeQADBK0BAAEfBA"),
                 .vk("photo-119092254_457239085")
             ], type: .photo, app: app).throwingFlatMap { try $0.save(app: app) }.wait(),
             try PlatformFile.create(platformEntries: [
-                .tg("AgACAgIAAxkBAAIdNWBpsja0j9IW3lQi-wfQgGMU2usEAAKNszEbMbpRSwYswZ_hjzmuXl2Poi4AAwEAAwIAA3gAA2K9AAIeBA"),
+                .tg("AgACAgIAAxkBAAN2YLIvRKdBuPchyfcsMpZpJLh9gcAAAv2zMRuHOJFJINW0txSyW6DgxiakLgADAQADAgADeQADBK0BAAEfBA"),
                 .vk("photo-119092254_457239086")
             ], type: .photo, app: app).throwingFlatMap { try $0.save(app: app) }.wait(),
         ]
@@ -354,7 +354,7 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
 func tgSettings(_ app: Application) -> Telegrammer.Bot.Settings {
     var tgSettings = Telegrammer.Bot.Settings(token: Application.tgToken, debugMode: !app.environment.isRelease)
     tgSettings.webhooksConfig = .init(ip: "0.0.0.0", baseUrl: app.webhooksUrl(for: .tg), port: app.serverPort(for: .tg))
-    debugPrint("Starting webhooks tg on url \(tgSettings.webhooksConfig?.url ?? "nope") port \(tgSettings.webhooksConfig?.port)")
+    debugPrint("Starting webhooks tg\non url \(tgSettings.webhooksConfig?.url ?? "nope") port \(tgSettings.webhooksConfig?.port)")
     return tgSettings
 }
 
