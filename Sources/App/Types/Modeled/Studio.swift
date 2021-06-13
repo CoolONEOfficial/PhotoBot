@@ -29,6 +29,12 @@ final class Studio: StudioProtocol {
 
     var prices: [OrderType: Float] = [:]
     
+    // Platform identifiable
+    
+    var platformIds: [TypedPlatform<UserPlatformId>] = []
+    
+    var user: UserModel!
+    
     required init() {}
     
 }

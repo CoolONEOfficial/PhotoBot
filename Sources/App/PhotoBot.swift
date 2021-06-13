@@ -50,6 +50,7 @@ public enum HandleActionError: Error, LocalizedError {
 
 enum HandleEventError: Error {
     case eventNotFound
+    case payloadNotFound(UUID)
 }
 
 class PhotoBot {
@@ -93,7 +94,7 @@ class PhotoBot {
         
         case .nextPage, .previousPage:
             var pageIndex: Int
-            if case let .page(index) = context.user.nodePayload {
+            if case let .page(index) = user.nodePayload {
                 pageIndex = index
             } else {
                 pageIndex = 0
@@ -107,7 +108,7 @@ class PhotoBot {
                 replyText = "👈 Предыдущая"
             }
 
-            return context.user.push(.id(context.user.nodeId!), payload: .page(at: pageIndex), to: event, saveMove: false, context: context)
+            return user.push(.id(user.nodeId!), payload: .page(at: pageIndex), to: event, saveMove: false, context: context)
             
         default: break
         }
@@ -129,7 +130,7 @@ class PhotoBot {
             let context = PhotoBotContext(app: app, bot: bot, user: user, platform: event.platform.any, controllers: controllers)
             
             var replyText: String = "Not handled"
-            var nextFuture: Future<[Botter.Message]?>? = nil
+            var nextFuture: Future<[Botter.Message]>? = nil
             
             let eventData = event.data.value as? Data
             let eventStr = String(data: eventData ?? .init(), encoding: .utf8)
@@ -138,12 +139,11 @@ class PhotoBot {
                 nextFuture = nil
             } else if let eventStr = eventStr,
                       let eventPayloadId = UUID(uuidString: eventStr) {
-                nextFuture = EventPayloadModel.find(eventPayloadId, on: app.db)
-                    .optionalFlatMapThrowing { model in try EventPayload(from: model.instance) }
-                    .optionalThrowingFlatMap { eventPayload in try handleEventPayload(event, eventPayload, &replyText, context: context) }
-                    .flatMap { res in EventPayloadModel.query(on: app.db).filter(\.$owner.$id == user.id!).delete().map { res } }
+                nextFuture = EventPayloadModel.find(eventPayloadId, on: app.db).unwrap(or: HandleEventError.payloadNotFound(eventPayloadId))
+                    .flatMapThrowing { model in try EventPayload(from: model.instance) }
+                    .throwingFlatMap { eventPayload in try handleEventPayload(event, eventPayload, &replyText, context: context) }
             } else if let eventPayload: EventPayload = try? event.decodeData() {
-                nextFuture = try handleEventPayload(event, eventPayload, &replyText, context: context).map { Optional($0) }
+                nextFuture = try handleEventPayload(event, eventPayload, &replyText, context: context)
             }
             
             var futureArr: [EventLoopFuture<[Botter.Message]>] = update.platform.same(.vk) ? [] : [
@@ -151,7 +151,7 @@ class PhotoBot {
             ]
             
             if let nextFuture = nextFuture {
-                futureArr.append(nextFuture.unwrap(orReplace: []))
+                futureArr.append(nextFuture)
             }
             
             return futureArr.flatten(on: app.eventLoopGroup.next()).map { $0.last ?? [] }

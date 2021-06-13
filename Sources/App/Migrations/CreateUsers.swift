@@ -21,6 +21,8 @@ struct CreateUsers: Migration {
             .field("makeuper_id", .uuid, .references(MakeuperModel.schema, .id))
             .field("stylist_id", .uuid, .references(StylistModel.schema, .id))
             .field("photographer_id", .uuid, .references(PhotographerModel.schema, .id))
+            .field("studio_id", .uuid, .references(StudioModel.schema, .id))
+            .field("last_destination", .json)
             .create()
     }
 

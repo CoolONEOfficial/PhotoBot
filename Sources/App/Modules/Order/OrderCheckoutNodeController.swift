@@ -82,7 +82,7 @@ class OrderCheckoutNodeController: NodeController {
         let platform = event.platform.any
         
         return try OrderModel.create(userId: userId, checkoutState: checkoutState, app: app).flatMap { order in
-            MessageFormatter.shared.format("Заказ успешно создан, в ближайшее время с Вами свяжется @" + .replacing(by: .admin), platform: platform, context: context)
+            MessageFormatter.shared.format("Заказ успешно создан! После подтверждения заказа мы уведомим вас о готовности. По всем вопросам - к @" + .replacing(by: .admin), platform: platform, context: context)
             .throwingFlatMap { message in
                 try event.replyMessage(.init(text: message), context: context)
             }.map { ($0, order) }
@@ -94,41 +94,24 @@ class OrderCheckoutNodeController: NodeController {
                     platform: platform,
                     app: app
                 ).flatMap { user in
-                    func getMessage(_ platform: AnyPlatform) -> Future<String> {
-                        MessageFormatter.shared.format(
-                            [
-                                "Новый заказ от @" + .replacing(by: .username) + " (" + .replacing(by: .orderId) + "):",
-                                .replacing(by: .orderBlock),
-                                .replacing(by: .priceBlock),
-                            ].joined(separator: "\n"),
-                            platform: platform, context: context
-                        )
-                    }
                     
                     let futures: [Future<[Message]>] = [
-                        order.fetchWatchers(app: app).flatMap {
-                            $0.map { watcher in
-                                let platformIds = watcher.platformIds
-                                
-                                let platformId = platformIds.first(for: platform) ?? platformIds.first!
-                                return getMessage(platformId.any).throwingFlatMap { text in
-                                    try bot.sendMessage(.init(
-                                        destination: platformId.sendDestination,
-                                        text: text
-                                    ), platform: platformId.any, context: context)
-                                }
-                            }.flatten(on: app.eventLoopGroup.next()).map { messages + $0.reduce([], +) }
+                        order.fetchWatchers(app: app).throwingFlatMap {
+                            try $0.map { watcher in
+                                try watcher.getPlatformUser(app: app)
+                                    .optionalThrowingFlatMap { try $0.toTwin(app: app) }
+                                    .throwingFlatMap { user in
+                                        guard let user = user, let lastDestination = user.lastDestination else { return app.eventLoopGroup.future([]) }
+                                        return user.push(
+                                            .entryPoint(.orderAgreement),
+                                            payload: .orderAgreement(orderId: try order.requireID()),
+                                            to: lastDestination, context: context
+                                        )
+                                    }
+                            }.flatten(on: app.eventLoopGroup.next())
+                            .map { messages + $0.reduce([], +) }
                         }
                     ]
-                    
-//                    if let user = user, let id = user.platformIds.firstValue(platform: platform)?.id {
-//                        futures.append(getMessage(platform).throwingFlatMap { text in
-//                            try bot.sendMessage(.init(
-//                                destination: .init(platform: platform, id: id),
-//                                text: text
-//                            ), platform: platform, context: context)
-//                        })
-//                    }
                     
                     return futures.flatten(on: app.eventLoopGroup.next()).map { $0.reduce([], +) }
                 }

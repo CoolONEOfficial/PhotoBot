@@ -176,31 +176,21 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
         CreateMakeuperPhotos(),
         CreatePhotographers(),
         CreatePhotographerPhotos(),
+        CreateStudios(),
+        CreateStudioPhotos(),
         CreateUsers(),
         CreateEventPayloads(),
-        CreateStudios(),
         CreatePromotions(),
-        CreateStudioPhotos(),
         CreateOrders(),
         CreateOrderPromotions(),
         CreateReviews(),
+        CreateAgreements(),
     ])
 
     if app.environment == .development {
         try app.autoMigrate().wait()
     }
-    
-    //print("Drop all tables? (y or n)") TODO: drop tables on restart
-    
-//    if let name = readLine(), name.contains("y") {
-//        print("Dropping tables...")
-//
-//        try app.db.execute(enum: <#T##DatabaseEnum#>)(query: DatabaseQuery(schema: "DROP TABLE nodes, users, _fluent_migrations CASCADE"), onOutput: {_ in}).wait()
-//        fatalError()
-//    } else {
-//        print("Ok, just start with previous db state")
-//    }
-    
+
     let controllers: [NodeController] = [
         MainNodeController(),
         AboutNodeController(),
@@ -213,9 +203,12 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
         OrderBuilderDateNodeController(),
         OrderBuilderMainNodeController(),
         OrderBuilderMakeuperNodeController(),
+        OrderBuilderPhotographerNodeController(),
         OrderBuilderStudioNodeController(),
         OrderBuilderStylistNodeController(),
         ChangeTextNodeController(),
+        OrderAgreementNodeController(),
+        OrderReplacementNodeController(),
         ShowcaseNodeController(),
         WelcomeNodeController(),
     ]
@@ -339,7 +332,7 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
                 description: "Studio desc",
                 address: "adsdsad",
                 coords: .init(lat: 0, long: 0),
-                photos: [testPhoto], prices: [
+                platformIds: coolonePlatformIds, photos: [testPhoto], prices: [
                     .loveStory: Float(50 * num),
                     .content: Float(51 * num),
                     .family: Float(52 * num)
@@ -348,6 +341,15 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
         }
     }
     
+    for entryPoint in EntryPoint.allCases {        
+        let future = NodeModel.query(on: app.db).filter(\.$entryPoint == .enumCase(entryPoint.rawValue)).first()
+            .unwrap(or: PhotoBotError.nodeByEntryPointNotFound(entryPoint))
+        future.whenSuccess { node in
+            Node.entryPointIds[entryPoint] = node.id
+        }
+        try future.wait()
+    }
+
     return controllers
 }
 

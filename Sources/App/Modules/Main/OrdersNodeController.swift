@@ -39,12 +39,13 @@ class OrdersNodeController: NodeController {
                 }
             }.range(indexRange).all().throwingFlatMap { orders in
                 try orders.enumerated().map { (index, model) -> Future<SendMessage> in
-                    try Order.create(other: model, app: app).flatMap { order in
+                    try model.toTwin(app: app).flatMap { order in
                         CheckoutState.create(from: order, app: app).flatMap { checkoutState in
                             context.user.nodePayload = .checkout(checkoutState)
                             return MessageFormatter.shared.format(
                                 [
-                                    "Заказ от " + .replacing(by: .orderCustomer) + (user.isAdmin ? "\nID заказа (" + .replacing(by: .orderId) + "):" : ""),
+                                    "Заказ от " + .replacing(by: .orderCustomer)
+                                        + (user.isAdmin ? "\nID заказа (" + .replacing(by: .orderId) + "):" : ""),
                                     .replacing(by: .orderBlock),
                                     .replacing(by: .priceBlock),
                                 ].joined(separator: "\n"),

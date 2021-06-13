@@ -10,15 +10,17 @@ import Vapor
 import Fluent
 import Botter
 
-public enum EntryPoint: String, Codable {
+public enum EntryPoint: String, Codable, CaseIterable {
     case welcome
     case welcomeGuest
     case showcase
     case orderTypes
+    case orderReplacement
     case orderBuilder
     case orderBuilderStylist
     case orderBuilderStudio
     case orderBuilderMakeuper
+    case orderBuilderPhotographer
     case orderBuilderDate
     case orderCheckout
     case about
@@ -28,8 +30,10 @@ public enum EntryPoint: String, Codable {
     case reviews
     case messageEdit
     case orderAgreement
+    
+    static let orderBuildable: [Self] = [ .orderReplacement, .orderBuilder ]
 }
- 
+
 protocol NodeProtocol: Twinable where TwinType: NodeProtocol {
     var id: UUID? { get set }
     var systemic: Bool { get set }
@@ -37,9 +41,10 @@ protocol NodeProtocol: Twinable where TwinType: NodeProtocol {
     var messagesGroup: SendMessageGroup! { get set }
     var entryPoint: EntryPoint? { get set }
     var action: NodeAction? { get set }
+    var closeable: Bool { get set }
     
     init()
-    static func create(id: UUID?, systemic: Bool, name: String?, messagesGroup: SendMessageGroup, entryPoint: EntryPoint?, action: NodeAction?, app: Application) -> Future<Self>
+    static func create(id: UUID?, systemic: Bool, closeable: Bool, name: String?, messagesGroup: SendMessageGroup, entryPoint: EntryPoint?, action: NodeAction?, app: Application) -> Future<Self>
 }
 
 enum NodeCreateError: Error {
@@ -49,13 +54,14 @@ enum NodeCreateError: Error {
 extension NodeProtocol {
     static func create(other: TwinType, app: Application) throws -> Future<Self> {
         guard let messagesGroup = other.messagesGroup else { throw NodeCreateError.noMessageGroup }
-        return Self.create(id: other.id, systemic: other.systemic, name: other.name, messagesGroup: messagesGroup, entryPoint: other.entryPoint, action: other.action, app: app)
+        return Self.create(id: other.id, systemic: other.systemic, closeable: other.closeable, name: other.name, messagesGroup: messagesGroup, entryPoint: other.entryPoint, action: other.action, app: app)
     }
     
-    static func create(id: UUID? = nil, systemic: Bool = false, name: String?, messagesGroup: SendMessageGroup, entryPoint: EntryPoint? = nil, action: NodeAction? = nil, app: Application) -> Future<Self> {
+    static func create(id: UUID? = nil, systemic: Bool = false, closeable: Bool = true, name: String?, messagesGroup: SendMessageGroup, entryPoint: EntryPoint? = nil, action: NodeAction? = nil, app: Application) -> Future<Self> {
         let instance = Self.init()
         instance.id = id
         instance.systemic = systemic
+        instance.closeable = closeable
         instance.name = name
         instance.messagesGroup = messagesGroup
         instance.entryPoint = entryPoint

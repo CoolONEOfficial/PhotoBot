@@ -46,6 +46,12 @@ public final class User: UserProtocol {
 
     var photographerId: UUID? { photographer?.id }
     
+    var studio: StudioModel?
+
+    var studioId: UUID? { studio?.id }
+    
+    var lastDestination: UserDestination?
+    
     required init() {}
 
 }
@@ -67,6 +73,7 @@ extension User: ModeledType {
 enum UserNavigationError: Error {
     case noHistory
     case noNodeId
+    case lastDestinationNotFound
 }
 
 extension User {
@@ -133,39 +140,62 @@ extension User {
         to replyable: T, saveMove: Bool = true,
         context: PhotoBotContextProtocol
     ) throws -> Future<[Message]> {
-        
+        var context = context
+        context.user = self
+
+        let future: Future<Void>
+        if let nodeId = nodeId {
+            debugPrint("Removing EventPayloadModel for node \(Node.entryPointIds[Node.entryPointIds.firstIndex { $0.value == nodeId }!].key.rawValue) user \(self.firstName!)")
+            future = EventPayloadModel.query(on: context.app.db)
+                .group(.and) {
+                    $0.filter(\.$node.$id == nodeId)
+                    $0.filter(\.$owner.$id == self.id!)
+                }
+                .delete()
+        } else {
+            future = context.app.eventLoopGroup.future()
+        }
+
         if node.entryPoint == .welcome {
             history.removeAll()
         } else if saveMove, let oldNodeId = self.nodeId {
             history.append(.init(nodeId: oldNodeId, nodePayload: nodePayload))
         }
 
+        self.lastDestination = .init(destination: replyable.destination, platform: replyable.platform.any)
         self.nodePayload = payload
         self.nodeId = node.id!
-        
-        return try self.saveReturningId(app: context.app).throwingFlatMap { (id) -> Future<[Message]> in
-            self.id = id
-            return try replyable.replyNode(node: node, payload: payload, context: context)!
+        return future.throwingFlatMap {
+            try self.saveReturningId(app: context.app).throwingFlatMap { (id) -> Future<[Message]> in
+                self.id = id
+                return try replyable.replyNode(node: node, payload: payload, context: context)!
+            }
         }
     }
     
     func popToMain<T: PlatformObject & Replyable>(to replyable: T, context: PhotoBotContextProtocol) throws -> Future<[Message]> {
         try pop(to: replyable, context: context) { _ in true }
     }
+    
+    func popToDifferentNode<T: PlatformObject & Replyable>(to replyable: T, context: PhotoBotContextProtocol) throws -> Future<[Message]> {
+        let count = (history.reversed().firstIndex { $0.nodeId != self.nodeId } ?? 0) + 1
+        return try pop(to: replyable, context: context, repeat: count)
+    }
 
-    func pop<T: PlatformObject & Replyable>(to replyable: T, context: PhotoBotContextProtocol) throws -> Future<[Message]> {
+    func pop<T: PlatformObject & Replyable>(to replyable: T, context: PhotoBotContextProtocol, repeat count: Int = 1) throws -> Future<[Message]> {
+        assert(count > 0)
         var counter = 0
         return try pop(to: replyable, context: context) { _ in
             counter += 1
-            return counter == 1
+            return counter <= count
         }
     }
     
     func pop<T: PlatformObject & Replyable>(to replyable: T, context: PhotoBotContextProtocol, while whileCompletion: (UserHistoryEntry) -> Bool) throws -> Future<[Message]> {
         guard !history.isEmpty, let nodeId = nodeId else { throw UserNavigationError.noHistory }
         if whileCompletion(UserHistoryEntry(nodeId: nodeId, nodePayload: nodePayload)) {
-            for (index, entry) in history.enumerated().reversed() {
-                if whileCompletion(entry), index != 0 {
+            for entry in history.reversed() {
+                if history.count > 1, whileCompletion(entry) {
                     history.removeLast()
                 } else {
                     break
@@ -180,6 +210,12 @@ extension User {
     func pushToActualNode<T: PlatformObject & Replyable>(to replyable: T, context: PhotoBotContextProtocol) throws -> Future<[Message]> {
         guard let nodeId = nodeId else { throw UserNavigationError.noNodeId }
         return push(.id(nodeId), payload: nodePayload, to: replyable, saveMove: false, context: context)
+    }
+
+    func sendMessage(context: PhotoBotContextProtocol, params: Bot.SendMessageParams) throws -> Future<[Message]> {
+        guard let lastDestination = lastDestination else { throw UserNavigationError.lastDestinationNotFound }
+        params.destination = lastDestination.destination
+        return try context.bot.sendMessage(params, platform: lastDestination.platform, context: context)
     }
 }
 

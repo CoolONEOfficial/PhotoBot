@@ -11,6 +11,7 @@ public enum EventPayload {
     case editText(messageId: Int)
     case selectStylist(id: UUID)
     case selectMakeuper(id: UUID)
+    case selectPhotographer(id: UUID)
     case selectStudio(id: UUID)
     case selectDay(date: Date)
     case selectTime(time: TimeInterval)
@@ -18,8 +19,10 @@ public enum EventPayload {
     case createOrder
     case pushCheckout(state: OrderState)
     case cancelOrder(id: UUID)
-    case handleOrderAgreement(Bool)
-    
+    case handleOrderAgreement(orderId: UUID, agreement: Bool)
+    case handleOrderReplacement(Bool)
+    case applyOrderReplacement(orderId: UUID, state: OrderState)
+
     // MARK: Navigation
     
     case back
@@ -35,6 +38,7 @@ extension EventPayload: Codable {
         case selectStylist = "selStylist"
         case selectMakeuper = "selMakeuper"
         case selectStudio = "selStudio"
+        case selectPhotographer = "selPhoto"
         case selectDay = "selDay"
         case selectTime = "selTime"
         case selectDuration = "selDuration"
@@ -45,7 +49,11 @@ extension EventPayload: Codable {
         case pushToCheckoutState
         case previousPage
         case nextPage
+        case orderAgreementOrderId
         case orderAgreement
+        case orderReplacement
+        case orderReplacementState
+        case orderReplacementId
     }
 
     public init(from decoder: Decoder) throws {
@@ -69,6 +77,11 @@ extension EventPayload: Codable {
         if container.allKeys.contains(.selectStudio), try container.decodeNil(forKey: .selectStudio) == false {
             let id = try container.decode(UUID.self, forKey: .selectStudio)
             self = .selectStudio(id: id)
+            return
+        }
+        if container.allKeys.contains(.selectPhotographer), try container.decodeNil(forKey: .selectPhotographer) == false {
+            let id = try container.decode(UUID.self, forKey: .selectPhotographer)
+            self = .selectPhotographer(id: id)
             return
         }
         if container.allKeys.contains(.selectDay), try container.decodeNil(forKey: .selectDay) == false {
@@ -120,9 +133,23 @@ extension EventPayload: Codable {
             self = .pushCheckout(state: state)
             return
         }
-        if container.allKeys.contains(.orderAgreement), try container.decodeNil(forKey: .orderAgreement) == false {
+        if container.allKeys.contains(.orderAgreement), try container.decodeNil(forKey: .orderAgreement) == false,
+           container.allKeys.contains(.orderAgreementOrderId), try container.decodeNil(forKey: .orderAgreementOrderId) == false{
             let agreement = try container.decode(Bool.self, forKey: .orderAgreement)
-            self = .handleOrderAgreement(agreement)
+            let orderId = try container.decode(UUID.self, forKey: .orderAgreementOrderId)
+            self = .handleOrderAgreement(orderId: orderId, agreement: agreement)
+            return
+        }
+        if container.allKeys.contains(.orderReplacement), try container.decodeNil(forKey: .orderReplacement) == false {
+            let replacement = try container.decode(Bool.self, forKey: .orderReplacement)
+            self = .handleOrderReplacement(replacement)
+            return
+        }
+        if container.allKeys.contains(.orderReplacementState), try container.decodeNil(forKey: .orderReplacementState) == false,
+           container.allKeys.contains(.orderReplacementId), try container.decodeNil(forKey: .orderReplacementId) == false{
+            let state = try container.decode(OrderState.self, forKey: .orderReplacementState)
+            let orderId = try container.decode(UUID.self, forKey: .orderReplacementId)
+            self = .applyOrderReplacement(orderId: orderId, state: state)
             return
         }
         throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown enum case"))
@@ -140,6 +167,8 @@ extension EventPayload: Codable {
             try container.encode(id, forKey: .selectMakeuper)
         case let .selectStudio(id):
             try container.encode(id, forKey: .selectStudio)
+        case let .selectPhotographer(id):
+            try container.encode(id, forKey: .selectPhotographer)
         case let .selectDay(date):
             try container.encode(date, forKey: .selectDay)
         case let .selectTime(timeInterval):
@@ -159,8 +188,14 @@ extension EventPayload: Codable {
             try associatedValues.encode(associatedValue2)
         case let .pushCheckout(state):
             try container.encode(state, forKey: .pushToCheckoutState)
-        case let .handleOrderAgreement(agreement):
+        case let .handleOrderAgreement(orderId, agreement):
             try container.encode(agreement, forKey: .orderAgreement)
+            try container.encode(orderId, forKey: .orderAgreementOrderId)
+        case let .handleOrderReplacement(replacement):
+            try container.encode(replacement, forKey: .orderReplacement)
+        case let .applyOrderReplacement(orderId, state):
+            try container.encode(state, forKey: .orderReplacementState)
+            try container.encode(orderId, forKey: .orderReplacementId)
         case .previousPage:
             try container.encode(true, forKey: .previousPage)
         case .nextPage:

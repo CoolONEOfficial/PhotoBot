@@ -24,10 +24,14 @@ final class EventPayloadModel: Model {
     @Parent(key: "owner_id")
     var owner: UserModel
 
+    @Parent(key: "node_id")
+    var node: NodeModel
+
     required init() {}
 
-    init<T: UserProtocol>(instance: String, owner: T) {
+    init(instance: String, ownerId: UUID, nodeId: UUID) {
         self.instance = instance
-        self.$owner.id = owner.id!
+        self.$owner.id = ownerId
+        self.$node.id = nodeId
     }
 }

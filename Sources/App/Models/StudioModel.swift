@@ -41,6 +41,21 @@ final class StudioModel: Model, StudioProtocol {
     
     @Field(key: "coords")
     var coords: Coords?
+    
+    // Platform identifiable
+    
+    @Field(key: "platform_ids")
+    var platformIds: [TypedPlatform<UserPlatformId>]
+    
+    @Children(for: \.$_studio)
+    var users: [UserModel]
+    
+    var user: UserModel! {
+        get { users.first }
+        set { fatalError() }
+    }
+    
+    var usersProperty: ChildrenProperty<StudioModel, UserModel>? { $users }
 
     required init() { }
 }

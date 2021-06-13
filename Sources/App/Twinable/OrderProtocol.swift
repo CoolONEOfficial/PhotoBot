@@ -73,7 +73,7 @@ protocol OrderProtocol: PromotionsProtocol, Twinable where TwinType: OrderProtoc
     var promotions: [PromotionModel] { get set }
     
     init()
-    static func create(id: UUID?, userId: UUID, type: OrderType, stylistId: UUID?, makeuperId: UUID?, studioId: UUID?, interval: DateInterval, price: Float, promotions: [PromotionModel], status: OrderStatus, app: Application) -> Future<Self>
+    static func create(id: UUID?, userId: UUID, type: OrderType, stylistId: UUID?, makeuperId: UUID?, photographerId: UUID?, studioId: UUID?, interval: DateInterval, price: Float, promotions: [PromotionModel], status: OrderStatus, app: Application) -> Future<Self>
 }
 
 enum OrderCreateError: Error {
@@ -83,11 +83,11 @@ enum OrderCreateError: Error {
 extension OrderProtocol {
     static func create(other: TwinType, app: Application) throws -> Future<Self> {
         other.getPromotions(app: app).flatMap { promotions in
-            Self.create(id: other.id, userId: other.userId, type: other.type, stylistId: other.stylistId, makeuperId: other.makeuperId, studioId: other.studioId, interval: other.interval, price: other.hourPrice, promotions: promotions, status: other.status, app: app)
+            Self.create(id: other.id, userId: other.userId, type: other.type, stylistId: other.stylistId, makeuperId: other.makeuperId, photographerId: other.photographerId, studioId: other.studioId, interval: other.interval, price: other.hourPrice, promotions: promotions, status: other.status, app: app)
         }
     }
     
-    static func create(id: UUID? = nil, userId: UUID, type: OrderType, stylistId: UUID?, makeuperId: UUID?, studioId: UUID?, interval: DateInterval, price: Float = 0, promotions: [PromotionModel], status: OrderStatus = .inAgreement, app: Application) -> Future<Self> {
+    static func create(id: UUID? = nil, userId: UUID, type: OrderType, stylistId: UUID?, makeuperId: UUID?, photographerId: UUID?, studioId: UUID?, interval: DateInterval, price: Float = 0, promotions: [PromotionModel], status: OrderStatus = .inAgreement, app: Application) -> Future<Self> {
         let instance = Self.init()
         instance.id = id
         instance.userId = userId
@@ -95,6 +95,7 @@ extension OrderProtocol {
         instance.stylistId = stylistId
         instance.makeuperId = makeuperId
         instance.studioId = studioId
+        instance.photographerId = photographerId
         instance.interval = interval
         instance.hourPrice = price
         instance.status = status
@@ -113,11 +114,55 @@ extension OrderProtocol {
             type: type,
             stylistId: order.stylistId,
             makeuperId: order.makeuperId,
+            photographerId: order.photographerId,
             studioId: order.studioId,
             interval: .init(start: date, duration: duration),
             price: order.hourPrice,
             promotions: checkoutState.promotions,
             app: app
         )
+    }
+    
+    func merge(with order: OrderState) {
+        if let date = order.date {
+            interval.start = date
+        }
+        if let duration = order.duration {
+            interval.duration = duration
+        }
+        if let type = order.type {
+            self.type = type
+        }
+        if let stylistId = order.stylistId {
+            self.stylistId = stylistId
+        }
+        if let makeuperId = order.makeuperId {
+            self.makeuperId = makeuperId
+        }
+        if let photographerId = order.photographerId {
+            self.photographerId = photographerId
+        }
+        if let studioId = order.studioId {
+            self.studioId = studioId
+        }
+        
+    }
+}
+
+extension OrderState {
+    func getMergedUser(app: Application) -> Future<UserModel?>? {
+        if let photographerId = photographerId {
+            return Photographer.find(photographerId, app: app).optionalFlatMap { $0.getUser(app: app) }
+        }
+        if let studioId = studioId {
+            return Studio.find(studioId, app: app).optionalFlatMap { $0.getUser(app: app) }
+        }
+        if let stylistId = stylistId {
+            return Stylist.find(stylistId, app: app).optionalFlatMap { $0.getUser(app: app) }
+        }
+        if let makeuperId = makeuperId {
+            return Makeuper.find(makeuperId, app: app).optionalFlatMap { $0.getUser(app: app) }
+        }
+        return nil
     }
 }

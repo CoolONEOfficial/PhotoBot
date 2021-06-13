@@ -15,6 +15,7 @@ struct CreateNodes: Migration {
             .field("name", .string, .required)
             .field("messages", .json, .required)
             .field("entry_point", .string)
+            .field("closeable", .bool, .required)
             .field("action", .json)
             .unique(on: "entry_point")
             .create()

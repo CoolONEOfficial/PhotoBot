@@ -16,6 +16,7 @@ struct CreateStudios: Migration {
             .field("address", .string, .required)
             .field("coords", .json, .required)
             .field("prices", .dictionary(of: .float), .required)
+            .field("platform_ids", .array(of: .json))
             .create()
     }
 

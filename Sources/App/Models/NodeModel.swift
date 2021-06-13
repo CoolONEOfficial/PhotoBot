@@ -32,6 +32,9 @@ final class NodeModel: Model, NodeProtocol {
     @OptionalField(key: "action")
     var action: NodeAction?
 
+    @Field(key: "closeable")
+    var closeable: Bool
+
     required init() { }
     
     public static func find(
@@ -43,8 +46,9 @@ final class NodeModel: Model, NodeProtocol {
             return find(id, on: database).unwrap(or: PhotoBotError.nodeByIdNotFound)
             
         case let .entryPoint(entryPoint):
-            return query(on: database).filter(\.$entryPoint == .enumCase(entryPoint.rawValue)).first()
-                .unwrap(or: PhotoBotError.nodeByEntryPointNotFound(entryPoint))
+            return find(Node.entryPointIds[entryPoint], on: database).unwrap(or: PhotoBotError.nodeByIdNotFound)
+            //return query(on: database).filter(\.$entryPoint == .enumCase(entryPoint.rawValue)).first()
+                //.unwrap(or: PhotoBotError.nodeByEntryPointNotFound(entryPoint))
         }
     }
 }

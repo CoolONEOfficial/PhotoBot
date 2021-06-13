@@ -94,8 +94,10 @@ final class OrderModel: Model, OrderProtocol {
 
     var promotionsSiblings: AttachablePromotionSiblings<OrderModel, OrderPromotion>? { $_promotions }
     
-    required init() { }
+    @Siblings(through: AgreementModel.self, from: \.$order, to: \.$approver)
+    var agreements: [UserModel]
     
+    required init() { }
 }
 
 extension OrderModel {
@@ -103,15 +105,20 @@ extension OrderModel {
         [
             $makeuper.get(on: app.db).optionalMap { $0 as PlatformIdentifiable },
             $stylist.get(on: app.db).optionalMap { $0 as PlatformIdentifiable },
-            $stylist.get(on: app.db).optionalMap { $0 as PlatformIdentifiable },
+            $photographer.get(on: app.db).optionalMap { $0 as PlatformIdentifiable },
+            $studio.get(on: app.db).optionalMap { $0 as PlatformIdentifiable },
         ].flatten(on: app.eventLoopGroup.next()).map { $0.compactMap { $0 } }
     }
-    
+
     func fetchWatchersUsers(app: Application) -> Future<[UserModel]> {
-        [
-            $makeuper.get(on: app.db).optionalFlatMap { $0.getUser(app: app) },
-            $stylist.get(on: app.db).optionalFlatMap { $0.getUser(app: app) },
-            $stylist.get(on: app.db).optionalFlatMap { $0.getUser(app: app) },
-        ].flatten(on: app.eventLoopGroup.next()).map { $0.compactMap { $0 } }
+        fetchWatchers(app: app)
+            .throwingFlatMapEach(on: app.eventLoopGroup.next()) { try $0.getPlatformUser(app: app) }
+            .map { $0.compactMap { $0 } }
+//        [
+//            $makeuper.get(on: app.db).optionalFlatMap { $0.getUser(app: app) },
+//            $stylist.get(on: app.db).optionalFlatMap { $0.getUser(app: app) },
+//            $photographer.get(on: app.db).optionalFlatMap { $0.getUser(app: app) },
+//            $studio.get(on: app.db).optionalFlatMap { $0.getUser(app: app) },
+//        ].flatten(on: app.eventLoopGroup.next()).map { $0.compactMap { $0 } }
     }
 }

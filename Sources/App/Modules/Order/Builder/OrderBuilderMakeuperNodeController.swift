@@ -21,7 +21,7 @@ class OrderBuilderMakeuperNodeController: NodeController {
     func getListSendMessages(platform: AnyPlatform, in node: Node, _ payload: NodePayload?, context: PhotoBotContextProtocol, listType: MessageListType, indexRange: Range<Int>) throws -> EventLoopFuture<([SendMessage], Int)>? {
         guard listType == .makeupers else { return nil }
         let (app, user) = (context.app, context.user)
-        guard case let .orderBuilder(state) = user.history.last?.nodePayload, let orderType = state.type else { throw SendMessageGroupError.invalidPayload }
+        guard case let .orderBuilder(state) = payload, let orderType = state.type else { throw SendMessageGroupError.invalidPayload }
 
         return MakeuperModel.query(on: app.db).count().flatMap { count in
             MakeuperModel.query(on: app.db).filter(.sql(raw: "prices ? '\(orderType.rawValue)'")).range(indexRange).all().flatMap { humans in
@@ -55,11 +55,14 @@ class OrderBuilderMakeuperNodeController: NodeController {
         guard case let .selectMakeuper(makeuperId) = eventPayload else { return nil }
         let (app, user) = (context.app, context.user)
         
-        replyText = "Selected"
-        return Node.find(.entryPoint(.orderBuilder), app: app).flatMap { node in
-            Makeuper.find(makeuperId, app: app).throwingFlatMap { makeuper in
-                try user.push(node, payload: .orderBuilder(.init(with: user.history.last?.nodePayload, makeuper: makeuper)), to: event, saveMove: false, context: context)
-            }
+        guard let nodeId = user.history.firstOrderBuildable?.nodeId else {
+            fatalError()
         }
+
+        replyText = "Selected"
+        return Makeuper.find(makeuperId, app: app).throwingFlatMap { makeuper in
+            try user.push(.id(nodeId), payload: .orderBuilder(.init(with: user.history.last?.nodePayload, makeuper: makeuper)), to: event, saveMove: false, context: context)
+        }
+        
     }
 }

@@ -28,15 +28,16 @@ class OrderBuilderMainNodeController: NodeController {
         }
         
         var keyboard: Keyboard = [[
-            try .init(text: "Студия", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderStudio))),
+            try .init(text: "Студия", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderStudio), payload: payload)),
+            //try .init(text: "Фотограф", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderPhotograph), payload: payload)),
             try .init(text: "Дата", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderDate)))
         ]]
 
         switch type {
         case .loveStory, .family:
             keyboard.buttons[0].insert(contentsOf: [
-                try .init(text: "Стилист", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderStylist))),
-                try .init(text: "Визажист", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderMakeuper))),
+                try .init(text: "Стилист", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderStylist), payload: payload)),
+                try .init(text: "Визажист", action: .callback, eventPayload: .push(.entryPoint(.orderBuilderMakeuper), payload: payload)),
             ], at: 0)
         case .content: break
         }

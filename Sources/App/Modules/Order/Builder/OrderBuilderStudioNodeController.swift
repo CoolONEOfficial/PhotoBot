@@ -21,7 +21,7 @@ class OrderBuilderStudioNodeController: NodeController {
     func getListSendMessages(platform: AnyPlatform, in node: Node, _ payload: NodePayload?, context: PhotoBotContextProtocol, listType: MessageListType, indexRange: Range<Int>) throws -> EventLoopFuture<([SendMessage], Int)>? {
         guard listType == .studios else { return nil }
         let (app, user) = (context.app, context.user)
-        guard case let .orderBuilder(state) = user.history.last?.nodePayload, let orderType = state.type else { throw SendMessageGroupError.invalidPayload }
+        guard case let .orderBuilder(state) = payload, let orderType = state.type else { throw SendMessageGroupError.invalidPayload }
         let model = StudioModel.self
         return model.query(on: app.db).count().flatMap { count in
             model.query(on: app.db).filter(.sql(raw: "prices ? '\(orderType.rawValue)'")).range(indexRange).all().flatMap { studios in
@@ -55,11 +55,14 @@ class OrderBuilderStudioNodeController: NodeController {
         guard case let .selectStudio(studioId) = eventPayload else { return nil }
         let (app, user) = (context.app, context.user)
         
-        replyText = "Selected"
-        return Node.find(.entryPoint(.orderBuilder), app: app).flatMap { node in
-            Studio.find(studioId, app: app).throwingFlatMap { studio in
-                try user.push(node, payload: .orderBuilder(.init(with: user.history.last?.nodePayload, studio: studio)), to: event, saveMove: false, context: context)
-            }
+        guard let nodeId = user.history.firstOrderBuildable?.nodeId else {
+            fatalError()
         }
+
+        replyText = "Selected"
+        return Studio.find(studioId, app: app).throwingFlatMap { studio in
+            try user.push(.id(nodeId), payload: .orderBuilder(.init(with: user.history.last?.nodePayload, studio: studio)), to: event, saveMove: false, context: context)
+        }
+
     }
 }

@@ -36,13 +36,29 @@ public enum MessageListType: String, Codable {
     case makeupers
     case studios
     case reviews
+    case photographers
     case orders
+
+    static let orderReplaceable: [Self] = [ .makeupers, .studios, .stylists, .photographers ]
+
+    var listNodeEntryPoint: EntryPoint {
+        switch self {
+        case .portfolio:        return .portfolio
+        case .stylists:         return .orderBuilderStylist
+        case .makeupers:        return .orderBuilderMakeuper
+        case .studios:          return .orderBuilderStudio
+        case .reviews:          return .reviews
+        case .photographers:    return .orderBuilderPhotographer
+        case .orders:           return .orders
+        }
+    }
 }
 
 public enum SendMessageGroup {
     case array(_ elements: [SendMessage])
     case list(_ content: MessageListType)
     case orderTypes
+    case orderReplacement
     case orderBuilder
     case orderCheckout
     case welcome
@@ -105,10 +121,13 @@ public enum SendMessageGroup {
         default: break
         }
         
-        guard let resultFuture = result else { throw SendMessageGroupError.messagesNotFound }
+        guard var resultFuture = result else { throw SendMessageGroupError.messagesNotFound }
 
-        return resultFuture.map { Self.addNavigationButtons($0, user) }
-            .flatMapEach(on: app.eventLoopGroup.next()) { Self.formatMessage($0, platform: platform, context: context) }
+        if node.closeable {
+            resultFuture = resultFuture.map { Self.addCloseButton($0, user) }
+        }
+        
+        return resultFuture.flatMapEach(on: app.eventLoopGroup.next()) { Self.formatMessage($0, platform: platform, context: context) }
     }
 
     static private func addPageButtons(_ messages: [SendMessage], _ indexRange: Range<Int>, _ count: Int) -> [SendMessage] {
@@ -126,7 +145,7 @@ public enum SendMessageGroup {
         return messages
     }
     
-    static private func addNavigationButtons(_ messages: [SendMessage], _ user: User) -> [SendMessage] {
+    static private func addCloseButton(_ messages: [SendMessage], _ user: User) -> [SendMessage] {
         if !user.history.isEmpty, let lastMessage = messages.last {
             lastMessage.keyboard.buttons.safeAppend([ try! .init(
                 text: user.history.last?.nodeId == user.nodeId ? "❌ Отменить выбор" : "👈 Назад",
@@ -162,6 +181,7 @@ extension SendMessageGroup: Codable {
         case calendar
         case orderAgreement
         case editNodeText
+        case orderReplacement
     }
 
     public init(from decoder: Decoder) throws {
@@ -175,6 +195,10 @@ extension SendMessageGroup: Codable {
         if container.allKeys.contains(.listType), try container.decodeNil(forKey: .listType) == false {
             let type = try container.decode(MessageListType.self, forKey: .listType)
             self = .list(type)
+            return
+        }
+        if container.allKeys.contains(.orderReplacement), try container.decodeNil(forKey: .orderReplacement) == false {
+            self = .orderReplacement
             return
         }
         if container.allKeys.contains(.orderBuilder), try container.decodeNil(forKey: .orderBuilder) == false {
@@ -230,6 +254,8 @@ extension SendMessageGroup: Codable {
             try container.encode(true, forKey: .orderAgreement)
         case .editNodeText:
             try container.encode(true, forKey: .editNodeText)
+        case .orderReplacement:
+            try container.encode(true, forKey: .orderReplacement)
         }
     }
 

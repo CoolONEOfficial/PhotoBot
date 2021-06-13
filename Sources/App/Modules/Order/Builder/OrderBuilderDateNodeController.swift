@@ -157,7 +157,7 @@ class OrderBuilderDateNodeController: NodeController {
             ])
         }
     }
-    
+
     func handleAction(_ action: NodeAction, _ message: Message, context: PhotoBotContextProtocol) throws -> EventLoopFuture<Result<Void, HandleActionError>>? {
         guard case .handleCalendar = action.type, let text = message.text else { return nil }
         let (user, app) = (context.user, context.app)
@@ -210,7 +210,11 @@ class OrderBuilderDateNodeController: NodeController {
                   let (hour, minute, _) = time?.components,
                   let date = DateComponents.create(year: year, month: month, day: day, hour: hour, minute: minute).date else { throw HandleActionError.nodePayloadInvalid }
             
-            return user.push(.entryPoint(.orderBuilder), payload: .orderBuilder(.init(with: user.history.last?.nodePayload, date: date, duration: duration)), to: event, saveMove: false, context: context)
+            guard let nodeId = user.history.firstOrderBuildable?.nodeId else {
+                fatalError()
+            }
+
+            return user.push(.id(nodeId), payload: .orderBuilder(.init(with: user.history.last?.nodePayload, date: date, duration: duration)), to: event, saveMove: false, context: context)
             
         default:
             return nil

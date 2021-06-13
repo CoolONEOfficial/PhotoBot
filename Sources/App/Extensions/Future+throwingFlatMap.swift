@@ -6,6 +6,16 @@
 //
 
 import Botter
+import Vapor
+
+extension Future where Value: Sequence {
+    public func throwingFlatMapEach<Result>(
+        on eventLoop: EventLoop,
+        _ transform: @escaping (_ element: Value.Element) throws -> EventLoopFuture<Result>
+    ) -> EventLoopFuture<[Result]> {
+        self.throwingFlatMap { .reduce(into: [], try $0.map(transform), on: eventLoop) { $0.append($1) } }
+    }
+}
 
 extension Future {
     public func throwingFlatMap<NewValue>(_ transform: @escaping (Value) throws -> Future<NewValue>) -> Future<NewValue> {

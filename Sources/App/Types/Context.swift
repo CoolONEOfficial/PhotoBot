@@ -11,7 +11,7 @@ import Botter
 
 public protocol PhotoBotContextProtocol: BotContextProtocol {
     var controllers: [NodeController] { get }
-    var user: User { get }
+    var user: User { get set }
 }
 
 public struct PhotoBotContext: PhotoBotContextProtocol {

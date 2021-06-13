@@ -13,6 +13,7 @@ struct CreateEventPayloads: Migration {
             .id()
             .field("instance", .string, .required)
             .field("owner_id", .uuid, .required, .references(UserModel.schema, .id))
+            .field("node_id", .uuid, .required, .references(NodeModel.schema, .id))
             .create()
     }
 

@@ -14,7 +14,6 @@ extension Bot {
             let (app, user) = (context.app, context.user)
             var future: Future<[Botter.Message]> = app.eventLoopGroup.future([])
             
-            
             for params in messages {
                 params.destination = replyable.destination
                 future = future.flatMap { messages in
@@ -22,7 +21,7 @@ extension Bot {
                         buttons.map(\.payload).map { payload -> Future<String?> in
                             guard let payload = payload else { return app.eventLoopGroup.future(nil) }
                             if payload.count > 64 {
-                                return EventPayloadModel(instance: payload, owner: user)
+                                return EventPayloadModel(instance: payload, ownerId: user.id!, nodeId: user.nodeId!)
                                     .saveWithId(on: app.db)
                                     .flatMapThrowing { id in
                                         switch platform {

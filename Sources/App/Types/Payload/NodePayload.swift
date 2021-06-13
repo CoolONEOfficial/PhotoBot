@@ -55,18 +55,18 @@ public struct OrderState: Codable {
 extension OrderState {
 
     init<T: OrderProtocol>(from order: T) {
-        self.init(type: order.type, stylistId: order.stylistId, makeuperId: order.makeuperId, studioId: order.studioId, date: order.interval.start, duration: order.interval.duration, hourPrice: order.hourPrice, status: order.status, id: order.id, userId: order.userId)
+        self.init(type: order.type, stylistId: order.stylistId, makeuperId: order.makeuperId, photographerId: order.photographerId, studioId: order.studioId, date: order.interval.start, duration: order.interval.duration, hourPrice: order.hourPrice, status: order.status, id: order.id, userId: order.userId)
     }
 
 }
 
 public extension OrderState {
     var watchers: [UUID] {
-        [makeuperId, stylistId].compactMap { $0 }
+        [makeuperId, stylistId, photographerId, studioId].compactMap { $0 }
     }
     
     var isValid: Bool {
-        let requiredParams: [Any?] = [date, studioId, duration, photographerId]
+        let requiredParams: [Any?] = [date, duration, photographerId]
 //        switch type {
 //        case .content: break
 //            //requiredParams = [  ]
@@ -138,6 +138,8 @@ public enum NodePayload: Codable {
     case orderBuilder(OrderState)
     case checkout(CheckoutState)
     case calendar(year: Int, month: Int, day: Int? = nil, time: TimeInterval? = nil, needsConfirm: Bool = false)
+    case orderAgreement(orderId: UUID)
+    case orderReplacement(orderId: UUID, type: MessageListType)
 }
 
 extension NodePayload {
@@ -154,6 +156,9 @@ extension NodePayload {
         case calendarDay
         case calendarTime
         case calendarNeedsConfirm
+        case orderAgreementId
+        case orderReplacementId
+        case orderReplacementType
     }
 
     public init(from decoder: Decoder) throws {
@@ -173,6 +178,18 @@ extension NodePayload {
         if container.allKeys.contains(.pageAt), try container.decodeNil(forKey: .pageAt) == false {
             let num = try container.decode(Int.self, forKey: .pageAt)
             self = .page(at: num)
+            return
+        }
+        if container.allKeys.contains(.orderAgreementId), try container.decodeNil(forKey: .orderAgreementId) == false {
+            let orderId = try container.decode(UUID.self, forKey: .orderAgreementId)
+            self = .orderAgreement(orderId: orderId)
+            return
+        }
+        if container.allKeys.contains(.orderReplacementId), try container.decodeNil(forKey: .orderReplacementId) == false,
+           container.allKeys.contains(.orderReplacementType), try container.decodeNil(forKey: .orderReplacementType) == false{
+            let id = try container.decode(UUID.self, forKey: .orderReplacementId)
+            let type = try container.decode(MessageListType.self, forKey: .orderReplacementType)
+            self = .orderReplacement(orderId: id, type: type)
             return
         }
         if container.allKeys.contains(.orderState) {
@@ -216,6 +233,13 @@ extension NodePayload {
         
         case let .checkout(checkout):
             try container.encode(checkout, forKey: .checkoutState)
+
+        case let .orderAgreement(orderId):
+            try container.encode(orderId, forKey: .orderAgreementId)
+            
+        case let .orderReplacement(id, type):
+            try container.encode(type, forKey: .orderReplacementType)
+            try container.encode(id, forKey: .orderReplacementId)
 
         case let .calendar(year, month, day, time, needsConfirm):
             try container.encode(year, forKey: .calendarYear)

@@ -15,6 +15,8 @@ public final class Node: NodeProtocol {
     
     typealias TwinType = NodeModel
     
+    static var entryPointIds = [EntryPoint: UUID]()
+    
     var id: UUID?
     
     var systemic: Bool = false
@@ -27,6 +29,8 @@ public final class Node: NodeProtocol {
     var entryPoint: EntryPoint?
 
     var action: NodeAction?
+
+    var closeable: Bool = true
     
     required init() {}
 }

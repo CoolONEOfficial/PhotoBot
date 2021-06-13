@@ -20,13 +20,13 @@ final class Photographer: PhotographerProtocol {
 
     @Validated(.isLetters && .greater(1) && .less(25))
     var name: String?
-
-    var platformIds: [TypedPlatform<UserPlatformId>] = []
     
     var photos: [PlatformFileModel] = []
     
     var prices: [OrderType: Float] = [:]
 
+    var platformIds: [TypedPlatform<UserPlatformId>] = []
+    
     var user: UserModel!
     
     required init() {}

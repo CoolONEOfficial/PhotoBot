@@ -74,8 +74,21 @@ final class UserModel: Model, UserProtocol {
     
     var photographerId: UUID? { $_photographer.id }
     
+    @OptionalParent(key: "studio_id")
+    var _studio: StudioModel?
+    
+    var studio: StudioModel? {
+        get { _studio }
+        set { $_studio.id = newValue?.id }
+    }
+    
+    var studioId: UUID? { $_studio.id }
+    
     @Children(for: \.$owner)
     var payloads: [EventPayloadModel]
+
+    @OptionalField(key: "last_destination")
+    var lastDestination: UserDestination?
 
     required init() { }
 
