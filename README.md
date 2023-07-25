@@ -6,8 +6,6 @@
 
 ### Unleash your photography potential with PhotoBot! An efficient chatbot designed for photographers and enthusiasts alike. Streamline orders, showcase your portfolio, read reviews, and more. Powered by the [Botter](https://github.com/CoolONEOfficial/botter) framework, PhotoBot enhances your photographic journey.
 
-[![MacOS build and deploy](https://github.com/CoolONEOfficial/PhotoBot/actions/workflows/macos.yml/badge.svg)](https://github.com/CoolONEOfficial/PhotoBot/actions/workflows/macos.yml)
-[![Linux build and deploy](https://github.com/CoolONEOfficial/PhotoBot/actions/workflows/ubuntu.yml/badge.svg)](https://github.com/CoolONEOfficial/PhotoBot/actions/workflows/ubuntu.yml)
 [![Language](https://img.shields.io/badge/language-Swift%205.1-orange.svg)](https://swift.org/download/)
 [![Platform](https://img.shields.io/badge/platform-Linux%20/%20macOS-ffc713.svg)](https://swift.org/download/)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](https://github.com/CoolONEOfficial/Vkontakter/blob/master/LICENSE)
