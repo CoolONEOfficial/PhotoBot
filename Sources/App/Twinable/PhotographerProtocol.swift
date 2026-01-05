@@ -10,7 +10,7 @@ import Vapor
 import Fluent
 import Botter
 
-protocol PhotographerProtocol: PhotosProtocol, UsersProtocol, PlatformIdentifiable, Priceable, Twinable where TwinType: PhotographerProtocol {
+protocol PhotographerProtocol: PhotosProtocol, UsersProtocol, PlatformIdentifiable, Priceable, Twinable {
 
     associatedtype ImplementingModel = PhotographerModel
     associatedtype SiblingModel = PhotographerPhoto
@@ -27,7 +27,7 @@ fileprivate enum PhotographerCreateError: Error {
     case noUser
 }
 
-extension PhotographerProtocol {
+extension PhotographerProtocol where TwinType: PhotographerProtocol {
     static func create(other: TwinType, app: Application) throws -> Future<Self> {
         [
             other.getUser(app: app).map { $0 as Any },

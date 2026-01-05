@@ -10,7 +10,7 @@ import Vapor
 import Fluent
 import Botter
 
-protocol MakeuperProtocol: PhotosProtocol, UsersProtocol, PlatformIdentifiable, Priceable, Twinable where TwinType: MakeuperProtocol {
+protocol MakeuperProtocol: PhotosProtocol, UsersProtocol, PlatformIdentifiable, Priceable, Twinable {
 
     associatedtype ImplementingModel = MakeuperModel
     associatedtype SiblingModel = MakeuperPhoto
@@ -27,7 +27,7 @@ fileprivate enum MakeuperCreateError: Error {
     case noUser
 }
 
-extension MakeuperProtocol {
+extension MakeuperProtocol where TwinType: MakeuperProtocol {
     static func create(other: TwinType, app: Application) throws -> Future<Self> {
         [
             other.getUser(app: app).map { $0 as Any },

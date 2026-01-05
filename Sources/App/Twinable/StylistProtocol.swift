@@ -10,7 +10,7 @@ import Vapor
 import Fluent
 import Botter
 
-protocol StylistProtocol: PhotosProtocol, UsersProtocol, PlatformIdentifiable, Priceable, Twinable where TwinType: StylistProtocol {
+protocol StylistProtocol: PhotosProtocol, UsersProtocol, PlatformIdentifiable, Priceable, Twinable {
     
     associatedtype ImplementingModel = StylistModel
     associatedtype SiblingModel = StylistPhoto
@@ -27,7 +27,7 @@ fileprivate enum StylistCreateError: Error {
     case noUser
 }
 
-extension StylistProtocol {
+extension StylistProtocol where TwinType: StylistProtocol {
     static func create(other: TwinType, app: Application) throws -> Future<Self> {
         [
             other.getUser(app: app).map { $0 as Any },

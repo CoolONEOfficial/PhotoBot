@@ -11,7 +11,7 @@ import Fluent
 import Botter
 
 protocol UsersProtocol: class {
-    associatedtype ImplementingModel: Model & UsersProtocol
+    associatedtype ImplementingModel: Model
     
     var user: UserModel! { get set }
     var usersProperty: ChildrenProperty<ImplementingModel, UserModel>? { get }

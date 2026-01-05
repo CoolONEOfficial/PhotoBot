@@ -89,7 +89,7 @@ struct UserDestination: PlatformObject, Replyable, Codable {
     var platform: AnyPlatform
 }
 
-protocol UserProtocol: PlatformIdentifiable, Twinable where TwinType: UserProtocol {
+protocol UserProtocol: PlatformIdentifiable, Twinable {
     
     var id: UUID? { get set }
     var history: [UserHistoryEntry] { get set }
@@ -112,7 +112,7 @@ protocol UserProtocol: PlatformIdentifiable, Twinable where TwinType: UserProtoc
     static func create(id: UUID?, history: [UserHistoryEntry], nodeId: UUID?, nodePayload: NodePayload?, platformIds: [TypedPlatform<UserPlatformId>], isAdmin: Bool, firstName: String?, lastName: String?, makeuper: MakeuperModel?, stylist: StylistModel?, photographer: PhotographerModel?, studio: StudioModel?, lastDestination: UserDestination?, app: Application) -> Future<Self>
 }
 
-extension UserProtocol {
+extension UserProtocol where TwinType: UserProtocol {
     var watcherIds: [UUID] {
         [stylistId, photographerId, makeuperId].compactMap { $0 }
     }

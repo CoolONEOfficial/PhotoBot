@@ -55,7 +55,7 @@ extension OrderStatus: CustomStringConvertible {
     }
 }
 
-protocol OrderProtocol: PromotionsProtocol, Twinable where TwinType: OrderProtocol {
+protocol OrderProtocol: PromotionsProtocol, Twinable {
 
     associatedtype ImplementingModel = OrderModel
     associatedtype SiblingModel = OrderPromotion
@@ -80,7 +80,7 @@ enum OrderCreateError: Error {
     case noDateOrType
 }
 
-extension OrderProtocol {
+extension OrderProtocol where TwinType: OrderProtocol {
     static func create(other: TwinType, app: Application) throws -> Future<Self> {
         other.getPromotions(app: app).flatMap { promotions in
             Self.create(id: other.id, userId: other.userId, type: other.type, stylistId: other.stylistId, makeuperId: other.makeuperId, photographerId: other.photographerId, studioId: other.studioId, interval: other.interval, price: other.hourPrice, promotions: promotions, status: other.status, app: app)

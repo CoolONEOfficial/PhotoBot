@@ -12,7 +12,7 @@ import Botter
 
 protocol PromotionsProtocol: class {
     
-    associatedtype ImplementingModel: Model & PromotionsProtocol
+    associatedtype ImplementingModel: Model
     associatedtype SiblingModel: Model
     
     var promotions: [PromotionModel] { get set }

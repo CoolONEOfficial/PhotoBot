@@ -26,7 +26,7 @@ import Vapor
 //        self.app = app
 //
 //        dispatcher.add(handler: Botter.MessageHandler(filters: .all, callback: handleMessage))
-//        
+//
 ////        dispatcher.add(
 ////            handler: Botter.MessageHandler(
 ////                filters: .command,
@@ -47,14 +47,14 @@ import Vapor
 ////            )
 ////        )
 //    }
-//    
+//
 //    func handleMessage(_ update: Botter.Update) throws {
 //        guard case let .message(message) = update.content else { return }
-//        
+//
 ////        try bot.sendMessage(params: .init(peerId: message.fromId!, message: "Cool image", attachments: [ .init(type: .photo, content: .fileId(photo)) ]), platform: message.platform, eventLoop: app.eventLoopGroup.next())
-//        
+//
 //        //try bot.sendMessage(params: .init(peerId: message.fromId!, message: "Starting send message"), platform: message.platform, eventLoop: app.eventLoopGroup.next())
-//        
+//
 ////        let jpgLink = "https://upload.wikimedia.org/wikipedia/en/a/a9/Example.jpg"
 ////        let jpgData = try Data(contentsOf: URL(string: jpgLink)!)
 ////        let txtLink = "https://www.w3.org/TR/PNG/iso_8859-1.txt"
@@ -65,38 +65,38 @@ import Vapor
 ////        if let prevMessage = prevMessage {
 ////            try bot.editMessage(prevMessage, params: .init(message: "Other text"), app: app)
 ////        }
-//        
+//
 //        try bot.sendMessage(params, platform: message.platform.any, context: context).map(\.first).optionalFlatMap { message in
 //            try! self.bot.editMessage(message, params: .init(message: "Other text"), app: self.app)!
 //        }
 //    }
-//    
+//
 //    func handleEvent(_ update: Botter.Update, _ context: Botter.BotContext?) throws {
 //        guard case let .event(event) = update.content else { return }
-//        
+//
 //        try bot.sendMessageEventAnswer(.init(event: event, type: .notification(text: "BOMBOM")), platform: update.platform.any)
-//        
+//
 //        let data: TestData = try! event.decodeData()
-//        
+//
 //        debugPrint("event \(data) handled")
 //    }
-//    
+//
 //    struct TestData: Codable {
 //        let text: String
 //    }
 //
 //    func handleCommand(_ update: Botter.Update, _ context: Botter.BotContext?) throws {
 //        guard case let .message(message) = update.content, let text = message.text, let destination = message.destination, let context = context else { return }
-//        
+//
 //        let textButton: Botter.Button = .init(text: "Test", action: .text)
-//        
+//
 //        let params = Botter.Bot.SendMessageParams(
 //            destination: destination,
 //            text: text,
 //            keyboard: .init([ [ textButton ] ]),
 //            attachments: nil
 //        )
-//        
+//
 //        try bot.sendMessage(params: params, platform: update.platform.any, context: context).whenComplete { res in
 //            switch res {
 //            case .success(_):
@@ -106,12 +106,12 @@ import Vapor
 //            }
 //        }
 //    }
-//    
+//
 //    func handlePhoto(_ update: Botter.Update, _ context: Botter.BotContext?) throws {
 //        guard case let .message(message) = update.content, let att = message.attachments.first else { return }
 //
-//        
-//        
+//
+//
 ////        let linkButton: Botter.Button = try .init(text: "Link", action: .link(.init(link: "https://google.gik-team.com/?q=\(text)")), payload: .init("{}"))
 ////        let callbackButton: Botter.Button = try .init(text: "Callback", action: .callback, data: TestData(text: "14342353"))
 ////

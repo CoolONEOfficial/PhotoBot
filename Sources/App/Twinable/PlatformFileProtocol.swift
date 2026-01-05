@@ -10,7 +10,7 @@ import Vapor
 import Fluent
 import Botter
 
-protocol PlatformFileProtocol: Twinable where TwinType: PlatformFileProtocol {
+protocol PlatformFileProtocol: Twinable {
     typealias Entry = TypedPlatform<String>
     
     var id: UUID? { get set }
@@ -21,7 +21,7 @@ protocol PlatformFileProtocol: Twinable where TwinType: PlatformFileProtocol {
     static func create(id: UUID?, platformEntries: [Entry]?, type: FileInfoType?, app: Application) -> Future<Self>
 }
 
-extension PlatformFileProtocol {
+extension PlatformFileProtocol where TwinType: PlatformFileProtocol {
     static func create(other: TwinType, app: Application) throws -> Future<Self> {
         Self.create(id: other.id, platformEntries: other.platformEntries, type: other.type, app: app)
     }

@@ -10,7 +10,7 @@ import Vapor
 import Fluent
 import Botter
 
-protocol StudioProtocol: PhotosProtocol, Priceable, PlatformIdentifiable, UsersProtocol, Twinable where TwinType: StudioProtocol {
+protocol StudioProtocol: PhotosProtocol, Priceable, PlatformIdentifiable, UsersProtocol, Twinable {
     var id: UUID? { get set }
     var name: String? { get set }
     var description: String? { get set }
@@ -21,9 +21,9 @@ protocol StudioProtocol: PhotosProtocol, Priceable, PlatformIdentifiable, UsersP
     static func create(id: UUID?, name: String?, description: String?, address: String?, coords: Coords?, platformIds: [TypedPlatform<UserPlatformId>], photos: [PlatformFileModel]?, prices: [OrderType: Float], user: UserModel?, app: Application) -> Future<Self>
 }
 
-extension StudioProtocol {
+extension StudioProtocol where TwinType: StudioProtocol {
     var photosSiblings: AttachableFileSiblings<StudioModel, StudioPhoto>? { nil }
-    
+
     static func create(other: TwinType, app: Application) throws -> Future<Self> {
         other.getPhotos(app: app).flatMap { photos in
             Self.create(id: other.id, name: other.name, description: other.description, address: other.address, coords: other.coords, platformIds: other.platformIds, photos: photos, prices: other.prices, app: app)

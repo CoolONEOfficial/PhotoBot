@@ -10,7 +10,7 @@ import Vapor
 import Fluent
 import Botter
 
-protocol PromotionProtocol: Twinable where TwinType: PromotionProtocol {
+protocol PromotionProtocol: Twinable {
     var id: UUID? { get set }
     var autoApply: Bool { get set }
     var name: String? { get set }
@@ -23,7 +23,7 @@ protocol PromotionProtocol: Twinable where TwinType: PromotionProtocol {
     static func create(id: UUID?, autoApply: Bool, name: String, description: String, promocode: String?, impact: PromotionImpact, condition: PromotionCondition, app: Application) -> Future<Self>
 }
 
-extension PromotionProtocol {
+extension PromotionProtocol where TwinType: PromotionProtocol {
     static func create(other: TwinType, app: Application) throws -> Future<Self> {
         guard let description = other.description, let name = other.name else {
             throw ModeledTypeError.validationError(self)

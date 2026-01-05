@@ -10,7 +10,7 @@ import Vapor
 import Fluent
 import Botter
 
-protocol ReviewProtocol: Twinable where TwinType: ReviewProtocol {
+protocol ReviewProtocol: Twinable {
     
     var id: UUID? { get set }
     var screenshot: PlatformFileModel! { get set }
@@ -19,7 +19,7 @@ protocol ReviewProtocol: Twinable where TwinType: ReviewProtocol {
     static func create(id: UUID?, screenshot: PlatformFileModel, app: Application) -> Future<Self>
 }
 
-extension ReviewProtocol {
+extension ReviewProtocol where TwinType: ReviewProtocol {
     static func create(other: TwinType, app: Application) -> Future<Self> {
         Self.create(id: other.id, screenshot: other.screenshot, app: app)
     }

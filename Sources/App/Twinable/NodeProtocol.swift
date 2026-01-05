@@ -34,7 +34,7 @@ public enum EntryPoint: String, Codable, CaseIterable {
     static let orderBuildable: [Self] = [ .orderReplacement, .orderBuilder ]
 }
 
-protocol NodeProtocol: Twinable where TwinType: NodeProtocol {
+protocol NodeProtocol: Twinable {
     var id: UUID? { get set }
     var systemic: Bool { get set }
     var name: String? { get set }
@@ -51,7 +51,7 @@ enum NodeCreateError: Error {
     case noMessageGroup
 }
 
-extension NodeProtocol {
+extension NodeProtocol where TwinType: NodeProtocol {
     static func create(other: TwinType, app: Application) throws -> Future<Self> {
         guard let messagesGroup = other.messagesGroup else { throw NodeCreateError.noMessageGroup }
         return Self.create(id: other.id, systemic: other.systemic, closeable: other.closeable, name: other.name, messagesGroup: messagesGroup, entryPoint: other.entryPoint, action: other.action, app: app)
