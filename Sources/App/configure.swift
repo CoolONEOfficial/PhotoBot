@@ -160,11 +160,26 @@ public func configure(_ app: Application) throws {
 }
 
 private func configurePostgres(_ app: Application) throws -> [NodeController] {
-    var postgresConfig = PostgresConfiguration(url: Application.databaseURL)!
+    var postgresConfig: PostgresConfiguration
 
-    if Application.isHeroku {
-        postgresConfig.tlsConfiguration = .forClient(certificateVerification: .none)
+    if app.environment == .development {
+        // Manual configuration for local development without SSL
+        postgresConfig = PostgresConfiguration(
+            hostname: "localhost",
+            port: 5432,
+            username: "vapor_username",
+            password: "vapor_password",
+            database: "vapor_database"
+        )
+        // Explicitly set TLS to nil to disable SSL
+        postgresConfig.tlsConfiguration = nil
+    } else {
+        postgresConfig = PostgresConfiguration(url: Application.databaseURL)!
+        if Application.isHeroku {
+            postgresConfig.tlsConfiguration = .forClient(certificateVerification: .none)
+        }
     }
+
     app.databases.use(.postgres(configuration: postgresConfig), as: .psql)
     
     app.migrations.add([
@@ -286,7 +301,7 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
         }
 
         let photographer = try Photographer.create(
-            name: "Настя Царева", platformIds: nastyaPlatformIds, photos: [testPhoto, testPhoto2], prices: [
+            name: "Николай Трухин", platformIds: nastyaPlatformIds, photos: [testPhoto, testPhoto2], prices: [
                 .loveStory: Float(1000),
                 .content: Float(800),
                 .family: Float(2500)
@@ -295,7 +310,7 @@ private func configurePostgres(_ app: Application) throws -> [NodeController] {
         
         try UserModel.create(history: [], nodeId: nil, nodePayload: nil, platformIds: coolonePlatformIds, isAdmin: true, firstName: "Николай", lastName: "Трухин", stylist: stylists.first, app: app).wait()
         
-        try UserModel.create(history: [], nodeId: nil, nodePayload: nil, platformIds: nastyaPlatformIds, isAdmin: true, firstName: "Nastya", lastName: "Tsareva", makeuper: makeupers.first, photographer: photographer, app: app).wait()
+        try UserModel.create(history: [], nodeId: nil, nodePayload: nil, platformIds: nastyaPlatformIds, isAdmin: true, firstName: "Николай", lastName: "Трухин", makeuper: makeupers.first, photographer: photographer, app: app).wait()
         
         for num in 1...3 {
             try Promotion.create(

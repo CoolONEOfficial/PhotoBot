@@ -30,19 +30,40 @@ services:
   app:
     image: photobot:latest
     build:
-      context: .
+      context: ..
+      dockerfile: PhotoBot/Dockerfile
+    restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 1048576
+        hard: 1048576
     environment:
       <<: *shared_environment
+      TARGET_PLATFORM: TG
+      TG_BOT_TOKEN: ${TG_BOT_TOKEN}
+      TG_ADMIN_NICKNAME: ${TG_ADMIN_NICKNAME}
+      TG_BUFFER_USER_ID: ${TG_BUFFER_USER_ID}
+      TG_SERVER_PORT: 88
+      TG_WH_PORT: 443
+      WH_PORT: 443
+      WEBHOOKS_URL: ${WEBHOOKS_URL}
+      VK_GROUP_TOKEN: DISABLED
+      VK_ADMIN_NICKNAME: disabled
+      VK_BUFFER_USER_ID: 1
+      VK_GROUP_ID: 1
+      VK_NEW_SERVER_NAME: disabled
     depends_on:
       - db
     ports:
-      - '80:80'
-    # user: '0' # uncomment to run as root for testing purposes even though Dockerfile defines 'vapor' user.
-    command: ["serve", "--env", "production", "--hostname", "0.0.0.0", "--port", "80"]
+      - '88:88'
+      - '8080:8080'
+    user: '0'
+    command: ["serve", "--env", "development", "--hostname", "0.0.0.0"]
   migrate:
     image: photobot:latest
     build:
-      context: .
+      context: ..
+      dockerfile: PhotoBot/Dockerfile
     environment:
       <<: *shared_environment
     depends_on:
@@ -53,7 +74,8 @@ services:
   revert:
     image: photobot:latest
     build:
-      context: .
+      context: ..
+      dockerfile: PhotoBot/Dockerfile
     environment:
       <<: *shared_environment
     depends_on:
@@ -63,6 +85,7 @@ services:
       replicas: 0
   db:
     image: postgres:12-alpine
+    restart: unless-stopped
     volumes:
       - db_data:/var/lib/postgresql/data/pgdata
     environment:
